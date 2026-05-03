@@ -1,27 +1,25 @@
 /**app.wxss**/
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-sizing: border-box;
-} 
-
-button {
-  background: initial;
-}
-
-button:focus{
-  outline: 0;
-}
-
-button::after{
-  border: none;
-}
-
-
 page {
-  background: #f6f6f6;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  background: #F6F6F6;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 通用按钮重置 */
+button { background: initial; padding: 0; margin: 0; }
+button::after { border: none; }
+button:focus { outline: 0; }
+
+/* 通用颜色变量（通过 WXSS 属性模拟） */
+.text-primary { color: #2563eb; }
+.text-success { color: #10B981; }
+.text-danger { color: #EF4444; }
+.text-warning { color: #F59E0B; }
+.text-gray { color: #6B7280; }
+
+/* 通用卡片样式 */
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  padding: 24rpx;
 }

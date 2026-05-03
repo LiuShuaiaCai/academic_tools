@@ -1,14 +1,55 @@
 {
   "pages": [
-    "pages/index/index",
-    "pages/example/index"
+    "pages/onboarding/onboarding",
+    "pages/home/home",
+    "pages/toolbox/toolbox",
+    "pages/calendar/calendar",
+    "pages/profile/profile",
+    "pages/submissions/submissions",
+    "pages/reviews/reviews",
+    "pages/conferences/conferences",
+    "pages/archive/archive",
+    "pages/toolManager/toolManager",
+    "pages/settings/settings"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#F6F6F6",
-    "navigationBarTitleText": "云开发 QuickStart",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "学术工具",
     "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#9CA3AF",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "images/icons/home.png",
+        "selectedIconPath": "images/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/toolbox/toolbox",
+        "text": "工具箱",
+        "iconPath": "images/icons/business.png",
+        "selectedIconPath": "images/icons/business-active.png"
+      },
+      {
+        "pagePath": "pages/calendar/calendar",
+        "text": "日历",
+        "iconPath": "images/icons/examples.png",
+        "selectedIconPath": "images/icons/examples-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/icons/usercenter.png",
+        "selectedIconPath": "images/icons/usercenter-active.png"
+      }
+    ]
   },
   "sitemapLocation": "sitemap.json",
   "style": "v2",
