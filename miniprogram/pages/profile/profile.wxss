@@ -1,0 +1,63 @@
+/* pages/profile/profile.wxss */
+page { background: #F6F6F6; }
+.profile-page { padding-bottom: 120rpx; }
+
+.profile-header {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  padding: 80rpx 32rpx 40rpx;
+  text-align: center;
+}
+
+.profile-avatar { font-size: 100rpx; }
+.profile-name { font-size: 36rpx; font-weight: 700; color: #fff; margin-top: 12rpx; }
+
+.profile-role-tag {
+  display: inline-block;
+  margin-top: 12rpx;
+  padding: 6rpx 24rpx;
+  background: rgba(255,255,255,0.2);
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: #fff;
+}
+
+.profile-stats {
+  background: #fff;
+  margin: 24rpx;
+  border-radius: 16rpx;
+  padding: 24rpx 0;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.pstat-item { flex: 1; text-align: center; }
+.pstat-divider { width: 1rpx; height: 60rpx; background: #E5E7EB; }
+.pstat-num { font-size: 48rpx; font-weight: 700; }
+.pstat-num.blue { color: #2563eb; }
+.pstat-num.red { color: #EF4444; }
+.pstat-num.green { color: #10B981; }
+.pstat-num.orange { color: #F59E0B; }
+.pstat-label { font-size: 22rpx; color: #6B7280; margin-top: 4rpx; }
+
+.menu-group {
+  background: #fff;
+  border-radius: 16rpx;
+  margin: 0 24rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 28rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.menu-item:last-child { border-bottom: none; }
+.menu-icon { font-size: 32rpx; margin-right: 16rpx; }
+.menu-text { flex: 1; font-size: 28rpx; color: #374151; }
+.menu-arrow { font-size: 32rpx; color: #9CA3AF; }
+
+.app-version { text-align: center; font-size: 22rpx; color: #9CA3AF; margin-top: 60rpx; }

@@ -1,0 +1,95 @@
+<!--pages/profile/profile.wxml-->
+<view class="profile-page">
+  <!-- 头部 -->
+  <view class="profile-header">
+    <view class="profile-avatar">🎓</view>
+    <view class="profile-name">我的学术空间</view>
+    <view class="profile-role-tag">{{roleLabels[userRole]}}</view>
+  </view>
+
+  <!-- 统计数据 -->
+  <view class="profile-stats">
+    <view class="pstat-item">
+      <view class="pstat-num blue">{{stats.submissions}}</view>
+      <view class="pstat-label">投稿</view>
+    </view>
+    <view class="pstat-divider"></view>
+    <view class="pstat-item">
+      <view class="pstat-num red">{{stats.reviews}}</view>
+      <view class="pstat-label">审稿</view>
+    </view>
+    <view class="pstat-divider"></view>
+    <view class="pstat-item">
+      <view class="pstat-num green">{{stats.conferences}}</view>
+      <view class="pstat-label">会议</view>
+    </view>
+    <view class="pstat-divider"></view>
+    <view class="pstat-item">
+      <view class="pstat-num orange">{{stats.archives}}</view>
+      <view class="pstat-label">归档</view>
+    </view>
+  </view>
+
+  <!-- 工具管理 -->
+  <view class="menu-group">
+    <view class="menu-item" bindtap="goToToolManager">
+      <text class="menu-icon">🔧</text>
+      <text class="menu-text">工具管理</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 数据管理 -->
+  <view class="menu-group">
+    <view class="menu-item" bindtap="backupData">
+      <text class="menu-icon">💾</text>
+      <text class="menu-text">数据备份</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="restoreData">
+      <text class="menu-icon">📥</text>
+      <text class="menu-text">数据还原</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 设置与反馈 -->
+  <view class="menu-group">
+    <view class="menu-item" bindtap="goToSettings">
+      <text class="menu-icon">⚙️</text>
+      <text class="menu-text">设置</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="sendFeedback">
+      <text class="menu-icon">💬</text>
+      <text class="menu-text">意见反馈</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="showAbout">
+      <text class="menu-icon">ℹ️</text>
+      <text class="menu-text">关于</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 账户操作 -->
+  <view class="menu-group">
+    <view class="menu-item" bindtap="resetOnboarding">
+      <text class="menu-icon">🔄</text>
+      <text class="menu-text">重新设置角色</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="logout">
+      <text class="menu-icon">🚪</text>
+      <text class="menu-text">退出登录</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="clearData">
+      <text class="menu-icon">🗑️</text>
+      <text class="menu-text">清除本地数据</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="app-version">学术工具 v1.0.0</view>
+</view>

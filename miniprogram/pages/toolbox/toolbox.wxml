@@ -1,0 +1,36 @@
+<!--pages/toolbox/toolbox.wxml-->
+<view class="toolbox-page">
+  <view class="toolbox-header">
+    <view class="toolbox-title">工具箱</view>
+    <view class="toolbox-meta">已开启 <text class="count">{{enabledCount}}</text> 个工具</view>
+    <view class="manage-btn" bindtap="goToToolManager">管理</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-box">
+    <text>加载中...</text>
+  </view>
+
+  <view wx:elif="{{tools.length === 0 && !loading}}" class="empty-box" bindtap="goToToolManager">
+    <text class="empty-icon">🧰</text>
+    <text class="empty-text">你还没有开启工具</text>
+    <text class="empty-hint">去管理页面开启需要的工具吧</text>
+  </view>
+
+  <view wx:else class="tool-grid">
+    <block wx:for="{{tools}}" wx:key="_id">
+      <view
+        class="tool-card {{!item.enabled ? 'disabled' : ''}} {{item.comingSoon ? 'coming-soon' : ''}}"
+        bindtap="goToTool"
+        data-page="{{item.pagePath}}"
+      >
+        <view class="tool-card-icon {{item.color}}">
+          <text>{{item.iconEmoji}}</text>
+        </view>
+        <view class="tool-card-name">{{item.name}}</view>
+        <view class="tool-card-desc">{{item.desc}}</view>
+        <view wx:if="{{item.count > 0}}" class="tool-card-badge">{{item.count}}</view>
+        <view wx:if="{{item.comingSoon}}" class="soon-tag">即将上线</view>
+      </view>
+    </block>
+  </view>
+</view>

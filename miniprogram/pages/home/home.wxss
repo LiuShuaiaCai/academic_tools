@@ -1,0 +1,349 @@
+/* pages/home/home.wxss */
+page { background: #F6F6F6; }
+
+.home-page {
+  min-height: 100vh;
+  padding-bottom: 120rpx;
+}
+
+/* ========== Header ========== */
+.home-header {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  padding: 100rpx 32rpx 40rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left { display: flex; flex-direction: column; gap: 4rpx; }
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.header-right {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.header-btn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #fff;
+  position: relative;
+}
+
+.notif-badge {
+  position: absolute;
+  top: -4rpx;
+  right: -4rpx;
+  background: #EF4444;
+  color: #fff;
+  font-size: 20rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+}
+
+/* ========== Stats Frame ========== */
+.stats-frame {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: -20rpx 24rpx 0;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
+}
+
+.stats-frame-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.stats-frame-title .more-link {
+  margin-left: auto;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  background: #DBEAFE;
+}
+
+.stats-frame-title .arrow { font-size: 20rpx; }
+
+/* ========== Stats Grid ========== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.stats-card {
+  background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+  border-radius: 12rpx;
+  padding: 20rpx;
+  box-shadow: 0 1rpx 3rpx rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+  border: 1rpx solid rgba(0,0,0,0.04);
+}
+
+/* 顶部彩色条 */
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rpx;
+}
+
+.stats-card.blue-accent::before { background: #2563eb; }
+.stats-card.red-accent::before { background: #EF4444; }
+.stats-card.green-accent::before { background: #10B981; }
+.stats-card.orange-accent::before { background: #F59E0B; }
+
+.card-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  margin-bottom: 12rpx;
+}
+
+.card-icon.blue-bg { background: #DBEAFE; color: #2563eb; }
+.card-icon.red-bg { background: #FEE2E2; color: #EF4444; }
+.card-icon.green-bg { background: #D1FAE5; color: #10B981; }
+.card-icon.orange-bg { background: #FEF3C7; color: #F59E0B; }
+
+/* 空工具状态 */
+.empty-tools {
+  text-align: center;
+  padding: 60rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.empty-tools-icon {
+  font-size: 80rpx;
+  margin-bottom: 8rpx;
+}
+
+.empty-tools-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+.empty-tools-sub {
+  font-size: 24rpx;
+  color: #9CA3AF;
+}
+
+/* 更多工具卡片 */
+.more-card {
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border: 1rpx solid #BFDBFE;
+  cursor: pointer;
+}
+
+.more-bg {
+  background: #BFDBFE;
+  color: #2563eb;
+}
+
+.total-count {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* 更多工具卡片 - 红点/数量徽章 */
+.red-dot {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  min-width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  padding: 0 10rpx;
+  border-radius: 18rpx;
+  background: #EF4444;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  text-align: center;
+}
+
+.card-info { }
+
+.card-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6rpx;
+}
+
+.card-desc {
+  font-size: 22rpx;
+  color: #6B7280;
+  margin-bottom: 8rpx;
+}
+
+.card-stats {
+  display: flex;
+  gap: 16rpx;
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+.urgent-count {
+  color: #EF4444;
+  font-weight: 600;
+}
+
+/* ========== Upcoming Frame ========== */
+.upcoming-frame {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title .more-link {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+/* ========== Upcoming Items ========== */
+.upcoming-item {
+  background: linear-gradient(135deg, #fff 0%, #fafbfc 100%);
+  border-radius: 10rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  box-shadow: 0 1rpx 2rpx rgba(0,0,0,0.04);
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  border: 1rpx solid rgba(0,0,0,0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.upcoming-item:last-child { margin-bottom: 0; }
+
+/* 左侧彩色条 */
+.upcoming-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  border-radius: 10rpx 0 0 10rpx;
+}
+
+.upcoming-item.type-blue::before { background: #2563eb; }
+.upcoming-item.type-red::before { background: #EF4444; }
+.upcoming-item.type-green::before { background: #10B981; }
+
+.upcoming-item.urgent { }
+
+.upcoming-icon {
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upcoming-title {
+  font-weight: 500;
+  font-size: 28rpx;
+  color: #111827;
+  margin-bottom: 8rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.type-label {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background: #F3F4F6;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.upcoming-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 24rpx;
+}
+
+.upcoming-meta .date {
+  color: #6B7280;
+}
+
+.upcoming-meta .countdown {
+  font-weight: 600;
+}
+
+.upcoming-meta .countdown.urgent { color: #EF4444; }
+.upcoming-meta .countdown.normal { color: #10B981; }
+
+/* ========== 空状态 ========== */
+.empty-hint {
+  text-align: center;
+  padding: 60rpx 40rpx;
+  font-size: 28rpx;
+  color: #6B7280;
+  background: #fff;
+  border-radius: 16rpx;
+}

@@ -1,0 +1,39 @@
+<!--pages/archive/archive.wxml-->
+<view class="page-container">
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text>🔍</text>
+      <input class="search-input" placeholder="搜索文件名..." bindinput="onSearch"/>
+    </view>
+    <view class="upload-btn" bindtap="chooseFile">📎 上传</view>
+  </view>
+
+  <scroll-view scroll-x class="filter-scroll">
+    <view class="filter-tabs">
+      <view class="filter-tab {{filterCategory==='all'?'active':''}}" bindtap="setFilter" data-cat="all">全部</view>
+      <view class="filter-tab {{filterCategory==='submission'?'active':''}}" bindtap="setFilter" data-cat="submission">投稿资料</view>
+      <view class="filter-tab {{filterCategory==='review'?'active':''}}" bindtap="setFilter" data-cat="review">审稿资料</view>
+      <view class="filter-tab {{filterCategory==='conference'?'active':''}}" bindtap="setFilter" data-cat="conference">会议资料</view>
+      <view class="filter-tab {{filterCategory==='other'?'active':''}}" bindtap="setFilter" data-cat="other">其他</view>
+    </view>
+  </scroll-view>
+
+  <view class="archive-list">
+    <view wx:if="{{list.length === 0}}" class="empty-box">
+      <text>📁</text><text>暂无归档文件</text>
+      <button class="btn-add-first" bindtap="chooseFile">上传文件</button>
+    </view>
+    <view class="file-card" wx:for="{{list}}" wx:key="_id">
+      <view class="file-icon {{item.ext === 'pdf' ? 'pdf' : item.ext === 'doc' || item.ext === 'docx' ? 'doc' : 'other'}}">
+        <text>{{item.ext === 'pdf' ? '📄' : item.ext === 'doc' || item.ext === 'docx' ? '📝' : '📎'}}</text>
+      </view>
+      <view class="file-info">
+        <view class="file-name">{{item.name}}</view>
+        <view class="file-meta">{{item.extLabel}} · {{item.sizeLabel}}</view>
+      </view>
+      <view class="file-del" bindtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}">🗑️</view>
+    </view>
+  </view>
+
+  <view class="fab" bindtap="chooseFile">+</view>
+</view>

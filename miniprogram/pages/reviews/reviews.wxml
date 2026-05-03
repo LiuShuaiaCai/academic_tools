@@ -1,0 +1,117 @@
+<!--pages/reviews/reviews.wxml-->
+<view class="page-container">
+  <view class="list-body">
+    <view wx:if="{{list.length === 0}}" class="empty-box">
+      <text>📝</text><text>暂无审稿任务</text>
+      <button class="btn-add-first" bindtap="showAddForm">添加第一个审稿任务</button>
+    </view>
+    <view class="rev-card {{item.urgent ? 'urgent' : ''}}" wx:for="{{list}}" wx:key="_id">
+      <view class="rev-header">
+        <view class="rev-title">{{item.paperTitle}}</view>
+        <view class="rev-days {{item.urgent ? 'red' : ''}}">
+          <text wx:if="{{item.daysLeft >= 0}}">{{item.daysLeft}}天</text>
+          <text wx:else>已过期</text>
+        </view>
+      </view>
+      <view class="rev-journal" wx:if="{{item.journal}}">{{item.journal}}</view>
+      <view class="rev-deadline" wx:if="{{item.deadline}}">截止：{{item.deadline}}</view>
+      <view class="rev-status {{item.status}}">{{item.status === 'pending' ? '待审稿' : item.status === 'in_progress' ? '审稿中' : item.status === 'submitted' ? '已提交' : '已完成'}}</view>
+      <view class="rev-actions">
+        <view catchtap="showDecision" data-id="{{item._id}}" class="sub-decision-btn" wx:if="{{item.status !== 'completed'}}">录入决定</view>
+        <view bindtap="showEditForm" data-id="{{item._id}}" class="sub-edit-btn">编辑</view>
+        <view bindtap="deleteItem" data-id="{{item._id}}" class="sub-del-btn">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="fab" bindtap="showAddForm">+</view>
+
+  <!-- 表单弹层 -->
+  <view class="form-overlay {{showForm ? 'active' : ''}}">
+    <view class="form-sheet">
+      <view class="form-header">
+        <view class="form-title">{{isEdit ? '编辑审稿' : '添加审稿'}}</view>
+        <view class="form-close" bindtap="closeForm">✕</view>
+      </view>
+      <scroll-view scroll-y class="form-body">
+        <view class="form-group">
+          <view class="form-label">论文标题 <text class="required">*</text></view>
+          <input class="form-input" placeholder="审稿论文标题" bindinput="onFormInput" data-field="paperTitle" value="{{form.paperTitle}}"/>
+        </view>
+        <view class="form-group">
+          <view class="form-label">期刊/会议</view>
+          <input class="form-input" placeholder="来稿期刊/会议" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
+        </view>
+        <view class="form-group">
+          <view class="form-label">审稿截止日期</view>
+          <picker mode="date" bindchange="e => setData({'form.deadline': e.detail.value})">
+            <view class="form-picker">{{form.deadline || '请选择截止日期'}} <text>›</text></view>
+          </picker>
+        </view>
+        <view class="form-group">
+          <view class="form-label">状态</view>
+          <view class="radio-group">
+            <view class="radio-item {{form.status === 'pending' ? 'active' : ''}}" bindtap="onFormInput" data-field="status" data-value="pending">待审稿</view>
+            <view class="radio-item {{form.status === 'in_progress' ? 'active' : ''}}" bindtap="onFormInput" data-field="status" data-value="in_progress">审稿中</view>
+            <view class="radio-item {{form.status === 'submitted' ? 'active' : ''}}" bindtap="onFormInput" data-field="status" data-value="submitted">已提交</view>
+          </view>
+        </view>
+        <view class="form-group">
+          <view class="form-label">备注</view>
+          <textarea class="form-textarea" placeholder="备注信息..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
+        </view>
+      </scroll-view>
+      <view class="form-footer">
+        <button class="btn-cancel" bindtap="closeForm">取消</button>
+        <button class="btn-confirm" bindtap="saveForm">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 审稿决定弹窗 -->
+  <view class="form-overlay {{showDecisionModal ? 'active' : ''}}">
+    <view class="form-sheet decision-sheet">
+      <view class="form-header">
+        <view class="form-title">审稿决定</view>
+        <view class="form-close" bindtap="closeDecision">✕</view>
+      </view>
+      <view class="form-body">
+        <view class="decision-info">
+          <view class="decision-paper">{{decisionPaper}}</view>
+          <view class="decision-journal" wx:if="{{decisionJournal}}">{{decisionJournal}}</view>
+        </view>
+
+        <view class="form-group">
+          <view class="form-label">审稿决定</view>
+          <view class="decision-options">
+            <view class="decision-btn {{decision === 'accept' ? 'selected accept' : ''}}" bindtap="setDecision" data-decision="accept">
+              <text class="decision-icon">✅</text>
+              <text>接收</text>
+            </view>
+            <view class="decision-btn {{decision === 'minor' ? 'selected minor' : ''}}" bindtap="setDecision" data-decision="minor">
+              <text class="decision-icon">🔄</text>
+              <text>小修</text>
+            </view>
+            <view class="decision-btn {{decision === 'major' ? 'selected major' : ''}}" bindtap="setDecision" data-decision="major">
+              <text class="decision-icon">⚠️</text>
+              <text>大修</text>
+            </view>
+            <view class="decision-btn {{decision === 'reject' ? 'selected reject' : ''}}" bindtap="setDecision" data-decision="reject">
+              <text class="decision-icon">❌</text>
+              <text>拒稿</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="form-group">
+          <view class="form-label">审稿意见</view>
+          <textarea class="form-textarea" placeholder="请输入审稿意见..." bindinput="onDecisionNote" value="{{decisionNote}}"></textarea>
+        </view>
+      </view>
+      <view class="form-footer">
+        <button class="btn-cancel" bindtap="closeDecision">取消</button>
+        <button class="btn-confirm" bindtap="submitDecision">提交决定</button>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,360 @@
+/* pages/calendar/calendar.wxss */
+page { background: #F6F6F6; }
+.calendar-page { padding-bottom: 120rpx; }
+
+.calendar-header {
+  background: #fff;
+  padding: 24rpx 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  border-bottom: 1rpx solid #E5E7EB;
+}
+
+.cal-nav-btn {
+  font-size: 48rpx;
+  color: #6B7280;
+  padding: 0 20rpx;
+}
+
+.cal-month-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111827;
+  flex: 1;
+  text-align: center;
+}
+
+.today-btn {
+  font-size: 24rpx;
+  color: #2563eb;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid #DBEAFE;
+  border-radius: 20rpx;
+  background: #EFF6FF;
+}
+
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #fff;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #E5E7EB;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 24rpx;
+  color: #6B7280;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #fff;
+  margin-bottom: 16rpx;
+}
+
+.day-cell {
+  min-height: 100rpx;
+  padding: 12rpx 8rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+  border-right: 1rpx solid #F3F4F6;
+  text-align: center;
+}
+
+.day-cell.empty { }
+
+.day-num {
+  font-size: 28rpx;
+  color: #374151;
+}
+
+.day-cell.today .day-num {
+  width: 48rpx;
+  height: 48rpx;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.day-cell.selected .day-num {
+  width: 48rpx;
+  height: 48rpx;
+  background: #DBEAFE;
+  color: #2563eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.event-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4rpx;
+  margin-top: 4rpx;
+}
+
+.dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+}
+
+.dot.submission { background: #2563eb; }
+.dot.review { background: #EF4444; }
+.dot.conference { background: #10B981; }
+
+/* 图例 */
+.legend {
+  background: #fff;
+  padding: 20rpx 32rpx;
+  display: flex;
+  gap: 32rpx;
+  border-top: 1rpx solid #E5E7EB;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: #6B7280;
+}
+
+/* ========== 顶部标题 ========== */
+.cal-header {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  padding: 100rpx 32rpx 40rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.cal-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.header-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #fff;
+}
+
+/* ========== 视图切换 ========== */
+.view-switcher {
+  display: flex;
+  background: #fff;
+  padding: 16rpx 32rpx;
+  gap: 16rpx;
+  border-bottom: 1rpx solid #E5E7EB;
+}
+
+.view-btn {
+  flex: 1;
+  text-align: center;
+  padding: 12rpx 0;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #6B7280;
+  background: #F3F4F6;
+  border: 1rpx solid #E5E7EB;
+}
+
+.view-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* ========== 月份导航 ========== */
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  padding: 20rpx 32rpx;
+  background: #fff;
+}
+
+.cal-nav-btn {
+  font-size: 48rpx;
+  color: #6B7280;
+  padding: 0 20rpx;
+}
+
+.cal-month {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111827;
+  flex: 1;
+  text-align: center;
+}
+
+/* ========== 周视图 ========== */
+.week-view {
+  padding: 16rpx;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8rpx;
+}
+
+.week-day-cell {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 16rpx 8rpx;
+  text-align: center;
+  min-height: 120rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.week-day-cell.today {
+  background: #2563eb;
+  color: #fff;
+}
+
+.week-day-cell.selected {
+  border: 2rpx solid #2563eb;
+}
+
+.week-day-name {
+  font-size: 20rpx;
+  color: #9CA3AF;
+  margin-bottom: 8rpx;
+}
+
+.week-day-num {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+/* ========== 列表视图 ========== */
+.list-view {
+  padding: 16rpx;
+}
+
+.list-item {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.list-date {
+  font-size: 22rpx;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.list-content {
+  flex: 1;
+}
+
+.list-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 4rpx;
+}
+
+.list-type {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  display: inline-block;
+}
+
+.list-type.submission { background: #DBEAFE; color: #2563eb; }
+.list-type.review { background: #FEE2E2; color: #EF4444; }
+.list-type.conference { background: #D1FAE5; color: #10B981; }
+
+.list-empty {
+  text-align: center;
+  padding: 60rpx;
+  font-size: 28rpx;
+  color: #9CA3AF;
+}
+
+/* ========== 选中日期的事件 ========== */
+.events-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.event-item:last-child {
+  border-bottom: none;
+}
+
+.event-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.event-dot.submission { background: #2563eb; }
+.event-dot.review { background: #EF4444; }
+.event-dot.conference { background: #10B981; }
+
+.event-content {
+  flex: 1;
+}
+
+.event-title {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 4rpx;
+}
+
+.event-type {
+  font-size: 22rpx;
+  color: #6B7280;
+}

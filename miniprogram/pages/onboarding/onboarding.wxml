@@ -1,0 +1,75 @@
+<!--pages/onboarding/onboarding.wxml-->
+<view class="onboarding-container">
+  <!-- 步骤1：角色选择 -->
+  <view class="step-panel" wx:if="{{step === 1}}">
+    <view class="onboarding-header">
+      <view class="onboarding-logo">🎓</view>
+      <view class="onboarding-title">欢迎使用学术管理工具</view>
+      <view class="onboarding-desc">选择您的学术身份，我们将为您推荐合适的工具</view>
+    </view>
+
+    <view class="step-indicator">
+      <view class="step-dot active"></view>
+      <view class="step-dot"></view>
+    </view>
+
+    <view class="role-list">
+      <view
+        class="role-card {{selectedRole === item.id ? 'selected' : ''}}"
+        wx:for="{{roleOptions}}"
+        wx:key="id"
+        data-role="{{item.id}}"
+        bindtap="selectRole"
+      >
+        <view class="role-icon {{item.color}}">{{item.icon}}</view>
+        <view class="role-info">
+          <view class="role-name">{{item.name}}</view>
+          <view class="role-desc">{{item.desc}}</view>
+        </view>
+        <view class="role-check">✓</view>
+      </view>
+    </view>
+
+    <view class="onboarding-footer">
+      <button class="btn-primary btn-block" bindtap="goToStep2" disabled="{{!selectedRole}}">下一步</button>
+      <view class="skip-link" bindtap="skipOnboarding">跳过，自定义配置</view>
+    </view>
+  </view>
+
+  <!-- 步骤2：工具预览与确认（只读，与原型一致） -->
+  <view class="step-panel" wx:if="{{step === 2}}">
+    <view class="onboarding-header">
+      <view class="onboarding-title">确认您的工具配置</view>
+      <view class="onboarding-desc">根据您的身份，我们推荐以下工具</view>
+    </view>
+
+    <view class="step-indicator">
+      <view class="step-dot"></view>
+      <view class="step-dot active"></view>
+    </view>
+
+    <view class="tool-preview">
+      <view class="preview-title">已开启工具 ({{enabledTools.length}}个)</view>
+      <view class="preview-item" wx:for="{{enabledTools}}" wx:key="id">
+        <view class="preview-icon {{item.color}}">{{item.iconEmoji}}</view>
+        <text class="preview-name">{{item.name}}</text>
+      </view>
+
+      <block wx:if="{{disabledTools.length > 0}}">
+        <view class="preview-divider"></view>
+        <view class="preview-subtitle">未开启（可稍后启用）</view>
+        <view class="preview-item disabled" wx:for="{{disabledTools}}" wx:key="id">
+          <view class="preview-icon {{item.color}}">{{item.iconEmoji}}</view>
+          <text class="preview-name">{{item.name}}</text>
+        </view>
+      </block>
+    </view>
+
+    <view class="preview-hint">您可以在「我的 → 工具管理」中随时调整</view>
+
+    <view class="onboarding-footer">
+      <button class="btn-primary btn-block" bindtap="finishOnboarding">开始使用</button>
+      <view class="skip-link" bindtap="goBackToStep1">返回上一步</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,32 @@
+<!--pages/settings/settings.wxml-->
+<view class="settings-page">
+  <!-- 顶部导航 -->
+  <view class="settings-header">
+    <view class="header-btn" bindtap="goBack">
+      <text>←</text>
+    </view>
+    <view class="header-title">系统设置</view>
+    <view class="header-placeholder"></view>
+  </view>
+
+  <!-- 设置列表 -->
+  <view class="settings-list">
+    <view
+      class="setting-item"
+      wx:for="{{settings}}"
+      wx:key="key"
+    >
+      <view class="setting-label">
+        <view class="setting-title">{{item.title}}</view>
+        <view class="setting-desc">{{item.desc}}</view>
+      </view>
+      <view
+        class="toggle {{item.value ? 'active' : ''}}"
+        data-idx="{{index}}"
+        bindtap="toggleSetting"
+      >
+        <view class="toggle-dot"></view>
+      </view>
+    </view>
+  </view>
+</view>

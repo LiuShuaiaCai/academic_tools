@@ -1,0 +1,29 @@
+<!--pages/toolManager/toolManager.wxml-->
+<view class="tm-page">
+  <view class="tm-desc">开启需要的工具，关闭不用的功能，保持界面简洁</view>
+
+  <view class="tool-group">
+    <view class="group-title">⭐ 核心工具</view>
+    <view class="tool-item" wx:for="{{coreTools}}" wx:key="id">
+      <view class="tool-item-icon {{item.color}}">{{item.iconEmoji}}</view>
+      <view class="tool-item-info">
+        <view class="tool-item-name">{{item.name}}</view>
+        <view class="tool-item-desc">{{item.desc}}</view>
+      </view>
+      <switch checked="{{item.enabled}}" data-id="{{item.id}}" data-enabled="{{item.enabled}}" data-user-tool-id="{{item.userToolId}}" bindchange="toggleTool"/>
+    </view>
+  </view>
+
+  <view class="tool-group">
+    <view class="group-title">🧩 扩展工具</view>
+    <view class="tool-item" wx:for="{{extTools}}" wx:key="id">
+      <view class="tool-item-icon {{item.color}}">{{item.iconEmoji}}</view>
+      <view class="tool-item-info">
+        <view class="tool-item-name">{{item.name}}</view>
+        <view class="tool-item-desc">{{item.desc}}</view>
+        <view class="coming-soon-tag" wx:if="{{item.comingSoon}}">即将上线</view>
+      </view>
+      <switch checked="{{item.enabled}}" disabled="{{item.comingSoon}}" data-id="{{item.id}}" data-enabled="{{item.enabled}}" data-user-tool-id="{{item.userToolId}}" bindchange="toggleTool"/>
+    </view>
+  </view>
+</view>

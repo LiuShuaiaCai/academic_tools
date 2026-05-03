@@ -1,0 +1,94 @@
+<!--pages/home/home.wxml-->
+<view class="home-page">
+  <!-- 顶部 Header -->
+  <view class="home-header">
+    <view class="header-left">
+      <view class="header-title">学术管理</view>
+    </view>
+    <view class="header-right">
+      <view class="header-btn" bindtap="showSearch">
+        <text>🔍</text>
+      </view>
+      <view class="header-btn" bindtap="showNotifications">
+        <text>🔔</text>
+        <view class="notif-badge" wx:if="{{notifCount > 0}}">{{notifCount}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计卡片（动态生成） -->
+  <view class="stats-frame">
+    <view class="stats-frame-title">
+      <text>📊</text>
+      <text>工作台</text>
+      <view class="more-link" wx:if="{{enabledTools.length > 4}}" bindtap="goToToolbox">
+        <text>更多工具</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 空状态：没有启用任何工具 -->
+    <view wx:if="{{enabledTools.length === 0 && !loading}}" class="empty-tools" bindtap="goToToolManager">
+      <text class="empty-tools-icon">🧰</text>
+      <text class="empty-tools-text">你还没有添加工具</text>
+      <text class="empty-tools-sub">去工具管理开启需要的工具吧</text>
+    </view>
+
+    <!-- 工具网格 -->
+    <view wx:elif="{{enabledTools.length > 0}}" class="stats-grid" id="statsGrid">
+      <view
+        class="stats-card {{item.color}}-accent"
+        wx:for="{{displayTools}}"
+        wx:key="id"
+        bindtap="goToTool"
+        data-page="{{item.pagePath}}"
+      >
+        <view class="card-icon {{item.color}}-bg">{{item.iconEmoji}}</view>
+        <view class="card-info">
+          <view class="card-title">{{item.name}}</view>
+          <view class="card-desc">{{item.desc}}</view>
+        </view>
+        <view class="card-stats">
+          <text>共 {{item.count}}</text>
+          <text class="urgent-count" wx:if="{{item.urgent > 0}}">· {{item.urgent}} 紧急</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 即将到来 -->
+  <view class="upcoming-frame">
+    <view class="section-title">
+      <text>近期截止</text>
+      <view class="more-link" bindtap="goToCalendar">
+        <text>查看日历</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view wx:if="{{upcomingItems.length === 0}}" class="empty-hint">
+      <text>🎉 暂无即将到期的事项</text>
+    </view>
+
+    <view
+      class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : 'type-green'}} {{item.urgent ? 'urgent' : ''}}"
+      wx:for="{{upcomingItems}}"
+      wx:key="_id"
+      bindtap="goToItem"
+      data-page="{{item.pagePath}}"
+      data-id="{{item._id}}"
+    >
+      <view class="upcoming-icon">{{item.iconEmoji}}</view>
+      <view class="upcoming-info">
+        <view class="upcoming-title">
+          <text class="type-label">{{item.typeLabel}}</text>
+          <text>{{item.title}}</text>
+        </view>
+        <view class="upcoming-meta">
+          <text class="date">{{item.deadlineLabel}}</text>
+          <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
