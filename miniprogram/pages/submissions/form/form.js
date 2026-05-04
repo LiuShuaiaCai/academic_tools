@@ -298,6 +298,18 @@ Component({
         updateTime:formatTime()
       };
 
+      // 根据时间线最大时间与到期时间比较，自动计算是否完成
+      if(data.deadline && tlSave.length > 0){
+        var maxTl = tlSave.reduce(function(max, t){
+          var tTime = t.date ? new Date(String(t.date).replace(' ','T')).getTime() : 0;
+          return tTime > max ? tTime : max;
+        }, 0);
+        var deadlineTime = new Date(String(data.deadline).replace(' ','T')).getTime();
+        data.completed = maxTl >= deadlineTime;
+      } else {
+        data.completed = false;
+      }
+
       wx.showLoading({ title:'保存中...' });
       var db = wx.cloud.database();
       var promise;
