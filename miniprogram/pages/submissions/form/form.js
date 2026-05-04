@@ -78,6 +78,7 @@ Component({
 
     loadEditData: function(id) {
       var that = this;
+      this.loadRelatedWorks(id);
       wx.cloud.database().collection('submissions').doc(id).get().then(function(res){
         var item = res.data;
         if(!item) return;
@@ -97,6 +98,7 @@ Component({
             title:item.title||'', journal:item.journal||'', status:item.status||'preparing',
             role:item.role||'first', paperType:item.paperType||'研究论文',
             priority:item.priority||'normal',
+            priorityLabel: config.getPriorityLabel(item.priority),
             deadline:item.deadline ? formatUtil.formatDate(new Date(String(item.deadline).replace(' ','T'))) : '',
             manuscriptId:item.manuscriptId||'', doi:item.doi||'', url:item.url||'',
             corresponding:item.corresponding||'', payee:item.payee||'',

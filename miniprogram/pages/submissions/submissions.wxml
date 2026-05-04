@@ -1,11 +1,19 @@
 <!--pages/submissions/submissions.wxml-->
 <view class="sub-page">
-  <!-- 搜索栏 + 高级筛选按钮 -->
+  <!-- 搜索栏 -->
   <view class="search-bar">
     <view class="search-input-wrap">
       <text class="search-icon">🔍</text>
       <input class="search-input" placeholder="搜索标题、期刊、合作者、标签..." bindinput="onSearch" value="{{searchKeyword}}"/>
     </view>
+  </view>
+
+  <!-- 提示栏 + 高级筛选 -->
+  <view class="filter-tips">
+    <view class="tip-btn tip-all {{quickFilter === 'all' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="all">全部 {{totalCount}}</view>
+    <view class="tip-btn tip-info {{quickFilter === 'incomplete' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="incomplete"> 未完成 {{incompleteCount}}</view>
+    <view class="tip-btn tip-urgent {{quickFilter === 'near' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="near"> 紧急处理 {{nearCount}}</view>
+    <view class="tip-btn tip-warn {{quickFilter === 'urgent' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="urgent"> 特别紧急 {{urgentCount}}</view>
     <view class="adv-toggle" bindtap="toggleAdvanced">
       <text>高级筛选</text>
       <text class="adv-arrow">{{showAdvanced ? '▲' : '▼'}}</text>
@@ -42,6 +50,13 @@
         <view class="adv-picker-text">{{advPriorityLabel || '全部'}}</view>
       </picker>
     </view>
+    <!-- 是否完成 -->
+    <view class="adv-row">
+      <text class="adv-label">完成状态</text>
+      <picker range="{{advCompletedOptions}}" range-key="label" value="{{advCompletedIndex}}" bindchange="onAdvCompletedChange">
+        <view class="adv-picker-text">{{advCompletedLabel || '全部'}}</view>
+      </picker>
+    </view>
     <!-- 到期时间区间 -->
     <view class="adv-row">
       <text class="adv-label">到期时间</text>
@@ -60,18 +75,7 @@
     </view>
   </view>
 
-  <!-- 筛选Tab -->
-  <scroll-view scroll-x class="filter-scroll">
-    <view class="filter-tabs">
-      <view
-        class="filter-tab {{filterGroup === tab.value ? 'active' : ''}}"
-        wx:for="{{filterTabs}}"
-        wx:key="value"
-        data-group="{{tab.value}}"
-        bindtap="setFilterGroup"
-      >{{tab.label}}</view>
-    </view>
-  </scroll-view>
+
 
   <!-- 列表 -->
   <view class="sub-list">
@@ -100,38 +104,9 @@
 
         <!-- 期刊 + 状态 + 角色 -->
         <view class="card-journal-row">
-          <text class="card-journal">{{item.journal || '未设置期刊'}}</text>
+          <text class="card-journal">{{item.journal || '未设置期刊'}}<text wx:if="{{item.manuscriptId}}"> #{{item.manuscriptId}}</text></text>
           <text class="card-status" style="background:{{item.statusBg}};color:{{item.statusColor}}">{{item.statusLabel}}</text>
           <text class="card-role" wx:if="{{item.roleLabel}}">{{item.roleLabel}}</text>
-        </view>
-
-        <!-- 优先级星级 -->
-        <view class="card-stars" wx:if="{{item.priorityStars > 0}}">
-          <text class="star {{item.priorityStars >= 1 ? 'filled' : 'empty'}}">★</text>
-          <text class="star {{item.priorityStars >= 2 ? 'filled' : 'empty'}}">★</text>
-          <text class="star {{item.priorityStars >= 3 ? 'filled' : 'empty'}}">★</text>
-        </view>
-
-        <!-- 图标操作栏 -->
-        <view class="card-actions" catchtap="doNothing">
-          <view class="action-icon" catchtap="showEditForm" data-id="{{item._id}}">
-            <text class="action-icon-text">✏️</text>
-          </view>
-          <view class="action-icon" wx:if="{{item.attachCount > 0}}">
-            <text class="action-icon-text">📎</text>
-            <text class="action-count">{{item.attachCount}}</text>
-          </view>
-          <view class="action-icon" wx:if="{{item.tlCount > 0}}">
-            <text class="action-icon-text">📅</text>
-            <text class="action-count">{{item.tlCount}}</text>
-          </view>
-        </view>
-
-        <!-- 投稿日期和天数 -->
-        <view class="card-info-row">
-          <text wx:if="{{item.createTime}}">投稿: {{item.createTimeFormatted}}</text>
-          <text wx:if="{{item.daysLabel}}">已{{item.daysLabel}}</text>
-          <text wx:if="{{item.manuscriptId}}">{{item.manuscriptId}}</text>
         </view>
 
         <!-- 截止日期提示 -->
@@ -139,32 +114,40 @@
           <text>{{item.overdueLabel}}</text>
         </view>
 
-        <!-- 网址链接 -->
-        <view class="card-link" wx:if="{{item.url}}">
-          <text class="link-text">🔗 {{item.url}}</text>
-        </view>
-
         <!-- 标签 -->
         <view class="card-tags-row" wx:if="{{item.allTags && item.allTags.length > 0}}">
           <text class="tag" wx:for="{{item.allTags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
         </view>
 
+        <!-- 关联作品 -->
+        <view class="card-related" wx:if="{{item.relatedWork}}" catchtap="onTapRelatedWork" data-id="{{item.relatedWork._id}}">
+          <text class="related-icon">🔗</text>
+          <text class="related-text">{{item.relatedWork.title}} → {{item.relatedWork.journal || '未设置期刊'}}</text>
+        </view>
+
         <!-- 时间线预览 -->
-        <view class="card-timeline" wx:if="{{item.recentTimeline && item.recentTimeline.length > 0}}">
+        <!-- <view class="card-timeline" wx:if="{{item.recentTimeline && item.recentTimeline.length > 0}}">
           <view class="tl-row" wx:for="{{item.recentTimeline}}" wx:key="index">
             <view class="tl-dot" style="background:{{item.dotColor}}"></view>
             <text class="tl-text">{{item.date}} · {{item.event}}</text>
           </view>
           <view class="tl-more" wx:if="{{item.tlCount > 3}}">... 共{{item.tlCount}}条</view>
-        </view>
+        </view> -->
       </view>
 
       <!-- 卡片底部操作 -->
       <view class="card-footer" catchtap="doNothing">
-        <view class="footer-btn" catchtap="viewTimeline" data-id="{{item._id}}">
-          <text>📅 时间线</text>
+        <!-- 优先级星级 -->
+        <view class="footer-btn" catchtap="viewCardStar" data-id="{{item._id}}">
+          <view class="card-stars" wx:if="{{item.priorityStars > 0}}">
+            <text class="star {{item.priorityStars >= 1 ? 'filled' : 'empty'}}">★</text>
+            <text class="star {{item.priorityStars >= 2 ? 'filled' : 'empty'}}">★</text>
+            <text class="star {{item.priorityStars >= 3 ? 'filled' : 'empty'}}">★</text>
+            <text class="star {{item.priorityStars >= 4 ? 'filled' : 'empty'}}">★</text>
+          </view>
         </view>
-        <view class="footer-del" catchtap="deleteItem" data-id="{{item._id}}">
+
+        <view class="footer-del footer-btn" catchtap="deleteItem" data-id="{{item._id}}">
           <text>🗑️ 删除</text>
         </view>
       </view>

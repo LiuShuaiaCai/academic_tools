@@ -12,10 +12,13 @@ Page({
     showForm:false, isEdit:false, editId:'',
     page:0, pageSize:20, hasMore:true, loadingMore:false,
     showAdvanced:false,
+    quickFilter:'',
     advStatus:'', advRole:'', advJournal:'', advPriority:'', advDeadlineFrom:'', advDeadlineTo:'',
-    advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1,
-    advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'',
-    advStatusOptions:[], advRoleOptions:[], advJournalOptions:[], advPriorityOptions:[],
+    advCompleted:'',
+    advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1, advCompletedIndex:-1,
+    advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'', advCompletedLabel:'',
+    advStatusOptions:[], advRoleOptions:[], advJournalOptions:[], advPriorityOptions:[], advCompletedOptions:[],
+    statusOptions: config.getStatusOptions(),
     // 筛选Tab（用于状态分组）
     filterTabs: config.getStatusOptions()
   },
@@ -35,7 +38,9 @@ Page({
 
     this.setData({ loadingMore:true });
 
-    wx.cloud.database().collection('submissions')
+    var db = wx.cloud.database();
+
+    db.collection('submissions')
       .where({ deleteTime:null })
       .orderBy('deadline', 'asc')
       .skip(skip)
@@ -44,30 +49,86 @@ Page({
       .then(function(res){
         var rawData = Array.isArray(res.data) ? res.data : [];
         var newItems = rawData.map(function(item){ return formatUtil.formatItem(item); });
-        // 云数据库 orderBy 会把 null 排在最前，这里把 null 沉底
-        newItems.sort(function(a, b){
-          if(!a.deadline && !b.deadline) return 0;
-          if(!a.deadline) return 1;
-          if(!b.deadline) return -1;
-          return a.deadline.localeCompare(b.deadline);
+
+        // 收集 relatedWorkId → 建立映射
+        var relatedMap = {};
+        rawData.forEach(function(raw, idx){
+          if(raw.relatedWorkId){
+            relatedMap[raw.relatedWorkId] = idx;
+          }
         });
-        var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
-        var hasMore = newItems.length >= pageSize;
-        var extra = {};
-        if(!isLoadMore){
-          extra = that.buildAdvOptions(list);
+
+        var relatedIds = Object.keys(relatedMap);
+        if(relatedIds.length === 0){
+          processItems(newItems);
+          return;
         }
-        extra.list = list;
-        extra.page = isLoadMore ? page : 0;
-        extra.hasMore = hasMore;
-        extra.loadingMore = false;
-        that.setData(extra);
-        that.applyFilter();
-      }).catch(function(e){
+
+        // 批量查询关联作品
+        var _ = db.command;
+        db.collection('submissions')
+          .where({ _id: _.in(relatedIds), deleteTime:null })
+          .get()
+          .then(function(relRes){
+            (relRes.data || []).forEach(function(rel){
+              var idx = relatedMap[rel._id];
+              if(idx !== undefined){
+                newItems[idx].relatedWork = {
+                  _id: rel._id,
+                  title: rel.title || '',
+                  journal: rel.journal || ''
+                };
+              }
+            });
+            processItems(newItems);
+          })
+          .catch(function(e){
+            console.error('[投稿] 查询关联作品失败', e);
+            processItems(newItems);
+          });
+      })
+      .catch(function(e){
         console.error('[投稿] 加载失败',e);
         that.setData({ loadingMore:false });
         if(!isLoadMore) that.setData({ list:[], filteredList:[] });
       });
+
+    function processItems(newItems){
+      newItems.sort(function(a, b){
+        if(!a.deadline && !b.deadline) return 0;
+        if(!a.deadline) return 1;
+        if(!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline);
+      });
+      var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
+      var hasMore = newItems.length >= pageSize;
+      var extra = {};
+      if(!isLoadMore){
+        extra = that.buildAdvOptions(list);
+      }
+      extra.list = list;
+      extra.page = isLoadMore ? page : 0;
+      extra.hasMore = hasMore;
+      extra.loadingMore = false;
+      var now = Date.now();
+      var incomplete = 0, near = 0, urgent = 0;
+      list.forEach(function(i){
+        if(!i.completed){
+          incomplete++;
+          if(i.deadline){
+            var days = Math.ceil((parseDate(i.deadline).getTime() - now) / 86400000);
+            if(days <= 1) urgent++;
+            else if(days <= 3) near++;
+          }
+        }
+      });
+      extra.incompleteCount = incomplete;
+      extra.nearCount = near;
+      extra.urgentCount = urgent;
+      extra.totalCount = list.length;
+      that.setData(extra);
+      that.applyFilter();
+    }
   },
 
   onReachBottom:function(){
@@ -98,21 +159,48 @@ Page({
       });
     }
 
+    // 快速筛选（独立于高级筛选）
+    var qf = d.quickFilter;
+    if(qf && qf !== 'all'){
+      var now = Date.now();
+      if(qf === 'incomplete'){
+        kwBase = kwBase.filter(function(i){ return !i.completed; });
+      } else if(qf === 'near'){
+        kwBase = kwBase.filter(function(i){
+          if(i.completed) return false;
+          if(!i.deadline) return false;
+          var days = Math.ceil((parseDate(i.deadline).getTime() - now) / 86400000);
+          return days <= 3 && days >= 0;
+        });
+      } else if(qf === 'urgent'){
+        kwBase = kwBase.filter(function(i){
+          if(i.completed) return false;
+          if(!i.deadline) return false;
+          var days = Math.ceil((parseDate(i.deadline).getTime() - now) / 86400000);
+          return days <= 1 && days >= 0;
+        });
+      }
+    }
+
     var advStatus   = d.advStatus;
     var advRole     = d.advRole;
     var advJournal  = d.advJournal;
     var advPriority = d.advPriority;
     var advFrom     = d.advDeadlineFrom;
     var advTo       = d.advDeadlineTo;
+    var advCompleted = d.advCompleted;
 
     function applyFilters(base, skipField){
       var r = base;
-      if(skipField !== 'status'   && advStatus)   r = r.filter(function(i){ return i.status === advStatus; });
-      if(skipField !== 'role'     && advRole)     r = r.filter(function(i){ return i.role === advRole; });
-      if(skipField !== 'journal'  && advJournal)  r = r.filter(function(i){ return i.journal === advJournal; });
-      if(skipField !== 'priority' && advPriority) r = r.filter(function(i){ return i.priority === advPriority; });
-      if(skipField !== 'deadline' && advFrom)     r = r.filter(function(i){ return i.deadline && i.deadline >= advFrom; });
-      if(skipField !== 'deadline' && advTo)       r = r.filter(function(i){ return i.deadline && i.deadline <= advTo; });
+      if(skipField !== 'status'    && advStatus)    r = r.filter(function(i){ return i.status === advStatus; });
+      if(skipField !== 'role'      && advRole)      r = r.filter(function(i){ return i.role === advRole; });
+      if(skipField !== 'journal'   && advJournal)   r = r.filter(function(i){ return i.journal === advJournal; });
+      if(skipField !== 'priority'  && advPriority)  r = r.filter(function(i){ return i.priority === advPriority; });
+      if(skipField !== 'deadline'  && advFrom)      r = r.filter(function(i){ return i.deadline && i.deadline >= advFrom; });
+      if(skipField !== 'deadline'  && advTo)        r = r.filter(function(i){ return i.deadline && i.deadline <= advTo; });
+      if(skipField !== 'completed' && advCompleted) r = r.filter(function(i){
+        return advCompleted === 'yes' ? !!i.completed : !i.completed;
+      });
       return r;
     }
 
@@ -169,16 +257,22 @@ Page({
       advStatusOptions:   statusOpt,
       advRoleOptions:     roleOpt,
       advJournalOptions:  journalOpt,
-      advPriorityOptions: priorityOpt
+      advPriorityOptions: priorityOpt,
+      advCompletedOptions: [
+        { value:'yes', label:'已完成 (' + statusBase.filter(function(i){ return !!i.completed; }).length + ')' },
+        { value:'no',  label:'未完成 (' + statusBase.filter(function(i){ return !i.completed; }).length + ')' }
+      ]
     };
     extra.advStatusIndex   = that._findIndexByValue(statusOpt,   that.data.advStatus);
     extra.advRoleIndex     = that._findIndexByValue(roleOpt,     that.data.advRole);
     extra.advJournalIndex  = that._findIndexByValue(journalOpt,  that.data.advJournal);
     extra.advPriorityIndex = that._findIndexByValue(priorityOpt, that.data.advPriority);
+    extra.advCompletedIndex = that._findIndexByValue(extra.advCompletedOptions, that.data.advCompleted);
     extra.advStatusLabel   = (statusOpt[extra.advStatusIndex]   ||{}).label || '';
     extra.advRoleLabel     = (roleOpt[extra.advRoleIndex]       ||{}).label || '';
     extra.advJournalLabel  = (journalOpt[extra.advJournalIndex] ||{}).label || '';
     extra.advPriorityLabel = (priorityOpt[extra.advPriorityIndex]||{}).label || '';
+    extra.advCompletedLabel = (extra.advCompletedOptions[extra.advCompletedIndex]||{}).label || '';
     return extra;
   },
 
@@ -222,6 +316,12 @@ Page({
     this.setData({ advPriorityIndex:idx, advPriority:opt.value||'', advPriorityLabel:opt.label||'' });
     this.applyFilter();
   },
+  onAdvCompletedChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advCompletedOptions[idx] || {};
+    this.setData({ advCompletedIndex:idx, advCompleted:opt.value||'', advCompletedLabel:opt.label||'' });
+    this.applyFilter();
+  },
   onAdvDeadlineFromChange:function(e){
     this.setData({ advDeadlineFrom:e.detail.value });
     this.applyFilter();
@@ -231,12 +331,26 @@ Page({
     this.applyFilter();
   },
 
+  onTipFilter:function(e){
+    var type = e.currentTarget.dataset.filter;
+    this.setData({ quickFilter: type === this.data.quickFilter ? '' : type });
+    this.resetAdvanced();
+  },
+
+  _daysLater:function(n){
+    var d = new Date();
+    d.setDate(d.getDate() + n);
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + mm + '-' + dd;
+  },
+
   resetAdvanced:function(){
     this.setData({
       advStatus:'', advRole:'', advJournal:'', advPriority:'',
-      advDeadlineFrom:'', advDeadlineTo:'',
-      advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1,
-      advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:''
+      advDeadlineFrom:'', advDeadlineTo:'', advCompleted:'',
+      advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1, advCompletedIndex:-1,
+      advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'', advCompletedLabel:''
     });
     this.applyFilter();
   },
@@ -275,6 +389,12 @@ Page({
         }
       }
     });
+  },
+
+  onTapRelatedWork:function(e){
+    var id = e.currentTarget.dataset.id;
+    if(!id) return;
+    this.setData({ showForm:true, isEdit:true, editId:id });
   },
 
   doNothing:function(){}

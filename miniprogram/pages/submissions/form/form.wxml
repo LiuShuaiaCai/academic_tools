@@ -51,7 +51,7 @@
 
       <!-- 5. 优先级 -->
       <view class="form-group">
-        <view class="form-label">优先级 <text class="form-label-hint">（非紧急/普通/紧急）</text><text class="required">*</text></view>
+        <view class="form-label">优先级 <text class="required">*</text></view>
         <picker mode="selector" range="{{priorityOptions}}" range-key="label" bindchange="onPriorityChange">
           <view class="form-picker {{form.priorityLabel ? '' : 'placeholder'}}">{{form.priorityLabel || '普通'}} <text class="picker-arrow">›</text></view>
         </picker>

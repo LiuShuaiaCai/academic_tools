@@ -69,7 +69,7 @@ function getPriorityLabel(value) {
 }
 
 function getPriorityStars(priority) {
-  return { low:0, normal:1, high:2, urgent:3 }[priority] || 0;
+  return { low:1, normal:2, high:3, urgent:4 }[priority] || 0;
 }
 
 function getDotColorFromEvent(event) {

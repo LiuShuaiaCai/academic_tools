@@ -2,7 +2,41 @@
 page { background: #F6F6F6; }
 .sub-page { padding-bottom: 120rpx; }
 
+/* ========== 提示栏 + 高级筛选 ========== */
+.filter-tips {
+  display: flex; align-items: center; gap: 12rpx;
+  padding: 14rpx 24rpx; background: #fff;
+  border-bottom: 1rpx solid #F3F4F6; box-sizing: border-box;
+  flex-wrap: nowrap; overflow-x: auto;
+}
+.tip-btn {
+  font-size: 24rpx; padding: 8rpx 14rpx; border-radius: 8rpx;
+  flex-shrink: 0; font-weight: 500; white-space: nowrap;
+}
+.tip-all { color: #065F46; background: #ECFDF5; border: 1rpx solid #6EE7B7; }
+.tip-btn.active { opacity: 1; font-weight: 700; box-shadow: 0 0 0 2rpx rgba(0,0,0,0.1); }
+.tip-info { color: #1E40AF; background: #EFF6FF; border: 1rpx solid #BFDBFE; }
+.tip-urgent { color: #92400E; background: #FEF3C7; border: 1rpx solid #FDE68A; }
+.tip-warn { color: #991B1B; background: #FEE2E2; border: 1rpx solid #FCA5A5; }
+.filter-tips .adv-toggle {
+  font-size: 24rpx; padding: 8rpx 14rpx; border-radius: 8rpx;
+  background: #F3F4F6; color: #374151; flex-shrink: 0; white-space: nowrap;
+  display: flex; align-items: center; gap: 4rpx;
+}
+.filter-tips .adv-arrow { font-size: 20rpx; }
+
 /* ========== 搜索栏 ========== */
+.search-bar {
+  background: #fff; padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #E5E7EB; box-sizing: border-box;
+}
+.search-input-wrap {
+  display: flex; align-items: center; background: #F3F4F6;
+  border-radius: 12rpx; padding: 0 20rpx; flex: 1;
+  height: 72rpx; box-sizing: border-box;
+}
+.search-icon { font-size: 28rpx; margin-right: 12rpx; color: #9CA3AF; }
+.search-input { flex: 1; font-size: 28rpx; color: #111827; height: 72rpx; }
 .search-bar {
   background: #fff; padding: 16rpx 24rpx;
   border-bottom: 1rpx solid #E5E7EB; box-sizing: border-box;
@@ -30,7 +64,7 @@ page { background: #F6F6F6; }
 .card-topbar { height: 8rpx; width: 100%; }
 .card-round { position: absolute; top: 16rpx; right: 16rpx; background: rgba(0,0,0,0.06); padding: 4rpx 16rpx; border-radius: 20rpx; font-size: 20rpx; color: #374151; font-weight: 500; }
 .card-body { padding: 24rpx; }
-.card-title { font-size: 30rpx; font-weight: 600; color: #111827; line-height: 1.5; margin-bottom: 12rpx; padding-right: 120rpx; }
+.card-title { font-size: 30rpx; font-weight: 600; color: #111827; line-height: 1.5; margin-bottom: 12rpx;}
 .card-journal-row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; margin-bottom: 12rpx; }
 .card-journal { font-size: 24rpx; color: #6B7280; flex: 1; }
 .card-status { font-size: 20rpx; padding: 4rpx 16rpx; border-radius: 20rpx; font-weight: 500; flex-shrink: 0; }
@@ -50,6 +84,14 @@ page { background: #F6F6F6; }
 .card-link { font-size: 22rpx; color: #2563eb; margin-bottom: 12rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-text { font-size: 22rpx; }
 .card-tags-row { display: flex; flex-wrap: wrap; gap: 8rpx; margin-bottom: 12rpx; }
+.card-related {
+  display: flex; align-items: center; gap: 6rpx;
+  padding: 8rpx 12rpx; margin-bottom: 12rpx;
+  background: #F0F9FF; border-radius: 8rpx;
+  border-left: 4rpx solid #3B82F6;
+}
+.related-icon { font-size: 22rpx; }
+.related-text { font-size: 24rpx; color: #1E40AF; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag { font-size: 20rpx; padding: 4rpx 16rpx; border-radius: 20rpx; background: #EFF6FF; color: #2563eb; }
 .card-timeline { margin-bottom: 12rpx; }
 .tl-row { display: flex; align-items: center; gap: 12rpx; padding: 8rpx 0; font-size: 22rpx; color: #6B7280; }
@@ -214,7 +256,7 @@ page { background: #F6F6F6; }
   display: flex; align-items: center; gap: 16rpx;
   padding: 16rpx 0; border-bottom: 1rpx solid #F3F4F6;
 }
-.adv-label { font-size: 26rpx; color: #374151; width: 100rpx; flex-shrink: 0; }
+.adv-label { font-size: 26rpx; color: #374151; width: 150rpx; flex-shrink: 0; }
 .adv-row picker { flex: 1; }
 .adv-picker-text { font-size: 26rpx; color: #6B7280; flex: 1; padding: 8rpx 0; }
 .adv-sep { font-size: 24rpx; color: #9CA3AF; }

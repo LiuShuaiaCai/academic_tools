@@ -56,11 +56,12 @@ function formatItem(item) {
     roleLabel: roleLabel,
     priorityLabel: priorityLabel,
     priorityStars: priorityStars,
-    overdueLabel: overdue !== null ? (overdue <= 0 ? '已超期' + Math.abs(overdue) + '天' : '剩余' + overdue + '天') : '',
+    overdueLabel: overdue !== null ? (overdue < 0 ? '超过' + Math.abs(overdue) + '天' : (overdue <= 3 ? '剩余' + overdue + '天' : formatDate(parseDate(item.deadline)))) : '',
     overdueClass: overdue !== null ? (overdue <= 0 ? 'overdue' : (overdue <= 7 ? 'urgent' : 'normal')) : '',
     recentTimeline: formatTimelineForDisplay(tl),
     allTags: allTags.slice(0, 6),
     attachCount: attachmentsArr.length,
+    completed: !!item.completed,
     tlCount: tl.length,
     createTimeFormatted: item.createTime ? formatDate(parseDate(item.createTime)) : ''
   };
@@ -70,7 +71,7 @@ function formatTimelineForDisplay(timeline, tlEventOptions) {
   if (!timeline || !timeline.length) return [];
   var evColorMap = {};
   (tlEventOptions || []).forEach(function(e) { evColorMap[e.label] = e.color; });
-  return timeline.slice(0, 3).map(function(t) {
+  return timeline.slice(0, 2).map(function(t) {
     return {
       date: t.date || '',
       event: t.event || '',
