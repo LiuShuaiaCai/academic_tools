@@ -1,0 +1,211 @@
+<!--pages/submissions/form/form.wxml-->
+<view class="form-overlay {{show ? 'active' : ''}}" bindtap="closeForm">
+  <view class="form-sheet" catchtap="doNothing">
+    <view class="form-header">
+      <view class="form-title">{{isEdit ? '编辑投稿' : '新建投稿'}}</view>
+      <view class="form-close" bindtap="closeForm">✕</view>
+    </view>
+    <scroll-view scroll-y class="form-body">
+      <!-- 1. 论文标题 -->
+      <view class="form-group">
+        <view class="form-label">论文标题 <text class="required">*</text></view>
+        <input class="form-input" placeholder="请输入论文标题" bindinput="onFormInput" data-field="title" value="{{form.title}}"/>
+      </view>
+
+      <!-- 2. 目标期刊/会议 -->
+      <view class="form-group">
+        <view class="form-label">目标期刊/会议 <text class="required">*</text></view>
+        <input class="form-input" placeholder="期刊或会议名称" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
+      </view>
+
+      <!-- 3. 当前状态（图标选择） -->
+      <view class="form-group">
+        <view class="form-label">当前状态 <text class="required">*</text></view>
+        <view class="status-icon-row">
+          <view
+            class="status-icon-btn {{form.status === item.value ? 'active' : ''}}"
+            wx:for="{{statusOptions}}"
+            wx:key="value"
+            data-status="{{item.value}}"
+            bindtap="onSelectStatus"
+          >
+            <view class="s-icon" style="background:{{item.bg}};color:{{item.color}}">
+              <text>{{item.icon}}</text>
+            </view>
+            <text class="s-label">{{item.label}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 4. 截止日期 -->
+      <view class="form-group">
+        <view class="form-label">截止日期 <text class="required">*</text></view>
+        <picker mode="date" bindchange="onDeadlineChange">
+          <view class="form-picker">
+            <view class="cal-icon"></view>
+            <text style="flex:1">{{form.deadline || '请选择日期'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 5. 优先级 -->
+      <view class="form-group">
+        <view class="form-label">优先级 <text class="form-label-hint">（非紧急/普通/紧急）</text><text class="required">*</text></view>
+        <picker mode="selector" range="{{priorityOptions}}" range-key="label" bindchange="onPriorityChange">
+          <view class="form-picker {{form.priorityLabel ? '' : 'placeholder'}}">{{form.priorityLabel || '普通'}} <text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+
+      <!-- 6. 关联作品 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">🔗</text> 关联作品 <text class="form-label-hint">（同一论文的多轮投稿）</text></view>
+        <picker mode="selector" range="{{relatedWorkOptions}}" range-key="title" bindchange="onRelatedWorkChange">
+          <view class="form-picker {{form.relatedWorkTitle ? '' : 'placeholder'}}">{{form.relatedWorkTitle || '不关联'}} <text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+
+      <!-- 7. 作者身份 -->
+      <view class="form-group">
+        <view class="form-label">作者身份 <text class="form-label-hint">（投稿时你的身份角色）</text></view>
+        <picker mode="selector" range="{{roleOptions}}" range-key="label" bindchange="onRoleChange">
+          <view class="form-picker">{{form.roleLabel || '请选择'}} <text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+
+      <!-- 8. 通讯作者 -->
+      <view class="form-group">
+        <view class="form-label">通讯作者</view>
+        <input class="form-input" placeholder="通讯作者姓名及邮箱" bindinput="onFormInput" data-field="corresponding" value="{{form.corresponding}}"/>
+      </view>
+
+      <!-- 9. 支付作者 -->
+      <view class="form-group">
+        <view class="form-label">支付作者</view>
+        <input class="form-input" placeholder="负责支付APC/Open Access费用的作者" bindinput="onFormInput" data-field="payee" value="{{form.payee}}"/>
+      </view>
+
+      <!-- 10. 合作者 -->
+      <view class="form-group">
+        <view class="form-label">合作者</view>
+        <input class="form-input" placeholder="其他合作者姓名，用逗号分隔" bindinput="onFormInput" data-field="coauthors" value="{{form.coauthors}}"/>
+      </view>
+
+      <!-- 11. 时间线 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">📅</text> 时间线</view>
+
+        <view class="tl-add-row">
+          <picker mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
+            <view class="tl-picker-box tl-date-picker">
+              <view class="cal-icon cal-icon-sm"></view>
+              <text class="{{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
+              <text class="tl-arrow">▼</text>
+            </view>
+          </picker>
+          <picker range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
+            <view class="tl-picker-box tl-event-picker">
+              <text class="{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
+              <text class="tl-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        <view class="tl-remark-row">
+          <input class="tl-remark-input" placeholder="备注（选填）" value="{{form.tlNewRemark}}" data-field="tlNewRemark" bindinput="onFormInput"/>
+          <view class="tl-add-btn" bindtap="addTimelineItem">
+            <text class="tl-add-text">添加</text>
+          </view>
+        </view>
+
+        <!-- 已有时间线事件列表 -->
+        <view class="tl-list" wx:if="{{form.timelineList.length > 0}}">
+          <view class="tl-item-card" wx:for="{{form.timelineList}}" wx:key="index">
+            <view class="tl-card-left">
+              <view class="tl-card-dot" style="background:{{item.dotColor}}"></view>
+            </view>
+            <view class="tl-card-content">
+              <view class="tl-card-top">
+                <text class="tl-card-date">{{item.date}}</text>
+                <text class="tl-card-event" style="color:{{item.dotColor}}">{{item.event}}</text>
+              </view>
+              <text class="tl-card-remark" wx:if="{{item.remark}}">{{item.remark}}</text>
+            </view>
+            <view class="tl-card-del" data-i="{{index}}" catchtap="removeTimelineItem">
+              <text>×</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 12. DOI -->
+      <view class="form-group">
+        <view class="form-label">DOI</view>
+        <input class="form-input" placeholder="10.xxxx/xxxx" bindinput="onFormInput" data-field="doi" value="{{form.doi}}"/>
+      </view>
+
+      <!-- 13. 稿件编号 -->
+      <view class="form-group">
+        <view class="form-label">稿件编号</view>
+        <input class="form-input" placeholder="如 #2024-001" bindinput="onFormInput" data-field="manuscriptId" value="{{form.manuscriptId}}"/>
+      </view>
+
+      <!-- 14. 追踪网址 -->
+      <view class="form-group">
+        <view class="form-label">追踪网址</view>
+        <input class="form-input" placeholder="https://... 投稿系统链接" bindinput="onFormInput" data-field="url" value="{{form.url}}"/>
+      </view>
+
+      <!-- 15. 论文类型 -->
+      <view class="form-group">
+        <view class="form-label">论文类型</view>
+        <picker mode="selector" range="{{typeOptions}}" range-key="label" bindchange="onTypeChange">
+          <view class="form-picker">{{form.paperType || '请选择'}} <text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+
+      <!-- 16. 学科领域 -->
+      <view class="form-group">
+        <view class="form-label">学科领域</view>
+        <view class="tag-input-area">
+          <input class="tag-input tag-input-field" placeholder="输入领域后回车添加" confirm-type="done" bindconfirm="onTagConfirm" data-target="fields" value="{{form.fieldsInput}}" bindinput="onTagInput"/>
+          <view class="tag-chips">
+            <text class="tag-chip tag-chip-field" wx:for="{{form.fieldsList}}" wx:key="index">{{item}} <text class="chip-del" data-field="fields" data-i="{{index}}" catchtap="removeChip">×</text></text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 17. 标签 -->
+      <view class="form-group">
+        <view class="form-label">标签</view>
+        <view class="tag-input-area">
+          <input class="tag-input" placeholder="输入标签后回车添加" confirm-type="done" bindconfirm="onTagConfirm" bindinput="onTagInput" data-target="tags" value="{{form.tagsInput}}"/>
+          <view class="tag-chips">
+            <text class="tag-chip" wx:for="{{form.tagsList}}" wx:key="index">{{item}} <text class="chip-del" data-field="tags" data-i="{{index}}" catchtap="removeChip">×</text></text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 18. 基金项目 -->
+      <view class="form-group">
+        <view class="form-label">基金项目</view>
+        <view class="tag-input-area">
+          <input class="tag-input tag-input-fund" placeholder="输入基金后回车添加" confirm-type="done" bindconfirm="onTagConfirm" bindinput="onTagInput" data-target="funds" value="{{form.fundsInput}}"/>
+          <view class="tag-chips">
+            <text class="tag-chip tag-chip-fund" wx:for="{{form.fundsList}}" wx:key="index">{{item}} <text class="chip-del" data-field="funds" data-i="{{index}}" catchtap="removeChip">×</text></text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 19. 备注 -->
+      <view class="form-group">
+        <view class="form-label">备注</view>
+        <textarea class="form-textarea" placeholder="其他备注信息..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
+      </view>
+
+    </scroll-view>
+    <view class="form-footer">
+      <button class="btn-cancel" bindtap="closeForm">取消</button>
+      <button class="btn-confirm" bindtap="saveForm">保存</button>
+    </view>
+  </view>
+</view>

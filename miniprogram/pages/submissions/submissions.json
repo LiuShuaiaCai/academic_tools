@@ -1,1 +1,1 @@
-{"navigationBarTitleText": "投稿管理","usingComponents": {}}
+{"navigationBarTitleText": "投稿管理","usingComponents": {"submission-form": "./form/form"}}
