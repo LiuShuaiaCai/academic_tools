@@ -12,7 +12,7 @@
   <view class="filter-tips">
     <view class="tip-btn tip-all {{quickFilter === 'all' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="all">全部 {{totalCount}}</view>
     <view class="tip-btn tip-info {{quickFilter === 'incomplete' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="incomplete"> 未完成 {{incompleteCount}}</view>
-    <view class="tip-btn tip-urgent {{quickFilter === 'near' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="near"> 紧急处理 {{nearCount}}</view>
+    <view class="tip-btn tip-urgent {{quickFilter === 'near' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="near"> 急需处理 {{nearCount}}</view>
     <view class="tip-btn tip-warn {{quickFilter === 'urgent' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="urgent"> 特别紧急 {{urgentCount}}</view>
     <view class="adv-toggle" bindtap="toggleAdvanced">
       <text>高级筛选</text>
@@ -25,46 +25,46 @@
     <!-- 状态 -->
     <view class="adv-row">
       <text class="adv-label">状态</text>
-      <picker range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
+      <picker class="adv-picker-wrap" range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
         <view class="adv-picker-text">{{advStatusLabel || '全部'}}</view>
       </picker>
     </view>
     <!-- 身份 -->
     <view class="adv-row">
       <text class="adv-label">身份</text>
-      <picker range="{{advRoleOptions}}" range-key="label" value="{{advRoleIndex}}" bindchange="onAdvRoleChange">
+      <picker class="adv-picker-wrap" range="{{advRoleOptions}}" range-key="label" value="{{advRoleIndex}}" bindchange="onAdvRoleChange">
         <view class="adv-picker-text">{{advRoleLabel || '全部'}}</view>
       </picker>
     </view>
     <!-- 期刊 -->
     <view class="adv-row">
       <text class="adv-label">期刊</text>
-      <picker range="{{advJournalOptions}}" range-key="label" value="{{advJournalIndex}}" bindchange="onAdvJournalChange">
+      <picker class="adv-picker-wrap" range="{{advJournalOptions}}" range-key="label" value="{{advJournalIndex}}" bindchange="onAdvJournalChange">
         <view class="adv-picker-text">{{advJournalLabel || '全部'}}</view>
       </picker>
     </view>
     <!-- 优先级 -->
     <view class="adv-row">
       <text class="adv-label">优先级</text>
-      <picker range="{{advPriorityOptions}}" range-key="label" value="{{advPriorityIndex}}" bindchange="onAdvPriorityChange">
+      <picker class="adv-picker-wrap" range="{{advPriorityOptions}}" range-key="label" value="{{advPriorityIndex}}" bindchange="onAdvPriorityChange">
         <view class="adv-picker-text">{{advPriorityLabel || '全部'}}</view>
       </picker>
     </view>
     <!-- 是否完成 -->
     <view class="adv-row">
       <text class="adv-label">完成状态</text>
-      <picker range="{{advCompletedOptions}}" range-key="label" value="{{advCompletedIndex}}" bindchange="onAdvCompletedChange">
+      <picker class="adv-picker-wrap" range="{{advCompletedOptions}}" range-key="label" value="{{advCompletedIndex}}" bindchange="onAdvCompletedChange">
         <view class="adv-picker-text">{{advCompletedLabel || '全部'}}</view>
       </picker>
     </view>
     <!-- 到期时间区间 -->
     <view class="adv-row">
       <text class="adv-label">到期时间</text>
-      <picker mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
+      <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
         <view class="adv-picker-text">{{advDeadlineFrom || '起始日期'}}</view>
       </picker>
       <text class="adv-sep">~</text>
-      <picker mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
+      <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
         <view class="adv-picker-text">{{advDeadlineTo || '截止日期'}}</view>
       </picker>
     </view>
@@ -100,11 +100,11 @@
 
       <view class="card-body">
         <!-- 标题 -->
-        <view class="card-title">{{item.title}}</view>
+        <view class="card-title" user-select="true">{{item.title}}</view>
 
         <!-- 期刊 + 状态 + 角色 -->
         <view class="card-journal-row">
-          <text class="card-journal">{{item.journal || '未设置期刊'}}<text wx:if="{{item.manuscriptId}}"> #{{item.manuscriptId}}</text></text>
+          <text class="card-journal" user-select="true">{{item.journal || '未设置期刊'}}<text wx:if="{{item.manuscriptId}}"> #{{item.manuscriptId}}</text></text>
           <text class="card-status" style="background:{{item.statusBg}};color:{{item.statusColor}}">{{item.statusLabel}}</text>
           <text class="card-role" wx:if="{{item.roleLabel}}">{{item.roleLabel}}</text>
         </view>
@@ -122,7 +122,7 @@
         <!-- 关联作品 -->
         <view class="card-related" wx:if="{{item.relatedWork}}" catchtap="onTapRelatedWork" data-id="{{item.relatedWork._id}}">
           <text class="related-icon">🔗</text>
-          <text class="related-text">{{item.relatedWork.title}} → {{item.relatedWork.journal || '未设置期刊'}}</text>
+          <text class="related-text" user-select="true">{{item.relatedWork.title}} → {{item.relatedWork.journal || '未设置期刊'}}</text>
         </view>
 
         <!-- 时间线预览 -->

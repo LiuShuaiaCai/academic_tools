@@ -96,17 +96,17 @@
         <view class="form-label"><text class="form-label-icon">📅</text> 时间线</view>
 
         <view class="tl-add-row">
-          <picker mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
-            <view class="tl-picker-box tl-date-picker">
+          <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
+            <view class="tl-picker-box">
               <view class="cal-icon cal-icon-sm"></view>
-              <text class="{{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
-              <text class="tl-arrow">▼</text>
+              <text class="tl-picker-text {{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
+              <text class="tl-picker-text tl-arrow">▼</text>
             </view>
           </picker>
-          <picker range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
-            <view class="tl-picker-box tl-event-picker">
-              <text class="{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
-              <text class="tl-arrow">▼</text>
+          <picker class="tl-event-picker" range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
+            <view class="tl-picker-box">
+              <text class="tl-picker-text {{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
+              <text class="tl-picker-text tl-arrow">▼</text>
             </view>
           </picker>
         </view>

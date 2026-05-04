@@ -140,12 +140,12 @@ page { background: #F6F6F6; }
 .form-grid .form-group { flex: 1; min-width: 0; }
 
 /* ========== 状态图标选择：每行4个 ========== */
-.status-icon-row { display: flex; flex-wrap: wrap; }
+.status-icon-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .status-icon-btn {
   display: flex; flex-direction: column; align-items: center;
   gap: 8rpx; padding: 12rpx 4rpx; border-radius: 12rpx;
   border: 2rpx solid #D1D5DB;
-  width: 25%; box-sizing: border-box;
+  width: calc(25% - 9rpx); box-sizing: border-box;
   transition: all 0.2s;
 }
 .status-icon-btn.active { border-color: #2563eb; background: #EFF6FF; }
@@ -259,7 +259,7 @@ page { background: #F6F6F6; }
   padding: 16rpx 0; border-bottom: 1rpx solid #F3F4F6;
 }
 .adv-label { font-size: 26rpx; color: #374151; width: 150rpx; flex-shrink: 0; }
-.adv-row picker { flex: 1; }
+.adv-row .adv-picker-wrap { flex: 1; }
 .adv-picker-text { font-size: 26rpx; color: #6B7280; flex: 1; padding: 8rpx 0; }
 .adv-sep { font-size: 24rpx; color: #9CA3AF; }
 .adv-reset { font-size: 22rpx; color: #EF4444; margin-left: 8rpx; flex-shrink: 0; }

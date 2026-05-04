@@ -55,7 +55,7 @@ Page({
         }
       }
 
-      that.setData({ enabledTools: enabledTools, loading: false });
+      that.setData({ enabledTools: enabledTools });
       that.loadHomeData();
     }).catch(function(e) {
       console.error('[home] 获取工具配置失败:', e);
@@ -170,7 +170,7 @@ Page({
         });
       }
 
-      that.setData({ upcomingItems: formattedItems });
+      that.setData({ upcomingItems: formattedItems, loading: false });
     }).catch(function(e) { console.error('[home] 加载即将到期事项失败', e); });
   },
 

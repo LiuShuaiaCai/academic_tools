@@ -28,12 +28,12 @@
 .form-grid .form-group { flex: 1; min-width: 0; }
 
 /* ========== 状态图标选择：每行4个 ========== */
-.status-icon-row { display: flex; flex-wrap: wrap; }
+.status-icon-row { display: flex; flex-wrap: wrap; justify-content: space-between; }
 .status-icon-btn {
   display: flex; flex-direction: column; align-items: center;
   gap: 8rpx; padding: 12rpx 4rpx; border-radius: 12rpx;
   border: 2rpx solid #D1D5DB;
-  width: 25%; box-sizing: border-box;
+  width: calc(25% - 10rpx); margin-bottom: 12rpx; box-sizing: border-box;
   transition: all 0.2s;
 }
 .status-icon-btn.active { border-color: #2563eb; background: #EFF6FF; }
@@ -66,7 +66,8 @@
 
 /* ========== 时间线 ========== */
 .tl-add-row { display: flex; gap: 12rpx; margin-bottom: 12rpx; }
-.tl-add-row picker { width: calc(50% - 6rpx); }
+.tl-add-row .tl-date-picker,
+.tl-add-row .tl-event-picker { width: calc(50% - 6rpx); }
 .tl-picker-box {
   display: flex; align-items: center; justify-content: space-between;
   padding: 20rpx 16rpx; border: 1rpx solid #D1D5DB; border-radius: 12rpx;
@@ -75,7 +76,7 @@
 }
 .tl-date-picker {}
 .tl-event-picker {}
-.tl-picker-box text { color: #374151 !important; }
+.tl-picker-box .tl-picker-text { color: #374151 !important; }
 .tl-placeholder { color: #9CA3AF !important; }
 .tl-placeholder { color: #9CA3AF; }
 .tl-arrow { font-size: 20rpx; color: #9CA3AF; margin-left: 8rpx; }

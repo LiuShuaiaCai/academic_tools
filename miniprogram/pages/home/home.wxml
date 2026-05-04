@@ -21,14 +21,23 @@
     <view class="stats-frame-title">
       <text>📊</text>
       <text>工作台</text>
-      <view class="more-link" wx:if="{{enabledTools.length > 4}}" bindtap="goToToolbox">
+      <view class="more-link" wx:if="{{enabledTools.length > 4 && !loading}}" bindtap="goToToolbox">
         <text>更多工具</text>
         <text class="arrow">›</text>
       </view>
     </view>
 
+    <!-- 加载骨架屏 -->
+    <view wx:if="{{loading}}" class="skeleton-grid">
+      <view class="skeleton-card" wx:for="{{4}}" wx:key="*this">
+        <view class="skeleton-icon skeleton-pulse"></view>
+        <view class="skeleton-line skeleton-pulse" style="width:60%"></view>
+        <view class="skeleton-line skeleton-pulse" style="width:40%;height:20rpx"></view>
+      </view>
+    </view>
+
     <!-- 空状态：没有启用任何工具 -->
-    <view wx:if="{{enabledTools.length === 0 && !loading}}" class="empty-tools" bindtap="goToToolManager">
+    <view wx:elif="{{enabledTools.length === 0}}" class="empty-tools" bindtap="goToToolManager">
       <text class="empty-tools-icon">🧰</text>
       <text class="empty-tools-text">你还没有添加工具</text>
       <text class="empty-tools-sub">去工具管理开启需要的工具吧</text>
@@ -60,33 +69,46 @@
   <view class="upcoming-frame">
     <view class="section-title">
       <text>近期截止</text>
-      <view class="more-link" bindtap="goToCalendar">
+      <view class="more-link" wx:if="{{!loading}}" bindtap="goToCalendar">
         <text>查看日历</text>
         <text class="arrow">›</text>
       </view>
     </view>
 
-    <view wx:if="{{upcomingItems.length === 0}}" class="empty-hint">
+    <!-- 加载骨架屏 -->
+    <view wx:if="{{loading}}" class="skeleton-list">
+      <view class="skeleton-item" wx:for="{{3}}" wx:key="*this">
+        <view class="skeleton-circle skeleton-pulse"></view>
+        <view class="skeleton-content">
+          <view class="skeleton-line skeleton-pulse" style="width:70%"></view>
+          <view class="skeleton-line skeleton-pulse" style="width:50%;height:20rpx"></view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{upcomingItems.length === 0}}" class="empty-hint">
       <text>🎉 暂无即将到期的事项</text>
     </view>
 
-    <view
-      class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : 'type-green'}} {{item.urgent ? 'urgent' : ''}}"
-      wx:for="{{upcomingItems}}"
-      wx:key="_id"
-      bindtap="goToItem"
-      data-page="{{item.pagePath}}"
-      data-id="{{item._id}}"
-    >
-      <view class="upcoming-icon">{{item.iconEmoji}}</view>
-      <view class="upcoming-info">
-        <view class="upcoming-title">
-          <text class="type-label">{{item.typeLabel}}</text>
-          <text>{{item.title}}</text>
-        </view>
-        <view class="upcoming-meta">
-          <text class="date">{{item.deadlineLabel}}</text>
-          <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
+    <view wx:else>
+      <view
+        class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : 'type-green'}} {{item.urgent ? 'urgent' : ''}}"
+        wx:for="{{upcomingItems}}"
+        wx:key="_id"
+        bindtap="goToItem"
+        data-page="{{item.pagePath}}"
+        data-id="{{item._id}}"
+      >
+        <view class="upcoming-icon">{{item.iconEmoji}}</view>
+        <view class="upcoming-info">
+          <view class="upcoming-title">
+            <text class="type-label">{{item.typeLabel}}</text>
+            <text>{{item.title}}</text>
+          </view>
+          <view class="upcoming-meta">
+            <text class="date">{{item.deadlineLabel}}</text>
+            <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
+          </view>
         </view>
       </view>
     </view>
