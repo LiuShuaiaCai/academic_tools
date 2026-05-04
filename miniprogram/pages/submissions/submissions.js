@@ -28,6 +28,11 @@ Page({
     list:[], filteredList:[], filterGroup:'status', searchKeyword:'',
     showForm:false, isEdit:false, editId:null,
     page:0, pageSize:20, hasMore:true, loadingMore:false,
+    showAdvanced:false,          // 高级筛选面板是否展开
+    advStatus:'', advRole:'', advJournal:'', advPriority:'', advDeadlineFrom:'', advDeadlineTo:'',
+    advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1,
+    advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'',
+    advStatusOptions:[], advRoleOptions:[], advJournalOptions:[], advPriorityOptions:[],
     form: {
       title:'', journal:'', status:'preparing', role:'first', paperType:'研究论文',
       priority:'normal', deadline:'', manuscriptId:'', doi:'', url:'',
@@ -111,12 +116,16 @@ Page({
         });
         var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
         var hasMore = newItems.length >= pageSize;
-        that.setData({
-          list:list,
-          page:isLoadMore ? page : 0,
-          hasMore:hasMore,
-          loadingMore:false
-        });
+        // 首次加载时统计高级筛选选项数量
+        var extra = {};
+        if(!isLoadMore){
+          extra = that.buildAdvOptions(list);
+        }
+        extra.list = list;
+        extra.page = isLoadMore ? page : 0;
+        extra.hasMore = hasMore;
+        extra.loadingMore = false;
+        that.setData(extra);
         that.applyFilter();
       }).catch(function(e){
         console.error('[投稿] 加载失败',e);
@@ -187,17 +196,169 @@ Page({
   setFilterGroup:function(e){ this.setData({ filterGroup:e.currentTarget.dataset.group }); this.applyFilter(); },
 
   applyFilter:function(){
-    var kw = (this.data.searchKeyword||'').toLowerCase();
-    var result = this.data.list;
+    var d = this.data;
+    var kw = (d.searchKeyword||'').toLowerCase();
+
+    // 先做关键词过滤，后续所有统计都在 kwBase 上进行
+    var kwBase = d.list;
     if(kw){
-      result = result.filter(function(i){
+      kwBase = kwBase.filter(function(i){
         return (i.title||'').toLowerCase().indexOf(kw)!==-1
           || (i.journal||'').toLowerCase().indexOf(kw)!==-1
           || (i.coauthors||'').toLowerCase().indexOf(kw)!==-1
           || (i.allTags||[]).join(' ').toLowerCase().indexOf(kw)!==-1;
       });
     }
-    this.setData({ filteredList:result });
+
+    var advStatus   = d.advStatus;
+    var advRole     = d.advRole;
+    var advJournal  = d.advJournal;
+    var advPriority = d.advPriority;
+    var advFrom     = d.advDeadlineFrom;
+    var advTo       = d.advDeadlineTo;
+
+    // 通用过滤器（可按需组合排除某个维度）
+    function applyFilters(base, skipField){
+      var r = base;
+      if(skipField !== 'status'   && advStatus)   r = r.filter(function(i){ return i.status === advStatus; });
+      if(skipField !== 'role'     && advRole)     r = r.filter(function(i){ return i.role === advRole; });
+      if(skipField !== 'journal'  && advJournal)  r = r.filter(function(i){ return i.journal === advJournal; });
+      if(skipField !== 'priority' && advPriority) r = r.filter(function(i){ return i.priority === advPriority; });
+      if(skipField !== 'deadline' && advFrom)     r = r.filter(function(i){ return i.deadline && i.deadline >= advFrom; });
+      if(skipField !== 'deadline' && advTo)       r = r.filter(function(i){ return i.deadline && i.deadline <= advTo; });
+      return r;
+    }
+
+    // 最终结果：全部条件都加上
+    var result = applyFilters(kwBase, null);
+
+    // 各维度的联动选项：排除自身维度后的数据来统计数量
+    var statusBase   = applyFilters(kwBase, 'status');
+    var roleBase     = applyFilters(kwBase, 'role');
+    var journalBase  = applyFilters(kwBase, 'journal');
+    var priorityBase = applyFilters(kwBase, 'priority');
+
+    var that = this;
+    var advOpts = that._buildAdvOptionsFromBases(statusBase, roleBase, journalBase, priorityBase);
+
+    advOpts.filteredList = result;
+    that.setData(advOpts);
+  },
+
+  /* ======== 高级筛选：统计选项数量（联动版）======== */
+  /* 基于各维度排除自身后的数据来统计，实现联动效果 */
+  _buildAdvOptionsFromBases:function(statusBase, roleBase, journalBase, priorityBase){
+    var that = this;
+    var roleLabelMap    = { first:'一作', corresponding:'通讯', co_first:'共一', co_corresponding:'共通', collaborator:'合作者' };
+    var priorityLabelMap = { low:'低', normal:'普通', high:'高', urgent:'紧急' };
+
+    function countField(list, field){
+      var cnt = {};
+      list.forEach(function(i){ var v = i[field]||''; if(v) cnt[v] = (cnt[v]||0)+1; });
+      return cnt;
+    }
+
+    var statusCount   = countField(statusBase,   'status');
+    var roleCount     = countField(roleBase,      'role');
+    var journalCount  = countField(journalBase,   'journal');
+    var priorityCount = countField(priorityBase,  'priority');
+
+    var statusOpt = Object.keys(statusCount).map(function(k){
+      var d = (that.data.statusOptions||[]).find(function(o){ return o.value===k; });
+      return { value:k, label:(d?d.label:k) + ' (' + statusCount[k] + ')', count:statusCount[k] };
+    });
+    statusOpt.sort(function(a,b){ return b.count - a.count; });
+
+    var roleOpt = Object.keys(roleCount).map(function(k){
+      return { value:k, label:(roleLabelMap[k]||k) + ' (' + roleCount[k] + ')', count:roleCount[k] };
+    });
+
+    var priorityOpt = Object.keys(priorityCount).map(function(k){
+      return { value:k, label:(priorityLabelMap[k]||k) + ' (' + priorityCount[k] + ')', count:priorityCount[k] };
+    });
+
+    var journalOpt = Object.keys(journalCount).map(function(k){
+      return { value:k, label:k + ' (' + journalCount[k] + ')', count:journalCount[k] };
+    });
+    journalOpt.sort(function(a,b){ return b.count - a.count; });
+
+    var extra = {
+      advStatusOptions:   statusOpt,
+      advRoleOptions:     roleOpt,
+      advJournalOptions:  journalOpt,
+      advPriorityOptions: priorityOpt
+    };
+    extra.advStatusIndex   = that._findIndexByValue(statusOpt,   that.data.advStatus);
+    extra.advRoleIndex     = that._findIndexByValue(roleOpt,     that.data.advRole);
+    extra.advJournalIndex  = that._findIndexByValue(journalOpt,  that.data.advJournal);
+    extra.advPriorityIndex = that._findIndexByValue(priorityOpt, that.data.advPriority);
+    extra.advStatusLabel   = (statusOpt[extra.advStatusIndex]   ||{}).label || '';
+    extra.advRoleLabel     = (roleOpt[extra.advRoleIndex]       ||{}).label || '';
+    extra.advJournalLabel  = (journalOpt[extra.advJournalIndex] ||{}).label || '';
+    extra.advPriorityLabel = (priorityOpt[extra.advPriorityIndex]||{}).label || '';
+    return extra;
+  },
+
+  /* ======== 高级筛选：初始统计（首次加载）======== */
+  buildAdvOptions:function(list){
+    return this._buildAdvOptionsFromBases(list, list, list, list);
+  },
+
+  /* 在 options 数组中按 value 找 index */
+  _findIndexByValue:function(options, value){
+    if(!value) return -1;
+    for(var i=0; i<options.length; i++){
+      if(options[i].value === value) return i;
+    }
+    return -1;
+  },
+
+  toggleAdvanced:function(){
+    this.setData({ showAdvanced:!this.data.showAdvanced });
+  },
+
+  /* picker change 事件：e.detail.value 是 index */
+  onAdvStatusChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advStatusOptions[idx] || {};
+    this.setData({ advStatusIndex:idx, advStatus:opt.value||'', advStatusLabel:opt.label||'' });
+    this.applyFilter();
+  },
+  onAdvRoleChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advRoleOptions[idx] || {};
+    this.setData({ advRoleIndex:idx, advRole:opt.value||'', advRoleLabel:opt.label||'' });
+    this.applyFilter();
+  },
+  onAdvJournalChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advJournalOptions[idx] || {};
+    this.setData({ advJournalIndex:idx, advJournal:opt.value||'', advJournalLabel:opt.label||'' });
+    this.applyFilter();
+  },
+  onAdvPriorityChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advPriorityOptions[idx] || {};
+    this.setData({ advPriorityIndex:idx, advPriority:opt.value||'', advPriorityLabel:opt.label||'' });
+    this.applyFilter();
+  },
+  onAdvDeadlineFromChange:function(e){
+    this.setData({ advDeadlineFrom:e.detail.value });
+    this.applyFilter();
+  },
+  onAdvDeadlineToChange:function(e){
+    this.setData({ advDeadlineTo:e.detail.value });
+    this.applyFilter();
+  },
+
+  resetAdvanced:function(){
+    this.setData({
+      advStatus:'', advRole:'', advJournal:'', advPriority:'',
+      advDeadlineFrom:'', advDeadlineTo:'',
+      advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1,
+      advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:''
+    });
+    this.applyFilter();
   },
 
   /* ======== 表单：打开 ======== */

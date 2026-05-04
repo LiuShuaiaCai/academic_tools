@@ -1,10 +1,62 @@
 <!--pages/submissions/submissions.wxml-->
 <view class="sub-page">
-  <!-- 搜索栏 -->
+  <!-- 搜索栏 + 高级筛选按钮 -->
   <view class="search-bar">
     <view class="search-input-wrap">
       <text class="search-icon">🔍</text>
       <input class="search-input" placeholder="搜索标题、期刊、合作者、标签..." bindinput="onSearch" value="{{searchKeyword}}"/>
+    </view>
+    <view class="adv-toggle" bindtap="toggleAdvanced">
+      <text>高级筛选</text>
+      <text class="adv-arrow">{{showAdvanced ? '▲' : '▼'}}</text>
+    </view>
+  </view>
+
+  <!-- 高级筛选面板 -->
+  <view class="adv-panel" wx:if="{{showAdvanced}}">
+    <!-- 状态 -->
+    <view class="adv-row">
+      <text class="adv-label">状态</text>
+      <picker range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
+        <view class="adv-picker-text">{{advStatusLabel || '全部'}}</view>
+      </picker>
+    </view>
+    <!-- 身份 -->
+    <view class="adv-row">
+      <text class="adv-label">身份</text>
+      <picker range="{{advRoleOptions}}" range-key="label" value="{{advRoleIndex}}" bindchange="onAdvRoleChange">
+        <view class="adv-picker-text">{{advRoleLabel || '全部'}}</view>
+      </picker>
+    </view>
+    <!-- 期刊 -->
+    <view class="adv-row">
+      <text class="adv-label">期刊</text>
+      <picker range="{{advJournalOptions}}" range-key="label" value="{{advJournalIndex}}" bindchange="onAdvJournalChange">
+        <view class="adv-picker-text">{{advJournalLabel || '全部'}}</view>
+      </picker>
+    </view>
+    <!-- 优先级 -->
+    <view class="adv-row">
+      <text class="adv-label">优先级</text>
+      <picker range="{{advPriorityOptions}}" range-key="label" value="{{advPriorityIndex}}" bindchange="onAdvPriorityChange">
+        <view class="adv-picker-text">{{advPriorityLabel || '全部'}}</view>
+      </picker>
+    </view>
+    <!-- 到期时间区间 -->
+    <view class="adv-row">
+      <text class="adv-label">到期时间</text>
+      <picker mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
+        <view class="adv-picker-text">{{advDeadlineFrom || '起始日期'}}</view>
+      </picker>
+      <text class="adv-sep">~</text>
+      <picker mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
+        <view class="adv-picker-text">{{advDeadlineTo || '截止日期'}}</view>
+      </picker>
+    </view>
+    <!-- 操作按钮 -->
+    <view class="adv-actions">
+      <view class="adv-btn-reset" bindtap="resetAdvanced">重置全部</view>
+      <view class="adv-btn-apply" bindtap="applyFilter">应用筛选</view>
     </view>
   </view>
 

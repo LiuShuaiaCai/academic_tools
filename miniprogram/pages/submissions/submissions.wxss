@@ -199,6 +199,37 @@ page { background: #F6F6F6; }
   box-shadow: 7rpx 0 0 #9CA3AF;
 }
 
+/* ========== 高级筛选 ========== */
+.adv-toggle {
+  display: flex; align-items: center; gap: 6rpx;
+  padding: 0 20rpx; font-size: 24rpx; color: #2563eb; flex-shrink: 0;
+}
+.adv-arrow { font-size: 18rpx; }
+
+.adv-panel {
+  background: #fff; padding: 16rpx 24rpx 24rpx;
+  border-bottom: 1rpx solid #E5E7EB;
+}
+.adv-row {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 16rpx 0; border-bottom: 1rpx solid #F3F4F6;
+}
+.adv-label { font-size: 26rpx; color: #374151; width: 100rpx; flex-shrink: 0; }
+.adv-picker { flex: 1; }
+.adv-picker-text { font-size: 26rpx; color: #6B7280; }
+.adv-sep { font-size: 24rpx; color: #9CA3AF; }
+.adv-reset { font-size: 22rpx; color: #EF4444; margin-left: 8rpx; flex-shrink: 0; }
+
+.adv-actions { display: flex; gap: 16rpx; margin-top: 24rpx; }
+.adv-btn-reset {
+  flex: 1; text-align: center; padding: 16rpx 0;
+  background: #F3F4F6; color: #374151; border-radius: 12rpx; font-size: 26rpx;
+}
+.adv-btn-apply {
+  flex: 1; text-align: center; padding: 16rpx 0;
+  background: #2563eb; color: #fff; border-radius: 12rpx; font-size: 26rpx;
+}
+
 /* 加载更多提示 */
 .load-more {
   text-align: center;
