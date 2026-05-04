@@ -20,15 +20,32 @@ Page({
     advStatusOptions:[], advRoleOptions:[], advJournalOptions:[], advPriorityOptions:[], advCompletedOptions:[],
     statusOptions: config.getStatusOptions(),
     // 筛选Tab（用于状态分组）
-    filterTabs: config.getStatusOptions()
+    filterTabs: config.getStatusOptions(),
+    // 首页跳转带来的待处理参数
+    targetId:'', targetTitle:'', pendingAutoEdit:false,
+    isTargetMode:false  // 是否只显示目标稿件
   },
 
-  onLoad:function(){
-    this.loadList();
+  onLoad:function(options){
+    if(options && options.targetId){
+      // 首页跳转：只定位目标稿件，不加载完整列表
+      this.setData({
+        targetId: options.targetId,
+        targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+        pendingAutoEdit: options.autoEdit === 'true',
+        isTargetMode: true
+      });
+      this.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+    } else {
+      this.loadList();
+    }
   },
-  onShow:function(){ this.loadList(); },
+  onShow:function(){
+    // 只有没有待处理参数时才刷新列表，避免重复加载
+    if(!this.data.targetId && !this.data.isTargetMode) this.loadList();
+  },
 
-  /* ======== 数据加载（服务端分页，按 deadline 升序）======= */
+  /* ======== 数据加载（服务端分页 + 模糊搜索，按 deadline 升序）======= */
   loadList:function(isLoadMore){
     if(this.data.loadingMore) return;
     var that = this;
@@ -39,9 +56,40 @@ Page({
     this.setData({ loadingMore:true });
 
     var db = wx.cloud.database();
+    var _ = db.command;
+
+    // 构建 where 条件
+    var conditions = [{ deleteTime: null }];
+    var kw = (this.data.searchKeyword || '').trim();
+    if(kw){
+      // 服务端模糊搜索：标题、期刊、合作者、标签
+      var reg = db.RegExp({ regexp: kw, options: 'i' });
+      conditions.push(_.or([
+        { title: reg },
+        { journal: reg },
+        { coauthors: reg },
+        { tags: reg }
+      ]));
+    }
+
+    // quickFilter 条件也加到服务端
+    var qf = this.data.quickFilter;
+    if(qf && qf !== 'all'){
+      if(qf === 'incomplete'){
+        conditions.push({ completed: _.neq(true) });
+      } else if(qf === 'near' || qf === 'urgent'){
+        // 急需处理 / 特别紧急需要 deadline 范围，服务端不好直接算天数
+        // 先只加未完成条件，精确天数过滤留到客户端 applyFilter
+        conditions.push({ completed: _.neq(true) });
+        conditions.push({ deadline: _.neq('') });
+        conditions.push({ deadline: _.neq(null) });
+      }
+    }
+
+    var where = conditions.length === 1 ? conditions[0] : _.and(conditions);
 
     db.collection('submissions')
-      .where({ deleteTime:null })
+      .where(where)
       .orderBy('deadline', 'asc')
       .skip(skip)
       .limit(pageSize)
@@ -65,7 +113,6 @@ Page({
         }
 
         // 批量查询关联作品
-        var _ = db.command;
         db.collection('submissions')
           .where({ _id: _.in(relatedIds), deleteTime:null })
           .get()
@@ -110,11 +157,64 @@ Page({
       extra.page = isLoadMore ? page : 0;
       extra.hasMore = hasMore;
       extra.loadingMore = false;
-      that.setData(extra);
-      that.applyFilter();
-      // 全量统计（首次加载时）
-      if(!isLoadMore) that.loadStats();
+      that.setData(extra, function() {
+        that.applyFilter();
+        // 处理首页跳转：用 targetId 精确定位
+        if (that.data.targetId) {
+          var targetTitle = that.data.targetTitle;
+          // 填充搜索栏（先检查目标是否已在当前列表中）
+          var found = list.find(function(i){ return i._id === that.data.targetId; });
+          if(found){
+            // 目标在列表中，填充标题到搜索栏并弹窗
+            if(targetTitle) that.setData({ searchKeyword: targetTitle });
+            if(that.data.pendingAutoEdit){
+              that.setData({ showForm: true, isEdit: true, editId: that.data.targetId });
+            }
+            that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+          } else {
+            // 目标不在当前列表（可能在搜索结果之外），直接用 ID 查询
+            that.locateById(that.data.targetId, targetTitle);
+          }
+        }
+      });
+      // 全量统计（首次加载且无搜索词时，避免全局统计覆盖搜索后的计数）
+      if(!isLoadMore && !that.data.searchKeyword) that.loadStats();
     }
+  },
+
+  /* ======== 通过 ID 精确定位（首页跳转时只显示这一个）======= */
+  locateById:function(id, title){
+    var that = this;
+    var db = wx.cloud.database();
+    db.collection('submissions').doc(id).get().then(function(res){
+      if(res.data){
+        // 只显示这一个稿件
+        var item = formatUtil.formatItem(res.data);
+        var list = [item];
+        if(title) that.setData({ searchKeyword: title });
+        var shouldAutoEdit = that.data.pendingAutoEdit;
+        that.setData({
+          list: list,
+          isTargetMode: true,
+          targetId: '', targetTitle: '', pendingAutoEdit: false
+        }, function(){
+          that.applyFilter();
+          if(shouldAutoEdit){
+            that.setData({ showForm: true, isEdit: true, editId: id });
+          }
+        });
+      }
+    }).catch(function(e){
+      console.error('[投稿] 定位失败', e);
+      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false, isTargetMode: false });
+      that.loadList();
+    });
+  },
+
+  /* ======== 查看全部（退出单条模式）======= */
+  showAll:function(){
+    this.setData({ isTargetMode: false, searchKeyword: '', targetId: '', targetTitle: '' });
+    this.loadList();
   },
 
   /* ======== 全量统计（云函数）======= */
@@ -142,7 +242,6 @@ Page({
   },
 
   onReachBottom:function(){
-    if(this.data.searchKeyword) return;
     if(this.data.hasMore && !this.data.loadingMore){
       this.loadList(true);
     }
@@ -153,21 +252,17 @@ Page({
     this.setData({ searchKeyword:e.detail.value, page:0, hasMore:true });
     this.loadList(false);
   },
+  clearSearch:function(){
+    this.setData({ searchKeyword:'', page:0, hasMore:true, isTargetMode:false, targetId:'', targetTitle:'', pendingAutoEdit:false });
+    this.loadList(false);
+  },
   setFilterGroup:function(e){ this.setData({ filterGroup:e.currentTarget.dataset.group }); this.applyFilter(); },
 
   applyFilter:function(){
     var d = this.data;
-    var kw = (d.searchKeyword||'').toLowerCase();
+    // 关键词搜索已由服务端 db.RegExp 完成，客户端不再重复过滤
     var baseList = Array.isArray(d.list) ? d.list : [];
     var kwBase = baseList;
-    if(kw){
-      kwBase = baseList.filter(function(i){
-        return (i.title||'').toLowerCase().indexOf(kw)!==-1
-          || (i.journal||'').toLowerCase().indexOf(kw)!==-1
-          || (i.coauthors||'').toLowerCase().indexOf(kw)!==-1
-          || (i.allTags||[]).join(' ').toLowerCase().indexOf(kw)!==-1;
-      });
-    }
 
     // 快速筛选（独立于高级筛选）
     var qf = d.quickFilter;
@@ -232,6 +327,28 @@ Page({
     var advOpts = that._buildAdvOptionsFromBases(statusBase, roleBase, journalBase, priorityBase);
 
     advOpts.filteredList = Array.isArray(result) ? result : [];
+
+    // 根据当前 list 重新计算快速筛选计数（搜索时也更新）
+    var allList = baseList;
+    var now = new Date();
+    var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    advOpts.totalCount = allList.length;
+    advOpts.incompleteCount = allList.filter(function(i){ return !i.completed; }).length;
+    advOpts.nearCount = allList.filter(function(i){
+      if(i.completed || !i.deadline) return false;
+      var dl = new Date(String(i.deadline).substring(0,10) + 'T00:00:00');
+      var td = new Date(todayStr + 'T00:00:00');
+      var days = Math.round((dl.getTime() - td.getTime()) / 86400000);
+      return days >= 2 && days <= 3;
+    }).length;
+    advOpts.urgentCount = allList.filter(function(i){
+      if(i.completed || !i.deadline) return false;
+      var dl = new Date(String(i.deadline).substring(0,10) + 'T00:00:00');
+      var td = new Date(todayStr + 'T00:00:00');
+      var days = Math.round((dl.getTime() - td.getTime()) / 86400000);
+      return days >= 0 && days <= 1;
+    }).length;
+
     that.setData(advOpts);
   },
 
@@ -350,8 +467,8 @@ Page({
 
   onTipFilter:function(e){
     var type = e.currentTarget.dataset.filter;
-    this.setData({ quickFilter: type === this.data.quickFilter ? '' : type });
-    this.resetAdvanced();
+    this.setData({ quickFilter: type === this.data.quickFilter ? '' : type, page:0, hasMore:true });
+    this.loadList(false);
   },
 
   _daysLater:function(n){
@@ -383,12 +500,12 @@ Page({
   },
 
   onFormSave:function(){
-    this.setData({ showForm:false });
+    this.setData({ showForm:false, isEdit:false, editId:'', quickFilter:'', page:0, hasMore:true });
     this.loadList();
   },
 
   onFormCancel:function(){
-    this.setData({ showForm:false });
+    this.setData({ showForm:false, isEdit:false, editId:'' });
   },
 
   /* ======== 删除 ======== */

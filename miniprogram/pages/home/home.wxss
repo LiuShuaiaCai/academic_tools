@@ -218,14 +218,31 @@ page { background: #F6F6F6; }
 
 .card-stats {
   display: flex;
-  gap: 16rpx;
+  align-items: center;
+  gap: 6rpx;
   font-size: 22rpx;
   color: #9CA3AF;
 }
 
-.urgent-count {
-  color: #EF4444;
-  font-weight: 600;
+.card-stats-icon {
+  width: 24rpx;
+  height: 24rpx;
+  flex-shrink: 0;
+}
+
+.card-urgent-badge {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  border-radius: 50%;
+  background: #EF4444;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  text-align: center;
 }
 
 /* ========== Upcoming Frame ========== */
@@ -308,6 +325,10 @@ page { background: #F6F6F6; }
   display: flex;
   align-items: center;
   gap: 8rpx;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .type-label {

@@ -7,21 +7,50 @@ var softDelete = dbInit.softDelete;
 
 Page({
   data: {
-    list:[], showForm:false, isEdit:false, editId:'',
+    list:[], searchKeyword:'', showForm:false, isEdit:false, editId:'',
     form:{ paperTitle:'', journal:'', deadline:'', status:'pending', note:'' },
-    showDecisionModal:false, decisionId:'', decisionPaper:'', decisionJournal:'', decision:'', decisionNote:''
+    showDecisionModal:false, decisionId:'', decisionPaper:'', decisionJournal:'', decision:'', decisionNote:'',
+    targetId:'', targetTitle:'', pendingAutoEdit:false
   },
 
-  onLoad:function(){ this.loadList(); },
-  onShow:function(){ this.loadList(); },
+  onLoad:function(options){
+    if(options && options.targetId){
+      this.setData({
+        targetId: options.targetId,
+        targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+        pendingAutoEdit: options.autoEdit === 'true'
+      });
+    }
+    this.loadList();
+  },
+  onShow:function(){
+    if(!this.data.targetId) this.loadList();
+  },
 
-  /* ========= 数据加载 ========= */
+  /* ========= 数据加载（服务端模糊搜索）========= */
   loadList:function(){
     var that = this;
-    wx.cloud.database().collection('reviews').where({ deleteTime:null }).orderBy('deadline','asc').get()
+    var db = wx.cloud.database();
+    var _ = db.command;
+
+    // 构建 where 条件
+    var kw = (this.data.searchKeyword || '').trim();
+    var where;
+    if(kw){
+      var reg = db.RegExp({ regexp: kw, options: 'i' });
+      where = _.or([
+        { deleteTime: null, paperTitle: reg },
+        { deleteTime: null, journal: reg }
+      ]);
+    } else {
+      where = { deleteTime: null };
+    }
+
+    db.collection('reviews').where(where).orderBy('deadline','asc').get()
       .then(function(res){
         var now = new Date();
         var list = (res.data||[]).map(function(i){
+          var dIso = i.deadline ? String(i.deadline).replace(' ', 'T') : i.deadline;
           var d = parseDate(i.deadline);
           var daysLeft = Math.ceil((d-now)/86400000);
           return {
@@ -38,8 +67,82 @@ Page({
             urgent:daysLeft>=0&&daysLeft<=7
           };
         });
-        that.setData({ list:list });
+        that.setData({ list:list }, function() {
+          // 处理首页跳转：用 targetId 精确定位
+          if (that.data.targetId) {
+            var targetTitle = that.data.targetTitle;
+            var found = list.find(function(i){ return i._id === that.data.targetId; });
+            if(found){
+              if(targetTitle) that.setData({ searchKeyword: targetTitle });
+              if(that.data.pendingAutoEdit){
+                var fmt = found.deadline ? (function(){
+                  var pd = parseDate(found.deadline);
+                  return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
+                })() : '';
+                that.setData({
+                  showForm:true, isEdit:true, editId:found._id,
+                  form:{
+                    paperTitle:found.paperTitle||'',
+                    journal:found.journal||'',
+                    deadline:fmt,
+                    status:found.status||'pending',
+                    note:found.note||''
+                  }
+                });
+              }
+              that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+            } else {
+              that.locateById(that.data.targetId, targetTitle);
+            }
+          }
+        });
       }).catch(function(e){ console.error(e); });
+  },
+
+  /* ========= 通过 ID 精确定位 ========= */
+  locateById:function(id, title){
+    var that = this;
+    wx.cloud.database().collection('reviews').doc(id).get().then(function(res){
+      if(res.data){
+        var i = res.data;
+        var now = new Date();
+        var d = parseDate(i.deadline);
+        var daysLeft = Math.ceil((d-now)/86400000);
+        var item = {
+          _id:i._id, paperTitle:i.paperTitle||'', journal:i.journal||'',
+          deadline:i.deadline||'', status:i.status||'pending', note:i.note||'',
+          decision:i.decision||'', decisionNote:i.decisionNote||'', decisionTime:i.decisionTime||'',
+          daysLeft:daysLeft, urgent:daysLeft>=0&&daysLeft<=7
+        };
+        var list = that.data.list.concat([item]);
+        if(title) that.setData({ searchKeyword: title });
+        that.setData({ list: list }, function(){
+          if(that.data.pendingAutoEdit){
+            var fmt = item.deadline ? (function(){
+              var pd = parseDate(item.deadline);
+              return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
+            })() : '';
+            that.setData({
+              showForm:true, isEdit:true, editId:id,
+              form:{
+                paperTitle:item.paperTitle||'', journal:item.journal||'',
+                deadline:fmt, status:item.status||'pending', note:item.note||''
+              }
+            });
+          }
+          that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+        });
+      }
+    }).catch(function(e){
+      console.error('[审稿] 定位失败', e);
+      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+    });
+  },
+
+  /* ========= 搜索 ========= */
+  onSearch:function(e){
+    this.setData({ searchKeyword:e.detail.value });
+    this.loadList();
   },
 
   /* ========= 表单：打开 ========= */

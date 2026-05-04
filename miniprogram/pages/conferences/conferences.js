@@ -15,16 +15,45 @@ Page({
       { value:'pending',   label:'待截稿' },
       { value:'registered',label:'已报名' },
       { value:'expired',  label:'已过期' }
-    ]
+    ],
+    targetId:'', targetTitle:'', pendingAutoEdit:false
   },
 
-  onLoad:function(){ this.loadList(); },
-  onShow:function(){ this.loadList(); },
+  onLoad:function(options){
+    if(options && options.targetId){
+      this.setData({
+        targetId: options.targetId,
+        targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+        pendingAutoEdit: options.autoEdit === 'true'
+      });
+    }
+    this.loadList();
+  },
+  onShow:function(){
+    if(!this.data.targetId) this.loadList();
+  },
 
-  /* ========= 数据加载 ========= */
+  /* ========= 数据加载（服务端模糊搜索）========= */
   loadList:function(){
     var that = this;
-    wx.cloud.database().collection('conferences').where({ deleteTime:null }).orderBy('deadline','asc').get()
+    var db = wx.cloud.database();
+    var _ = db.command;
+
+    // 构建 where 条件
+    var kw = (this.data.searchKeyword || '').trim();
+    var where;
+    if(kw){
+      var reg = db.RegExp({ regexp: kw, options: 'i' });
+      where = _.or([
+        { deleteTime: null, name: reg },
+        { deleteTime: null, shortName: reg },
+        { deleteTime: null, location: reg }
+      ]);
+    } else {
+      where = { deleteTime: null };
+    }
+
+    db.collection('conferences').where(where).orderBy('deadline','asc').get()
       .then(function(res){
         var now = new Date();
         var list = (res.data||[]).map(function(i){
@@ -39,33 +68,102 @@ Page({
             startDateLabel: i.startDate ? that.formatDate(parseDate(i.startDate)) : ''
           };
         });
-        that.setData({ list:list });
-        that.applyFilter();
+        that.setData({ list:list }, function() {
+          that.applyFilter();
+          // 处理首页跳转：用 targetId 精确定位
+          if (that.data.targetId) {
+            var targetTitle = that.data.targetTitle;
+            var found = list.find(function(i){ return i._id === that.data.targetId; });
+            if(found){
+              if(targetTitle) that.setData({ searchKeyword: targetTitle });
+              if(that.data.pendingAutoEdit){
+                var fmt = found.deadline ? (function(){
+                  var pd = parseDate(found.deadline);
+                  return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
+                })() : '';
+                var nfmt = found.notificationDate ? that.formatDate(parseDate(found.notificationDate)) : '';
+                that.setData({
+                  showForm:true, isEdit:true, editId:found._id,
+                  form:{
+                    name:found.name||'', shortName:found.shortName||'',
+                    location:found.location||'', deadline:fmt,
+                    notificationDate:nfmt,
+                    startDate:found.startDateLabel||'', url:found.url||'',
+                    note:found.note||''
+                  }
+                });
+              }
+              that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+            } else {
+              that.locateById(that.data.targetId, targetTitle);
+            }
+          }
+        });
       }).catch(function(e){
         console.error('[会议] 加载失败',e);
         that.setData({ list:[], filteredList:[] });
       });
   },
 
+  /* ========= 通过 ID 精确定位 ========= */
+  locateById:function(id, title){
+    var that = this;
+    wx.cloud.database().collection('conferences').doc(id).get().then(function(res){
+      if(res.data){
+        var i = res.data;
+        var now = new Date();
+        var d = i.deadline ? parseDate(i.deadline) : null;
+        var daysLeft = d ? Math.ceil((d-now)/86400000) : null;
+        var item = {
+          _id:i._id, name:i.name, shortName:i.shortName||'', location:i.location||'',
+          deadline:i.deadline||'', notificationDate:i.notificationDate||'', startDate:i.startDate||'',
+          url:i.url||'', note:i.note||'', status:i.status||'', createTime:i.createTime, updateTime:i.updateTime,
+          daysLeft:daysLeft, urgent:daysLeft!==null&&daysLeft>=0&&daysLeft<=14,
+          deadlineLabel: d ? that.formatDate(d) : '',
+          startDateLabel: i.startDate ? that.formatDate(parseDate(i.startDate)) : ''
+        };
+        var list = that.data.list.concat([item]);
+        if(title) that.setData({ searchKeyword: title });
+        that.setData({ list: list }, function(){
+          that.applyFilter();
+          if(that.data.pendingAutoEdit){
+            var fmt = item.deadline ? (function(){
+              var pd = parseDate(item.deadline);
+              return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
+            })() : '';
+            var nfmt = item.notificationDate ? that.formatDate(parseDate(item.notificationDate)) : '';
+            that.setData({
+              showForm:true, isEdit:true, editId:id,
+              form:{
+                name:item.name||'', shortName:item.shortName||'',
+                location:item.location||'', deadline:fmt,
+                notificationDate:nfmt,
+                startDate:item.startDateLabel||'', url:item.url||'',
+                note:item.note||''
+              }
+            });
+          }
+          that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+        });
+      }
+    }).catch(function(e){
+      console.error('[会议] 定位失败', e);
+      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+    });
+  },
+
   /* ========= 搜索/筛选 ========= */
   applyFilter:function(){
-    var kw = (this.data.searchKeyword||'').toLowerCase();
+    // 关键词搜索已由服务端 db.RegExp 完成，客户端只做状态筛选
     var status = this.data.filterStatus;
     var result = this.data.list;
     if(status==='pending')   result = result.filter(function(i){ return i.daysLeft!==null&&i.daysLeft>=0; });
     if(status==='registered') result = result.filter(function(i){ return i.daysLeft!==null&&i.daysLeft<0; });
     if(status==='expired')  result = result.filter(function(i){ return i.daysLeft!==null&&i.daysLeft<-30; });
-    if(kw){
-      result = result.filter(function(i){
-        return (i.name||'').toLowerCase().indexOf(kw)!==-1
-          || (i.shortName||'').toLowerCase().indexOf(kw)!==-1
-          || (i.location||'').toLowerCase().indexOf(kw)!==-1;
-      });
-    }
     this.setData({ filteredList:result });
   },
 
-  onSearch:function(e){ this.setData({ searchKeyword:e.detail.value }); this.applyFilter(); },
+  onSearch:function(e){ this.setData({ searchKeyword:e.detail.value }); this.loadList(); },
   setFilter:function(e){ this.setData({ filterStatus:e.currentTarget.dataset.status }); this.applyFilter(); },
 
   /* ========= 表单 ========= */

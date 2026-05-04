@@ -48,6 +48,10 @@ page { background: #F6F6F6; }
 }
 .search-icon { font-size: 28rpx; }
 .search-input { flex: 1; font-size: 28rpx; color: #374151; }
+.search-clear {
+  font-size: 26rpx; color: #9CA3AF; padding: 8rpx 12rpx;
+  flex-shrink: 0; line-height: 1;
+}
 
 /* ========== 筛选Tab ========== */
 .filter-scroll { background: #fff; border-bottom: 1rpx solid #E5E7EB; white-space: nowrap; }

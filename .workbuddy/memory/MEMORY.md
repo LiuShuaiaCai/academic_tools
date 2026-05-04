@@ -28,12 +28,37 @@
 - 首页：统计数据 + 快速操作 + 即将到来的事项
 - 学术日历：月历视图，标注截稿/审稿日期
 
-## 当前项目状态
+## 数据库关键字段约定
 
-- `miniprogram/` 目前是云开发 quickstart 模板代码，需迁移到真实业务
-- `prototype/原型.html` 是完整交互原型（160KB），为目标产品蓝图
-- 云环境 ID 尚未配置（`app.js` 中 `env: ""` 为空）
-- `envList.js` 为空，云环境列表未初始化
+- **deadline 字段**：存储格式为字符串 `"2026-05-03 23:53:50"`，不是 Date 对象
+- 云数据库查询时必须用**同格式字符串**比较，用 `new Date()` 对象匹配不上
+- `new Date("2026-05-06 00:00:00")` 在 iOS 下不兼容，需先 `.replace(' ', 'T')` 转为 ISO 格式
+- 投稿(submissions) 有 `completed` 字段标识完成状态；审稿(reviews)和会议(conferences)无此字段
+- 投稿有 `deadline` 字段（不是 `revisionDeadline`，那是旧命名）
+
+## 首页工具卡片显示
+
+- 文案：`图标 + X 任务待完成`（投稿排除已完成项）
+- 右上角红色圆形角标显示紧急数（0-3天内截止）
+- 图标文件：`/images/icon-task.png`（三横线列表图标）
+
+## 近期截止跳转逻辑
+
+- 首页点击近期截止项，跳转到列表页带 `?targetId=ID&targetTitle=标题&autoEdit=true`
+- 列表页 `onLoad` 接收参数存为 `targetId` / `targetTitle` / `pendingAutoEdit`
+- 列表加载完成后：先在 list 中查找 targetId → 找到则填充标题到搜索栏并弹窗
+- 如果 targetId 不在已加载列表中，调用 `locateById()` 用 `doc(id).get()` 精确定位
+- `targetTitle` 仅用于填充搜索栏显示，定位靠 `targetId`（因为 title 可能重复）
+- `onShow` 检查 `targetId` 避免重复加载
+
+## 搜索机制
+
+- 所有列表页搜索走**服务端 db.RegExp 模糊搜索**，不再客户端过滤
+- 投稿：搜索 title / journal / coauthors / tags（_.or 多字段 RegExp）
+- 审稿：搜索 paperTitle / journal
+- 会议：搜索 name / shortName / location
+- 搜索时调用 `loadList()` 重新请求服务端，`applyFilter()` 只做状态/高级筛选
+- 云数据库 `.get()` 默认最多返回 20 条，需注意数据量
 
 ## 用户偏好
 

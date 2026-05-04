@@ -5,8 +5,9 @@
     <view class="search-input-wrap">
       <text class="search-icon">🔍</text>
       <input class="search-input" placeholder="搜索标题、期刊、合作者、标签..." bindinput="onSearch" value="{{searchKeyword}}"/>
+      <view class="search-clear" wx:if="{{searchKeyword}}" bindtap="clearSearch">✕</view>
     </view>
-  </view>
+</view>
 
   <!-- 提示栏 + 高级筛选 -->
   <view class="filter-tips">
@@ -82,7 +83,7 @@
     <view wx:if="{{!filteredList.length}}" class="empty-box">
       <text class="empty-icon">📄</text>
       <text class="empty-text">暂无投稿记录</text>
-      <button class="btn-add-first" bindtap="showAddForm">添加第一篇</button>
+      <!-- <button class="btn-add-first" bindtap="showAddForm">添加第一篇</button> -->
     </view>
 
     <view
@@ -111,7 +112,7 @@
 
         <!-- 截止日期提示 -->
         <view class="card-overdue {{item.overdueClass}}" wx:if="{{item.overdueLabel}}">
-          <text>{{item.overdueLabel}}</text>
+          <text user-select="true">{{item.overdueLabel}}</text>
         </view>
 
         <!-- 标签 -->

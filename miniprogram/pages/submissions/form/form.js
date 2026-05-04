@@ -78,6 +78,8 @@ Component({
 
     loadEditData: function(id) {
       var that = this;
+      // 先清空表单，避免编辑不同稿件时闪旧数据
+      // this.resetForm();
       this.loadRelatedWorks(id);
       wx.cloud.database().collection('submissions').doc(id).get().then(function(res){
         var item = res.data;
@@ -300,13 +302,16 @@ Component({
         updateTime:formatTime()
       };
 
-      // 判断是否完成：只有时间线中包含终态事件（接收/发表）才自动标记完成
-      // 终态事件关键词：接收、发表、出版、online
-      var completedEvents = ['接收', '发表', '出版', 'online', 'Online', 'accepted', 'published'];
-      var hasCompletedEvent = tlSave.some(function(t){
-        return completedEvents.some(function(k){ return (t.event||'').indexOf(k) !== -1; });
+      // 判断是否完成：时间线最大时间 >= deadline 则 completed = true
+      var deadlineDate = f.deadline ? new Date(String(f.deadline).replace(' ','T')) : null;
+      var maxTlDate = null;
+      tlSave.forEach(function(t){
+        if(t.date){
+          var d = new Date(String(t.date).replace(' ','T'));
+          if(!maxTlDate || d.getTime() > maxTlDate.getTime()) maxTlDate = d;
+        }
       });
-      data.completed = hasCompletedEvent;
+      data.completed = !!(deadlineDate && maxTlDate && maxTlDate.getTime() >= deadlineDate.getTime());
 
       wx.showLoading({ title:'保存中...' });
       var db = wx.cloud.database();

@@ -75,6 +75,12 @@ Page({
     }
 
     var db = wx.cloud.database();
+    var _ = db.command;
+    // deadline 存的是字符串格式 "2026-05-03 23:53:50"，比较也要用字符串
+    var now = new Date();
+    var nowStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+    var urgentDate = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000); // 4天后（含0-3天）
+    var urgentStr = urgentDate.getFullYear() + '-' + String(urgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(urgentDate.getDate()).padStart(2, '0') + ' ' + String(urgentDate.getHours()).padStart(2, '0') + ':' + String(urgentDate.getMinutes()).padStart(2, '0') + ':' + String(urgentDate.getSeconds()).padStart(2, '0');
     var promises = [];
     var COUNT_MAP = {
       submission: 'submissions',
@@ -87,15 +93,42 @@ Page({
       (function(tool) {
         var colName = COUNT_MAP[tool.id];
         if (colName) {
+          // 总数查询：投稿排除已完成
+          var countWhere = { deleteTime: null };
+          if (tool.id === 'submission') countWhere.completed = false;
+          var countPromise = db.collection(colName).where(countWhere).count();
+
+          // 紧急数查询（0-3天内截止的未完成项，deadline存的是字符串格式）
+          var urgentPromise;
+          if (tool.id === 'submission') {
+            urgentPromise = db.collection(colName).where({
+              deleteTime: null,
+              completed: false,
+              deadline: _.gte(nowStr).and(_.lt(urgentStr))
+            }).count();
+          } else if (tool.id === 'review' || tool.id === 'conference') {
+            urgentPromise = db.collection(colName).where({
+              deleteTime: null,
+              deadline: _.gte(nowStr).and(_.lt(urgentStr))
+            }).count();
+          } else {
+            // archive 没有 deadline
+            urgentPromise = Promise.resolve({ total: 0 });
+          }
+
           promises.push(
-            db.collection(colName).where({ deleteTime: null }).count().then(function(res) {
-              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', count: res.total, urgent: 0 };
+            Promise.all([countPromise, urgentPromise]).then(function(results) {
+              return {
+                id: tool.id, name: tool.name, desc: tool.desc,
+                iconEmoji: tool.iconEmoji || '🔧', color: tool.color,
+                pagePath: tool.pagePath || '',
+                count: results[0].total, urgent: results[1].total
+              };
             }).catch(function() {
               return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', count: 0, urgent: 0 };
             })
           );
         } else {
-          // 没有对应集合的工具，count 直接给 0
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', count: 0, urgent: 0
           }));
@@ -106,17 +139,17 @@ Page({
     Promise.all(promises).then(function(updatedTools) {
       that.setData({ enabledTools: updatedTools });
 
-      // 计算显示的工具列表（最多4个）
       var displayTools = updatedTools.length > 4 ? updatedTools.slice(0, 4) : updatedTools;
       var hasMoreTools = updatedTools.length > 4;
 
-      // 计算任务总数
       var totalCount = 0;
+      var totalUrgent = 0;
       for (var i = 0; i < updatedTools.length; i++) {
         totalCount += updatedTools[i].count;
+        totalUrgent += updatedTools[i].urgent;
       }
 
-      that.setData({ displayTools: displayTools, hasMoreTools: hasMoreTools, totalCount: totalCount });
+      that.setData({ displayTools: displayTools, hasMoreTools: hasMoreTools, totalCount: totalCount, totalUrgent: totalUrgent });
       that.loadUpcomingItems();
     }).catch(function(e) { console.error('[home] 加载数据失败', e); });
   },
@@ -126,19 +159,21 @@ Page({
     var db = wx.cloud.database();
     var _ = db.command;
     var now = new Date();
+    var nowStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
     var future = new Date();
     future.setDate(future.getDate() + 30);
+    var futureStr = future.getFullYear() + '-' + String(future.getMonth() + 1).padStart(2, '0') + '-' + String(future.getDate()).padStart(2, '0') + ' ' + String(future.getHours()).padStart(2, '0') + ':' + String(future.getMinutes()).padStart(2, '0') + ':' + String(future.getSeconds()).padStart(2, '0');
 
     Promise.all([
-      db.collection('submissions').where({ deleteTime: null, revisionDeadline: _.gte(now).and(_.lte(future)) }).limit(5).orderBy('revisionDeadline', 'asc').get().catch(function() { return { data: [] }; }),
-      db.collection('reviews').where({ deleteTime: null, deadline: _.gte(now).and(_.lte(future)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
-      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(now).and(_.lte(future)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; })
+      db.collection('submissions').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
+      db.collection('reviews').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
+      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
       var items = [];
       var i;
       for (i = 0; i < results[0].data.length; i++) {
         var s = results[0].data[i];
-        items.push({ _id: s._id, title: s.title, type: 'submission', typeLabel: '投稿', icon: '📄', pagePath: '/pages/submissions/submissions', deadline: s.revisionDeadline });
+        items.push({ _id: s._id, title: s.title, type: 'submission', typeLabel: '投稿', icon: '📄', pagePath: '/pages/submissions/submissions', deadline: s.deadline });
       }
       for (i = 0; i < results[1].data.length; i++) {
         var r = results[1].data[i];
@@ -149,14 +184,16 @@ Page({
         items.push({ _id: c._id, title: c.name, type: 'conference', typeLabel: '会议', icon: '🎤', pagePath: '/pages/conferences/conferences', deadline: c.deadline });
       }
 
-      items.sort(function(a, b) { return new Date(a.deadline) - new Date(b.deadline); });
+      items.sort(function(a, b) { return new Date(String(a.deadline).replace(' ', 'T')) - new Date(String(b.deadline).replace(' ', 'T')); });
       items = items.slice(0, 5);
 
       var formattedItems = [];
       for (i = 0; i < items.length; i++) {
         var item = items[i];
         var d = item.deadline;
-        var daysLeft = Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
+        // iOS 兼容：把 "2026-05-06 00:00:00" 转为 "2026-05-06T00:00:00"
+        var dIso = d ? String(d).replace(' ', 'T') : d;
+        var daysLeft = Math.ceil((new Date(dIso) - new Date()) / (1000 * 60 * 60 * 24));
         formattedItems.push({
           _id: item._id,
           title: item.title,
@@ -186,7 +223,12 @@ Page({
   goToItem: function(e) {
     var pagePath = e.currentTarget.dataset.page;
     var id = e.currentTarget.dataset.id;
-    if (pagePath) wx.navigateTo({ url: pagePath + '?id=' + id });
+    var title = e.currentTarget.dataset.title || '';
+    if (pagePath) {
+      var url = pagePath + '?targetId=' + id;
+      if (title) url += '&targetTitle=' + encodeURIComponent(title) + '&autoEdit=true';
+      wx.navigateTo({ url: url });
+    }
   },
 
   showSearch: function() { wx.showToast({ title: '搜索功能开发中', icon: 'none' }); },
@@ -194,7 +236,7 @@ Page({
 
   formatDate: function(d) {
     if (!d) return '';
-    var date = new Date(d);
+    var date = new Date(String(d).replace(' ', 'T'));
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   }
 });

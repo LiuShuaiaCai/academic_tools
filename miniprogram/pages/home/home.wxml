@@ -58,9 +58,10 @@
           <view class="card-desc">{{item.desc}}</view>
         </view>
         <view class="card-stats">
-          <text>共 {{item.count}}</text>
-          <text class="urgent-count" wx:if="{{item.urgent > 0}}">· {{item.urgent}} 紧急</text>
+          <image class="card-stats-icon" src="/images/icon-task.png" />
+          <text>{{item.count}} 任务待完成</text>
         </view>
+        <view class="card-urgent-badge" wx:if="{{item.urgent > 0}}">{{item.urgent}}</view>
       </view>
     </view>
   </view>
@@ -98,6 +99,7 @@
         bindtap="goToItem"
         data-page="{{item.pagePath}}"
         data-id="{{item._id}}"
+        data-title="{{item.title}}"
       >
         <view class="upcoming-icon">{{item.iconEmoji}}</view>
         <view class="upcoming-info">
