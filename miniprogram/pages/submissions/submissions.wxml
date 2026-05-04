@@ -152,13 +152,13 @@
         </view>
       </view>
     </view>
-    </view>
+  </view>
 
-    <!-- 加载状态 -->
-    <view class="load-more" wx:if="{{list.length > 0}}">
-      <text wx:if="{{loadingMore}}">加载中...</text>
-      <text wx:elif="{{!searchKeyword && !hasMore}}">— 没有更多了 —</text>
-    </view>
+  <!-- 加载状态 -->
+  <view class="load-more" wx:if="{{list.length > 0}}">
+    <text wx:if="{{loadingMore}}">加载中...</text>
+    <text wx:elif="{{!searchKeyword && !hasMore}}">— 没有更多了 —</text>
+  </view>
 
   <!-- FAB 悬浮按钮 -->
   <view class="fab" bindtap="showAddForm">+</view>

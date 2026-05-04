@@ -110,25 +110,35 @@ Page({
       extra.page = isLoadMore ? page : 0;
       extra.hasMore = hasMore;
       extra.loadingMore = false;
-      var now = Date.now();
-      var incomplete = 0, near = 0, urgent = 0;
-      list.forEach(function(i){
-        if(!i.completed){
-          incomplete++;
-          if(i.deadline){
-            var days = Math.ceil((parseDate(i.deadline).getTime() - now) / 86400000);
-            if(days <= 1) urgent++;
-            else if(days <= 3) near++;
-          }
-        }
-      });
-      extra.incompleteCount = incomplete;
-      extra.nearCount = near;
-      extra.urgentCount = urgent;
-      extra.totalCount = list.length;
       that.setData(extra);
       that.applyFilter();
+      // 全量统计（首次加载时）
+      if(!isLoadMore) that.loadStats();
     }
+  },
+
+  /* ======== 全量统计（云函数）======= */
+  loadStats:function(){
+    var that = this;
+    // console.log('[投稿] 开始调用 loadStats 云函数');
+    wx.cloud.callFunction({
+      name:'academicAPI',
+      data:{ action:'submissionStats' }
+    }).then(function(res){
+      // console.log('[投稿] loadStats 返回结果:', JSON.stringify(res.result));
+      if(res.result && res.result.success){
+        that.setData({
+          totalCount: res.result.total,
+          incompleteCount: res.result.incomplete,
+          nearCount: res.result.near,
+          urgentCount: res.result.urgent
+        });
+      } else {
+        console.warn('[投稿] loadStats 返回不成功:', res.result);
+      }
+    }).catch(function(e){
+      console.error('[投稿] 全量统计失败', e);
+    });
   },
 
   onReachBottom:function(){
@@ -162,22 +172,29 @@ Page({
     // 快速筛选（独立于高级筛选）
     var qf = d.quickFilter;
     if(qf && qf !== 'all'){
-      var now = Date.now();
+      var now = new Date();
+      var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
       if(qf === 'incomplete'){
         kwBase = kwBase.filter(function(i){ return !i.completed; });
       } else if(qf === 'near'){
         kwBase = kwBase.filter(function(i){
           if(i.completed) return false;
           if(!i.deadline) return false;
-          var days = Math.ceil((parseDate(i.deadline).getTime() - now) / 86400000);
-          return days <= 3 && days >= 0;
+          var dlDateStr = String(i.deadline).substring(0, 10);
+          var todayDate = new Date(todayStr + 'T00:00:00');
+          var dlDate = new Date(dlDateStr + 'T00:00:00');
+          var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
+          return days >= 2 && days <= 3;
         });
       } else if(qf === 'urgent'){
         kwBase = kwBase.filter(function(i){
           if(i.completed) return false;
           if(!i.deadline) return false;
-          var days = Math.ceil((parseDate(i.deadline).getTime() - now) / 86400000);
-          return days <= 1 && days >= 0;
+          var dlDateStr = String(i.deadline).substring(0, 10);
+          var todayDate = new Date(todayStr + 'T00:00:00');
+          var dlDate = new Date(dlDateStr + 'T00:00:00');
+          var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
+          return days >= 0 && days <= 1;
         });
       }
     }

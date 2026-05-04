@@ -300,17 +300,13 @@ Component({
         updateTime:formatTime()
       };
 
-      // 根据时间线最大时间与到期时间比较，自动计算是否完成
-      if(data.deadline && tlSave.length > 0){
-        var maxTl = tlSave.reduce(function(max, t){
-          var tTime = t.date ? new Date(String(t.date).replace(' ','T')).getTime() : 0;
-          return tTime > max ? tTime : max;
-        }, 0);
-        var deadlineTime = new Date(String(data.deadline).replace(' ','T')).getTime();
-        data.completed = maxTl >= deadlineTime;
-      } else {
-        data.completed = false;
-      }
+      // 判断是否完成：只有时间线中包含终态事件（接收/发表）才自动标记完成
+      // 终态事件关键词：接收、发表、出版、online
+      var completedEvents = ['接收', '发表', '出版', 'online', 'Online', 'accepted', 'published'];
+      var hasCompletedEvent = tlSave.some(function(t){
+        return completedEvents.some(function(k){ return (t.event||'').indexOf(k) !== -1; });
+      });
+      data.completed = hasCompletedEvent;
 
       wx.showLoading({ title:'保存中...' });
       var db = wx.cloud.database();

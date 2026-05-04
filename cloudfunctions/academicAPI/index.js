@@ -220,6 +220,55 @@ async function saveUserTools(event) {
   return { success: true, results: results };
 }
 
+// 投稿全量统计（totalCount, incompleteCount, nearCount, urgentCount）
+async function submissionStats() {
+  var now = new Date();
+  // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
+  var beijingTime = new Date(now.getTime() + 8 * 3600000);
+  var todayStr = beijingTime.getFullYear() + '-' + String(beijingTime.getMonth()+1).padStart(2,'0') + '-' + String(beijingTime.getDate()).padStart(2,'0');
+  var res = await db.collection('submissions').where({ deleteTime: null }).limit(1000).get();
+  var list = res.data || [];
+  var total = 0, incomplete = 0, near = 0, urgent = 0;
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    total++;
+    if (!item.completed) {
+      incomplete++;
+      if (item.deadline) {
+        var dlDateStr = String(item.deadline).substring(0, 10);
+        var dlDate = new Date(dlDateStr + 'T00:00:00');
+        var todayDate = new Date(todayStr + 'T00:00:00');
+        var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
+        if (days >= 2 && days <= 3) near++;
+        if (days >= 0 && days <= 1) urgent++;
+      }
+    }
+  }
+  console.log('[submissionStats] result: total=' + total + ' incomplete=' + incomplete + ' near=' + near + ' urgent=' + urgent);
+  return { success: true, total: total, incomplete: incomplete, near: near, urgent: urgent };
+}
+
+// 修复被错误标记为 completed=true 的投稿（没有终态事件的应改为 false）
+async function fixCompleted() {
+  var completedEvents = ['接收', '发表', '出版', 'online', 'Online', 'accepted', 'published'];
+  var res = await db.collection('submissions').where({ deleteTime: null }).limit(1000).get();
+  var list = res.data || [];
+  var fixed = 0;
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    if (!item.completed) continue;
+    var tl = item.timeline || [];
+    var hasCompletedEvent = tl.some(function(t){
+      return completedEvents.some(function(k){ return (t.event||'').indexOf(k) !== -1; });
+    });
+    if (!hasCompletedEvent) {
+      await db.collection('submissions').doc(item._id).update({ data: { completed: false } });
+      fixed++;
+    }
+  }
+  return { success: true, fixed: fixed, total: list.length };
+}
+
 // ==================== 入口 ====================
 
 exports.main = async (event) => {
@@ -236,6 +285,8 @@ exports.main = async (event) => {
       case 'getUserTools':    return await getUserTools();
       case 'toggleUserTool':  return await toggleUserTool(event);
       case 'saveUserTools':   return await saveUserTools(event);
+      case 'submissionStats': return await submissionStats();
+      case 'fixCompleted':    return await fixCompleted();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

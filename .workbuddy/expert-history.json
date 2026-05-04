@@ -11,7 +11,18 @@
         "usedAt": 1777797427301,
         "industryId": "02-Engineering"
       }
+    ],
+    "a1b7c96c0cdd41c9b14d1d6586081ee6": [
+      {
+        "expertId": "WeChatMiniProgramDeveloper",
+        "name": "小程达",
+        "profession": "微信小程序开发者",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/WeChatMiniProgramDeveloper/WeChatMiniProgramDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/WeChatMiniProgramDeveloper/WeChatMiniProgramDeveloper_zh.md",
+        "usedAt": 1777891943563,
+        "industryId": "02-Engineering"
+      }
     ]
   },
-  "lastUpdated": 1777890556885
+  "lastUpdated": 1777895235928
 }

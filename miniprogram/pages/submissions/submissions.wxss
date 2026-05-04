@@ -77,10 +77,12 @@ page { background: #F6F6F6; }
 .action-icon-text { font-size: 24rpx; }
 .action-count { font-size: 20rpx; color: #6B7280; }
 .card-info-row { display: flex; gap: 16rpx; flex-wrap: wrap; margin-bottom: 8rpx; font-size: 22rpx; color: #9CA3AF; }
-.card-overdue { padding: 8rpx 0; font-size: 22rpx; margin-bottom: 12rpx; display: flex; align-items: center; gap: 8rpx; color: #9CA3AF; justify-content: flex-start; }
-.card-overdue.overdue { background: transparent; }
-.card-overdue.urgent { background: transparent; }
-.card-overdue.normal { background: transparent; }
+.card-overdue { padding: 8rpx 0; font-size: 22rpx; margin-bottom: 12rpx; display: flex; align-items: center; gap: 8rpx; justify-content: flex-start; }
+.card-overdue.overdue { color: #DC2626; font-weight: 600; }
+.card-overdue.urgent { color: #D97706; font-weight: 500; }
+.card-overdue.urgent-critical { color: #EF4444; font-weight: 700; }
+.card-overdue.normal { color: #9CA3AF; }
+.card-overdue.completed { color: #6B7280; font-weight: 500; }
 .card-link { font-size: 22rpx; color: #2563eb; margin-bottom: 12rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-text { font-size: 22rpx; }
 .card-tags-row { display: flex; flex-wrap: wrap; gap: 8rpx; margin-bottom: 12rpx; }
