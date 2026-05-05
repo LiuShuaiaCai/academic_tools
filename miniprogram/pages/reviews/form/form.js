@@ -449,7 +449,6 @@ Component({
 
     // ======== 稿件上传 ========
 
-    // 选择文件
     chooseManuscript: function() {
       var that = this;
       wx.chooseMessageFile({
@@ -458,7 +457,6 @@ Component({
         extension: ['pdf', 'doc', 'docx'],
         success: function(res) {
           var file = res.tempFiles[0];
-          // 检查大小 50MB
           if (file.size > 50 * 1024 * 1024) {
             wx.showToast({ title: '文件不能超过50MB', icon: 'none' });
             return;
@@ -532,31 +530,37 @@ Component({
     // 预览稿件
     previewManuscript: function() {
       var fileID = this.data.form.manuscript.fileID;
+      var fileType = this.data.form.manuscript.fileType;
       if (!fileID) return;
-      wx.showLoading({ title: '加载中...' });
+      wx.showLoading({ title: '打开文件中...' });
       wx.cloud.getTempFileURL({
         fileList: [fileID],
         success: function(res) {
           wx.hideLoading();
           var url = res.fileList[0] && res.fileList[0].tempFileURL;
-          if (url) {
-            // PDF 可以直接用 wx.openDocument 打开
-            wx.downloadFile({
-              url: url,
-              success: function(dlRes) {
-                wx.openDocument({
-                  filePath: dlRes.tempFilePath,
-                  showMenu: true,
-                  fail: function() {
-                    wx.showToast({ title: '无法打开文件', icon: 'none' });
-                  }
-                });
-              },
-              fail: function() {
-                wx.showToast({ title: '下载失败', icon: 'none' });
-              }
-            });
+          if (!url) {
+            wx.showToast({ title: '获取文件链接失败', icon: 'none' });
+            return;
           }
+          wx.downloadFile({
+            url: url,
+            success: function(dlRes) {
+              wx.openDocument({
+                filePath: dlRes.tempFilePath,
+                fileType: fileType || 'pdf',
+                showMenu: true,
+                success: function() {
+                  // 打开成功
+                },
+                fail: function() {
+                  wx.showToast({ title: '无法打开文件，请检查文件格式', icon: 'none' });
+                }
+              });
+            },
+            fail: function() {
+              wx.showToast({ title: '下载文件失败', icon: 'none' });
+            }
+          });
         },
         fail: function() {
           wx.hideLoading();
@@ -644,6 +648,17 @@ Component({
         return { date: item.date, event: item.event, remark: item.remark || '', dotColor: item.dotColor || '' };
       });
 
+      // 判断是否完成：时间线最大时间 >= deadline 则 completed = true
+      var deadlineDate = f.deadline ? new Date(String(f.deadline).replace(' ', 'T')) : null;
+      var maxTlDate = null;
+      tlSave.forEach(function(t){
+        if(t.date){
+          var d = new Date(String(t.date).replace(' ', 'T'));
+          if(!maxTlDate || d.getTime() > maxTlDate.getTime()) maxTlDate = d;
+        }
+      });
+      var completed = !!(deadlineDate && maxTlDate && maxTlDate.getTime() >= deadlineDate.getTime());
+
       var data = {
         paperTitle: f.paperTitle,
         journal: f.journal,
@@ -665,6 +680,7 @@ Component({
           uploadTime: f.manuscript.uploadTime
         } : null,
         timeline: tlSave,
+        completed: completed,
         updateTime: formatTime()
       };
 
@@ -725,12 +741,11 @@ Component({
       var decision = this.data.decision;
       var decisionNote = this.data.decisionNote;
       if (!decision) { wx.showToast({ title: '请选择审稿决定', icon: 'none' }); return; }
-      var newStatus = (decision === 'accept' || decision === 'reject') ? 'completed' : 'submitted';
+      // 不再手动设 status，completed 由保存时根据时间线自动计算
       var updateData = {
         decision: decision,
         decisionNote: decisionNote,
         decisionTime: formatTime(),
-        status: newStatus,
         updateTime: formatTime()
       };
       wx.showLoading({ title: '提交中...' });

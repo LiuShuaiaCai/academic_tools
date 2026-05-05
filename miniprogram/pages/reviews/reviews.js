@@ -107,9 +107,9 @@ Page({
     var qf = this.data.quickFilter;
     if(qf && qf !== 'all'){
       if(qf === 'incomplete'){
-        listConditions.push({ status: _.neq('completed') });
+        listConditions.push({ completed: _.neq(true) });
       } else if(qf === 'near'){
-        listConditions.push({ status: _.neq('completed') });
+        listConditions.push({ completed: _.neq(true) });
         var now = new Date();
         var from = new Date(now); from.setDate(now.getDate() + 2);
         var to = new Date(now); to.setDate(now.getDate() + 3);
@@ -118,7 +118,7 @@ Page({
         listConditions.push({ deadline: _.gte(fStr + ' 00:00:00') });
         listConditions.push({ deadline: _.lte(tStr + ' 23:59:59') });
       } else if(qf === 'urgent'){
-        listConditions.push({ status: _.neq('completed') });
+        listConditions.push({ completed: _.neq(true) });
         var now2 = new Date();
         var fStr2 = now2.getFullYear()+'-'+String(now2.getMonth()+1).padStart(2,'0')+'-'+String(now2.getDate()).padStart(2,'0');
         var to2 = new Date(now2); to2.setDate(now2.getDate() + 1);

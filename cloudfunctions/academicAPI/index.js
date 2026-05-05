@@ -294,7 +294,7 @@ async function reviewStats(event) {
   for (var i = 0; i < list.length; i++) {
     var item = list[i];
     total++;
-    if (item.status !== 'completed') {
+    if (!item.completed) {
       incomplete++;
       if (item.deadline) {
         var dlDateStr = String(item.deadline).substring(0, 10);

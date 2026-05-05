@@ -33,8 +33,12 @@
 - **deadline 字段**：存储格式为字符串 `"2026-05-03 23:53:50"`，不是 Date 对象
 - 云数据库查询时必须用**同格式字符串**比较，用 `new Date()` 对象匹配不上
 - `new Date("2026-05-06 00:00:00")` 在 iOS 下不兼容，需先 `.replace(' ', 'T')` 转为 ISO 格式
-- 投稿(submissions) 有 `completed` 字段标识完成状态；审稿(reviews)和会议(conferences)无此字段
+- **`completed` 字段**（投稿+审稿均有）：布尔值，根据**时间线最大时间 ≥ deadline** 自动计算
+  - 保存时：`deadlineDate && maxTlDate && maxTlDate >= deadlineDate` → `completed = true`
+  - 列表查询用 `completed: _.neq(true)` 筛出未完成项
+  - 与 `decision`（accept/reject）解耦，只看时间线
 - 投稿有 `deadline` 字段（不是 `revisionDeadline`，那是旧命名）
+- 审稿无 `completed` 字段时属于未完成状态
 
 ## 首页工具卡片显示
 

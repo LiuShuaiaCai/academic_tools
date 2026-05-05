@@ -95,7 +95,7 @@
         <!-- 期刊 + 状态 -->
         <view class="card-journal-row">
           <text class="card-journal" user-select="true">{{item.journal || '未设置期刊'}}</text>
-          <text class="card-status" style="background:{{item.status === 'pending' ? '#FEF3C7;color:#92400E' : item.status === 'in_progress' ? '#DBEAFE;color:#1E40AF' : item.status === 'submitted' ? '#D1FAE5;color:#065F46' : '#F3F4F6;color:#6B7280'}}">{{item.status === 'pending' ? '待审稿' : item.status === 'in_progress' ? '审稿中' : item.status === 'submitted' ? '已提交' : '已完成'}}</text>
+          <text class="card-status" style="background:{{item.completed ? '#F3F4F6;color:#6B7280' : item.status === 'pending' ? '#FEF3C7;color:#92400E' : item.status === 'in_progress' ? '#DBEAFE;color:#1E40AF' : '#D1FAE5;color:#065F46'}}">{{item.completed ? '已完成' : item.status === 'pending' ? '待审稿' : item.status === 'in_progress' ? '审稿中' : '已提交'}}</text>
         </view>
 
         <!-- 邀请时间 + 截止时间 -->
@@ -116,7 +116,7 @@
 
         <!-- 卡片底部操作 -->
         <view class="card-footer" catchtap="doNothing">
-          <view class="footer-btn" catchtap="showDecision" data-id="{{item._id}}" wx:if="{{item.status !== 'completed'}}">录入决定</view>
+          <view class="footer-btn" catchtap="showDecision" data-id="{{item._id}}" wx:if="{{!item.completed}}">录入决定</view>
           <view class="footer-del footer-btn" catchtap="deleteItem" data-id="{{item._id}}">删除</view>
         </view>
       </view>

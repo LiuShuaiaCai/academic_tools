@@ -117,21 +117,21 @@
         <!-- 未上传时：选择文件按钮 -->
         <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
           <view class="manuscript-upload-icon">📄</view>
-          <view class="manuscript-upload-text">点击选择稿件文件</view>
+          <view class="manuscript-upload-text">上传稿件文件</view>
           <view class="manuscript-upload-hint">支持 PDF / Word，最大 50MB</view>
         </view>
         <!-- 已上传时：显示文件信息 -->
-        <view wx:else class="manuscript-file-card">
+        <view wx:else class="manuscript-file-card" bindtap="previewManuscript">
           <view class="manuscript-file-info">
             <view class="manuscript-file-icon">{{form.manuscript.fileType === 'pdf' ? '📕' : '📘'}}</view>
             <view class="manuscript-file-detail">
               <view class="manuscript-file-name">{{form.manuscript.fileName}}</view>
-              <view class="manuscript-file-size">{{form.manuscript.fileSizeText}}</view>
+              <view class="manuscript-file-meta">{{form.manuscript.fileSizeText}}<text wx:if="{{form.manuscript.uploadTime}}"> · {{form.manuscript.uploadTime}}</text></view>
             </view>
           </view>
           <view class="manuscript-file-actions">
-            <view class="manuscript-action-btn" bindtap="previewManuscript">预览</view>
-            <view class="manuscript-action-btn manuscript-action-del" bindtap="removeManuscript">删除</view>
+            <view class="manuscript-action-btn" catchtap="previewManuscript">预览</view>
+            <view class="manuscript-action-btn manuscript-action-del" catchtap="removeManuscript">删除</view>
           </view>
         </view>
         <!-- 上传进度 -->

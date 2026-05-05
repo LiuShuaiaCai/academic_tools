@@ -141,14 +141,18 @@
 .manuscript-upload-area { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40rpx 20rpx; border: 2rpx dashed #CBD5E1; border-radius: 16rpx; background: #F8FAFC; }
 .manuscript-upload-icon { font-size: 48rpx; margin-bottom: 12rpx; }
 .manuscript-upload-text { font-size: 28rpx; color: #2563EB; font-weight: 500; margin-bottom: 6rpx; }
-.manuscript-upload-hint { font-size: 22rpx; color: #94A3B8; }
+.manuscript-upload-hint { font-size: 22rpx; color: #94A3B8; margin-bottom: 20rpx; }
+.manuscript-upload-btns { display: flex; gap: 20rpx; width: 100%; }
+.manuscript-upload-btn { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 10rpx; font-size: 26rpx; color: #2563EB; background: #EFF6FF; border: 1rpx solid #BFDBFE; font-weight: 500; }
+.manuscript-upload-btn:active { background: #DBEAFE; }
 
 .manuscript-file-card { display: flex; align-items: center; justify-content: space-between; padding: 20rpx; border: 1rpx solid #E5E7EB; border-radius: 12rpx; background: #F9FAFB; }
+.manuscript-file-card:active { background: #EFF6FF; border-color: #93C5FD; }
 .manuscript-file-info { display: flex; align-items: center; gap: 16rpx; flex: 1; min-width: 0; }
 .manuscript-file-icon { font-size: 40rpx; flex-shrink: 0; }
 .manuscript-file-detail { flex: 1; min-width: 0; }
 .manuscript-file-name { font-size: 26rpx; color: #111827; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.manuscript-file-size { font-size: 22rpx; color: #6B7280; margin-top: 4rpx; }
+.manuscript-file-meta { font-size: 22rpx; color: #6B7280; margin-top: 4rpx; }
 
 .manuscript-file-actions { display: flex; gap: 16rpx; flex-shrink: 0; margin-left: 16rpx; }
 .manuscript-action-btn { font-size: 24rpx; color: #2563EB; padding: 8rpx 16rpx; border: 1rpx solid #2563EB; border-radius: 8rpx; }
