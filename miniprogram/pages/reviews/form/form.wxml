@@ -109,10 +109,6 @@
       <view class="form-group">
         <view class="form-label-row">
           <view class="form-label"><text class="form-label-icon">📄</text> 上传稿件 <text class="form-label-hint">（PDF/Word，最大50MB）</text></view>
-          <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{form.manuscript && form.manuscript.fileID && !aiReviewLoading}}">
-            <text class="template-btn-icon">🤖</text>
-            <text class="template-btn-text">AI审稿</text>
-          </view>
         </view>
         <!-- 未上传时：选择文件按钮 -->
         <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
@@ -139,13 +135,7 @@
           <progress percent="{{manuscriptUploadPercent}}" stroke-width="4" activeColor="#2563EB" backgroundColor="#E5E7EB"/>
           <text class="manuscript-progress-text">上传中 {{manuscriptUploadPercent}}%</text>
         </view>
-        <!-- AI审稿进度 -->
-        <view wx:if="{{aiReviewLoading}}" class="manuscript-progress">
-          <view class="ai-review-loading">
-            <view class="ai-review-spinner"></view>
-            <text class="ai-review-loading-text">AI 正在分析稿件，请稍候...</text>
-          </view>
-        </view>
+        
       </view>
 
 
@@ -153,6 +143,11 @@
       <view class="form-group">
         <view class="form-label-row">
           <view class="form-label">审稿笔记<text class="form-label-hint">（优点/缺点/建议/问题）</text></view>
+          <!-- <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{form.manuscript && form.manuscript.fileID && !aiReviewLoading}}"> -->
+          <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{!aiReviewLoading}}">
+            <text class="template-btn-icon">🤖</text>
+            <text class="template-btn-text">AI审稿</text>
+          </view>
           <view class="template-btn" bindtap="showTemplateModal">
             <text class="template-btn-icon">📋</text>
             <text class="template-btn-text">插入模板</text>
@@ -160,6 +155,13 @@
           <view class="template-btn clear-note-btn" bindtap="clearNote">
             <text class="template-btn-icon">🗑</text>
             <text class="template-btn-text">清空</text>
+          </view>
+        </view>
+        <!-- AI审稿进度 -->
+        <view wx:if="{{aiReviewLoading}}" class="manuscript-progress">
+          <view class="ai-review-loading">
+            <view class="ai-review-spinner"></view>
+            <text class="ai-review-loading-text">AI 正在分析稿件，请稍候...</text>
           </view>
         </view>
         <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}" maxlength="-1"></textarea>

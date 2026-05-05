@@ -196,7 +196,10 @@ Component({
             var opts = that.data.relatedReviewOptions;
             for (var i = 0; i < opts.length; i++) {
               if (opts[i]._id === rid) {
-                that.setData({ 'form.relatedReviewTitle': opts[i].title, 'form.relatedReviewIdx': i });
+                that.setData({
+                  'form.relatedReviewTitle': opts[i].title,
+                  'form.relatedReviewIdx': i
+                });
                 break;
               }
             }
@@ -527,44 +530,29 @@ Component({
       });
     },
 
-    // 预览稿件
+    // 预览稿件 —— 直接用云存储下载，避免 getTempFileURL 失败问题
     previewManuscript: function() {
       var fileID = this.data.form.manuscript.fileID;
       var fileType = this.data.form.manuscript.fileType;
       if (!fileID) return;
       wx.showLoading({ title: '打开文件中...' });
-      wx.cloud.getTempFileURL({
-        fileList: [fileID],
-        success: function(res) {
+      wx.cloud.downloadFile({
+        fileID: fileID,
+        success: function(dlRes) {
           wx.hideLoading();
-          var url = res.fileList[0] && res.fileList[0].tempFileURL;
-          if (!url) {
-            wx.showToast({ title: '获取文件链接失败', icon: 'none' });
-            return;
-          }
-          wx.downloadFile({
-            url: url,
-            success: function(dlRes) {
-              wx.openDocument({
-                filePath: dlRes.tempFilePath,
-                fileType: fileType || 'pdf',
-                showMenu: true,
-                success: function() {
-                  // 打开成功
-                },
-                fail: function() {
-                  wx.showToast({ title: '无法打开文件，请检查文件格式', icon: 'none' });
-                }
-              });
-            },
+          wx.openDocument({
+            filePath: dlRes.tempFilePath,
+            fileType: fileType || 'pdf',
+            showMenu: true,
             fail: function() {
-              wx.showToast({ title: '下载文件失败', icon: 'none' });
+              wx.showToast({ title: '无法打开文件，请检查文件格式', icon: 'none' });
             }
           });
         },
-        fail: function() {
+        fail: function(err) {
           wx.hideLoading();
-          wx.showToast({ title: '获取文件链接失败', icon: 'none' });
+          console.error('云文件下载失败', err);
+          wx.showToast({ title: '文件下载失败，请重试', icon: 'none' });
         }
       });
     },
