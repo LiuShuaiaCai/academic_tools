@@ -17,15 +17,17 @@ page { background: #F6F6F6; }
 .tip-info   { color: #1E40AF; background: transparent; border: 1rpx solid #BFDBFE; }
 .tip-urgent { color: #92400E; background: transparent; border: 1rpx solid #FDE68A; }
 .tip-warn   { color: #991B1B; background: transparent; border: 1rpx solid #FCA5A5; }
-.tip-all.active    { background: #ECFDF5; font-weight: 700; }
-.tip-info.active   { background: #EFF6FF; font-weight: 700; }
-.tip-urgent.active { background: #FEF3C7; font-weight: 700; }
-.tip-warn.active   { background: #FEE2E2; font-weight: 700; }
+.tip-all.active    { background: #ECFDF5; border-color: #059669; color: #064E3B; font-weight: 700; }
+.tip-info.active   { background: #EFF6FF; border-color: #2563EB; color: #1E3A8A; font-weight: 700; }
+.tip-urgent.active { background: #FEF3C7; border-color: #D97706; color: #78350F; font-weight: 700; }
+.tip-warn.active   { background: #FEE2E2; border-color: #DC2626; color: #7F1D1D; font-weight: 700; }
 .filter-tips .adv-toggle {
   font-size: 24rpx; padding: 8rpx 14rpx; border-radius: 8rpx;
-  background: #F3F4F6; color: #374151; flex-shrink: 0; white-space: nowrap;
+  background: transparent; color: #374151; flex-shrink: 0; white-space: nowrap;
   display: flex; align-items: center; gap: 4rpx;
+  border: 1rpx solid #D1D5DB;
 }
+.filter-tips .adv-toggle.active { background: #E5E7EB; border-color: #6B7280; color: #111827; font-weight: 700; }
 .filter-tips .adv-arrow { font-size: 20rpx; }
 
 /* ========== 搜索栏 ========== */

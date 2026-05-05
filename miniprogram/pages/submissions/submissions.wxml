@@ -15,7 +15,7 @@
     <view class="tip-btn tip-info {{quickFilter === 'incomplete' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="incomplete"> 未完成 {{incompleteCount}}</view>
     <view class="tip-btn tip-urgent {{quickFilter === 'near' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="near"> 急需处理 {{nearCount}}</view>
     <view class="tip-btn tip-warn {{quickFilter === 'urgent' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="urgent"> 特别紧急 {{urgentCount}}</view>
-    <view class="adv-toggle" bindtap="toggleAdvanced">
+    <view class="adv-toggle {{showAdvanced ? 'active' : ''}}" bindtap="toggleAdvanced">
       <text>高级筛选</text>
       <text class="adv-arrow">{{showAdvanced ? '▲' : '▼'}}</text>
     </view>
