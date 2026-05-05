@@ -79,6 +79,12 @@
         <input class="form-input" placeholder="https://... 审稿系统地址" bindinput="onFormInput" data-field="systemUrl" value="{{form.systemUrl}}"/>
       </view>
 
+      <!-- 9. 编辑联系邮箱 -->
+      <view class="form-group">
+        <view class="form-label">编辑联系邮箱</view>
+        <input class="form-input" placeholder="编辑联系邮箱" bindinput="onFormInput" data-field="editorEmail" value="{{form.editorEmail}}"/>
+      </view>
+
       <!-- 9. 审稿系统账号（可选） -->
       <!-- <view class="form-group">
         <view class="form-label">审稿系统账号 <text class="form-label-hint">（选填，邮箱）</text></view>
@@ -147,7 +153,7 @@
 
       <!-- 13. 审稿笔记 -->
       <view class="form-group">
-        <view class="form-label">审稿笔记</view>
+        <view class="form-label">审稿笔记<text class="form-label-hint">（优点/缺点/建议/问题）</text></view>
         <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
       </view>
 
