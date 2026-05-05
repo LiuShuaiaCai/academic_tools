@@ -26,53 +26,75 @@
     <!-- 状态 -->
     <view class="adv-row">
       <text class="adv-label">状态</text>
-      <picker class="adv-picker-wrap" range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
-        <view class="adv-picker-text">{{advStatusLabel || '全部'}}</view>
-      </picker>
+      <view class="adv-field-wrap">
+        <picker class="adv-picker-wrap" range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
+          <view class="adv-picker-text">{{advStatusLabel || '全部'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advStatus}}" bindtap="clearAdvStatus">✕</view>
+      </view>
     </view>
     <!-- 身份 -->
     <view class="adv-row">
       <text class="adv-label">身份</text>
-      <picker class="adv-picker-wrap" range="{{advRoleOptions}}" range-key="label" value="{{advRoleIndex}}" bindchange="onAdvRoleChange">
-        <view class="adv-picker-text">{{advRoleLabel || '全部'}}</view>
-      </picker>
+      <view class="adv-field-wrap">
+        <picker class="adv-picker-wrap" range="{{advRoleOptions}}" range-key="label" value="{{advRoleIndex}}" bindchange="onAdvRoleChange">
+          <view class="adv-picker-text">{{advRoleLabel || '全部'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advRole}}" bindtap="clearAdvRole">✕</view>
+      </view>
     </view>
     <!-- 期刊 -->
     <view class="adv-row">
       <text class="adv-label">期刊</text>
-      <picker class="adv-picker-wrap" range="{{advJournalOptions}}" range-key="label" value="{{advJournalIndex}}" bindchange="onAdvJournalChange">
-        <view class="adv-picker-text">{{advJournalLabel || '全部'}}</view>
-      </picker>
+      <view class="adv-field-wrap">
+        <picker class="adv-picker-wrap" range="{{advJournalOptions}}" range-key="label" value="{{advJournalIndex}}" bindchange="onAdvJournalChange">
+          <view class="adv-picker-text">{{advJournalLabel || '全部'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advJournal}}" bindtap="clearAdvJournal">✕</view>
+      </view>
     </view>
     <!-- 优先级 -->
     <view class="adv-row">
       <text class="adv-label">优先级</text>
-      <picker class="adv-picker-wrap" range="{{advPriorityOptions}}" range-key="label" value="{{advPriorityIndex}}" bindchange="onAdvPriorityChange">
-        <view class="adv-picker-text">{{advPriorityLabel || '全部'}}</view>
-      </picker>
+      <view class="adv-field-wrap">
+        <picker class="adv-picker-wrap" range="{{advPriorityOptions}}" range-key="label" value="{{advPriorityIndex}}" bindchange="onAdvPriorityChange">
+          <view class="adv-picker-text">{{advPriorityLabel || '全部'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advPriority}}" bindtap="clearAdvPriority">✕</view>
+      </view>
     </view>
     <!-- 是否完成 -->
     <view class="adv-row">
       <text class="adv-label">完成状态</text>
-      <picker class="adv-picker-wrap" range="{{advCompletedOptions}}" range-key="label" value="{{advCompletedIndex}}" bindchange="onAdvCompletedChange">
-        <view class="adv-picker-text">{{advCompletedLabel || '全部'}}</view>
-      </picker>
+      <view class="adv-field-wrap">
+        <picker class="adv-picker-wrap" range="{{advCompletedOptions}}" range-key="label" value="{{advCompletedIndex}}" bindchange="onAdvCompletedChange">
+          <view class="adv-picker-text">{{advCompletedLabel || '全部'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advCompleted}}" bindtap="clearAdvCompleted">✕</view>
+      </view>
     </view>
     <!-- 到期时间区间 -->
     <view class="adv-row">
       <text class="adv-label">到期时间</text>
-      <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
-        <view class="adv-picker-text">{{advDeadlineFrom || '起始日期'}}</view>
-      </picker>
-      <text class="adv-sep">~</text>
-      <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
-        <view class="adv-picker-text">{{advDeadlineTo || '截止日期'}}</view>
-      </picker>
+      <view class="adv-date-wrap">
+        <view class="adv-date-item">
+          <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
+            <view class="adv-picker-text">{{advDeadlineFrom || '起始日期'}}</view>
+          </picker>
+          <view class="adv-clear" wx:if="{{advDeadlineFrom}}" bindtap="clearAdvDeadlineFrom">✕</view>
+        </view>
+        <text class="adv-sep">~</text>
+        <view class="adv-date-item">
+          <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
+            <view class="adv-picker-text">{{advDeadlineTo || '截止日期'}}</view>
+          </picker>
+          <view class="adv-clear" wx:if="{{advDeadlineTo}}" bindtap="clearAdvDeadlineTo">✕</view>
+        </view>
+      </view>
     </view>
     <!-- 操作按钮 -->
     <view class="adv-actions">
       <view class="adv-btn-reset" bindtap="resetAdvanced">重置全部</view>
-      <view class="adv-btn-apply" bindtap="applyFilter">应用筛选</view>
     </view>
   </view>
 
@@ -80,7 +102,7 @@
 
   <!-- 列表 -->
   <view class="sub-list">
-    <view wx:if="{{!filteredList.length}}" class="empty-box">
+    <view wx:if="{{!filteredList.length && !searchLoading}}" class="empty-box">
       <text class="empty-icon">📄</text>
       <text class="empty-text">暂无投稿记录</text>
       <!-- <button class="btn-add-first" bindtap="showAddForm">添加第一篇</button> -->
@@ -159,6 +181,14 @@
   <view class="load-more" wx:if="{{list.length > 0}}">
     <text wx:if="{{loadingMore}}">加载中...</text>
     <text wx:elif="{{!searchKeyword && !hasMore}}">— 没有更多了 —</text>
+  </view>
+
+  <!-- 搜索 loading 浮动遮罩 -->
+  <view class="search-loading-mask" wx:if="{{searchLoading}}" catchtouchmove="true">
+    <view class="search-loading-box">
+      <view class="search-loading-spinner"></view>
+      <text class="search-loading-text">搜索中...</text>
+    </view>
   </view>
 
   <!-- FAB 悬浮按钮 -->

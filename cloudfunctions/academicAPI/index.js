@@ -220,13 +220,31 @@ async function saveUserTools(event) {
   return { success: true, results: results };
 }
 
-// 投稿全量统计（totalCount, incompleteCount, nearCount, urgentCount）
-async function submissionStats() {
+// 投稿统计（支持搜索关键词过滤）
+// 参数: event.keyword - 可选，搜索关键词，匹配 title/journal/coauthors/tags
+async function submissionStats(event) {
   var now = new Date();
   // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
   var beijingTime = new Date(now.getTime() + 8 * 3600000);
   var todayStr = beijingTime.getFullYear() + '-' + String(beijingTime.getMonth()+1).padStart(2,'0') + '-' + String(beijingTime.getDate()).padStart(2,'0');
-  var res = await db.collection('submissions').where({ deleteTime: null }).limit(1000).get();
+
+  var _ = db.command;
+  var keyword = (event.keyword || '').trim();
+
+  // 构建查询条件
+  var conditions = [{ deleteTime: null }];
+  if (keyword) {
+    var reg = db.RegExp({ regexp: keyword, options: 'i' });
+    conditions.push(_.or([
+      { title: reg },
+      { journal: reg },
+      { coauthors: reg },
+      { tags: reg }
+    ]));
+  }
+  var where = conditions.length === 1 ? conditions[0] : _.and(conditions);
+
+  var res = await db.collection('submissions').where(where).limit(1000).get();
   var list = res.data || [];
   var total = 0, incomplete = 0, near = 0, urgent = 0;
   for (var i = 0; i < list.length; i++) {
@@ -244,7 +262,7 @@ async function submissionStats() {
       }
     }
   }
-  console.log('[submissionStats] result: total=' + total + ' incomplete=' + incomplete + ' near=' + near + ' urgent=' + urgent);
+  console.log('[submissionStats] keyword=' + keyword + ' total=' + total + ' incomplete=' + incomplete + ' near=' + near + ' urgent=' + urgent);
   return { success: true, total: total, incomplete: incomplete, near: near, urgent: urgent };
 }
 
@@ -285,7 +303,7 @@ exports.main = async (event) => {
       case 'getUserTools':    return await getUserTools();
       case 'toggleUserTool':  return await toggleUserTool(event);
       case 'saveUserTools':   return await saveUserTools(event);
-      case 'submissionStats': return await submissionStats();
+      case 'submissionStats': return await submissionStats(event);
       case 'fixCompleted':    return await fixCompleted();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }

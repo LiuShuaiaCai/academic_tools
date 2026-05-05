@@ -10,7 +10,7 @@ Page({
   data: {
     list:[], filteredList:[], filterGroup:'status', searchKeyword:'',
     showForm:false, isEdit:false, editId:'',
-    page:0, pageSize:20, hasMore:true, loadingMore:false,
+    page:0, pageSize:20, hasMore:true, loadingMore:false, searchLoading:false,
     showAdvanced:false,
     quickFilter:'',
     advStatus:'', advRole:'', advJournal:'', advPriority:'', advDeadlineFrom:'', advDeadlineTo:'',
@@ -54,93 +54,135 @@ Page({
     var skip = page * pageSize;
 
     this.setData({ loadingMore:true });
+    if(!isLoadMore) this.setData({ searchLoading:true });
 
     var db = wx.cloud.database();
     var _ = db.command;
 
-    // 构建 where 条件
-    var conditions = [{ deleteTime: null }];
+    // 构建"基础条件"（搜索 + 高级筛选，不含 quickFilter）
+    var baseConditions = [{ deleteTime: null }];
     var kw = (this.data.searchKeyword || '').trim();
     if(kw){
-      // 服务端模糊搜索：标题、期刊、合作者、标签
       var reg = db.RegExp({ regexp: kw, options: 'i' });
-      conditions.push(_.or([
+      baseConditions.push(_.or([
         { title: reg },
         { journal: reg },
         { coauthors: reg },
         { tags: reg }
       ]));
     }
+    // 高级筛选条件
+    var advStatus    = this.data.advStatus;
+    var advRole      = this.data.advRole;
+    var advJournal   = this.data.advJournal;
+    var advPriority  = this.data.advPriority;
+    var advCompleted = this.data.advCompleted;
+    var advFrom      = this.data.advDeadlineFrom;
+    var advTo        = this.data.advDeadlineTo;
+    if(advStatus)    baseConditions.push({ status: advStatus });
+    if(advRole)      baseConditions.push({ role: advRole });
+    if(advJournal)   baseConditions.push({ journal: advJournal });
+    if(advPriority)  baseConditions.push({ priority: advPriority });
+    if(advCompleted === 'yes') baseConditions.push({ completed: true });
+    if(advCompleted === 'no')  baseConditions.push({ completed: _.neq(true) });
+    if(advFrom)      baseConditions.push({ deadline: _.gte(advFrom + ' 00:00:00') });
+    if(advTo)        baseConditions.push({ deadline: _.lte(advTo + ' 23:59:59') });
 
-    // quickFilter 条件也加到服务端
+    // 构建"列表条件"（基础条件 + quickFilter）
+    var listConditions = baseConditions.slice();
     var qf = this.data.quickFilter;
     if(qf && qf !== 'all'){
       if(qf === 'incomplete'){
-        conditions.push({ completed: _.neq(true) });
-      } else if(qf === 'near' || qf === 'urgent'){
-        // 急需处理 / 特别紧急需要 deadline 范围，服务端不好直接算天数
-        // 先只加未完成条件，精确天数过滤留到客户端 applyFilter
-        conditions.push({ completed: _.neq(true) });
-        conditions.push({ deadline: _.neq('') });
-        conditions.push({ deadline: _.neq(null) });
+        listConditions.push({ completed: _.neq(true) });
+      } else if(qf === 'near'){
+        listConditions.push({ completed: _.neq(true) });
+        var now = new Date();
+        var from = new Date(now); from.setDate(now.getDate() + 2);
+        var to = new Date(now); to.setDate(now.getDate() + 3);
+        var fStr = from.getFullYear()+'-'+String(from.getMonth()+1).padStart(2,'0')+'-'+String(from.getDate()).padStart(2,'0');
+        var tStr = to.getFullYear()+'-'+String(to.getMonth()+1).padStart(2,'0')+'-'+String(to.getDate()).padStart(2,'0');
+        listConditions.push({ deadline: _.gte(fStr + ' 00:00:00') });
+        listConditions.push({ deadline: _.lte(tStr + ' 23:59:59') });
+      } else if(qf === 'urgent'){
+        listConditions.push({ completed: _.neq(true) });
+        var now2 = new Date();
+        var fStr2 = now2.getFullYear()+'-'+String(now2.getMonth()+1).padStart(2,'0')+'-'+String(now2.getDate()).padStart(2,'0');
+        var to2 = new Date(now2); to2.setDate(now2.getDate() + 1);
+        var tStr2 = to2.getFullYear()+'-'+String(to2.getMonth()+1).padStart(2,'0')+'-'+String(to2.getDate()).padStart(2,'0');
+        listConditions.push({ deadline: _.gte(fStr2 + ' 00:00:00') });
+        listConditions.push({ deadline: _.lte(tStr2 + ' 23:59:59') });
       }
     }
 
-    var where = conditions.length === 1 ? conditions[0] : _.and(conditions);
+    var whereForList = listConditions.length === 1 ? listConditions[0] : _.and(listConditions);
+    var whereForOptions = baseConditions.length === 1 ? baseConditions[0] : _.and(baseConditions);
 
-    db.collection('submissions')
-      .where(where)
+    // 两个查询并行：列表数据（含 quickFilter）+ 选项数据（不含 quickFilter）
+    var listQuery = db.collection('submissions')
+      .where(whereForList)
       .orderBy('deadline', 'asc')
       .skip(skip)
       .limit(pageSize)
-      .get()
-      .then(function(res){
-        var rawData = Array.isArray(res.data) ? res.data : [];
-        var newItems = rawData.map(function(item){ return formatUtil.formatItem(item); });
+      .get();
 
-        // 收集 relatedWorkId → 建立映射
-        var relatedMap = {};
-        rawData.forEach(function(raw, idx){
-          if(raw.relatedWorkId){
-            relatedMap[raw.relatedWorkId] = idx;
-          }
-        });
+    var queries = [listQuery];
+    if(that.data.quickFilter){
+      var optionsQuery = db.collection('submissions')
+        .where(whereForOptions)
+        .limit(1000)
+        .get();
+      queries.push(optionsQuery);
+    }
 
-        var relatedIds = Object.keys(relatedMap);
-        if(relatedIds.length === 0){
-          processItems(newItems);
-          return;
+    Promise.all(queries).then(function(results){
+      var listRes = results[0];
+      var optionsRes = results[1]; // undefined if no quickFilter
+
+      var rawData = Array.isArray(listRes.data) ? listRes.data : [];
+      var newItems = rawData.map(function(item){ return formatUtil.formatItem(item); });
+
+      // 收集 relatedWorkId → 建立映射
+      var relatedMap = {};
+      rawData.forEach(function(raw, idx){
+        if(raw.relatedWorkId){
+          relatedMap[raw.relatedWorkId] = idx;
         }
-
-        // 批量查询关联作品
-        db.collection('submissions')
-          .where({ _id: _.in(relatedIds), deleteTime:null })
-          .get()
-          .then(function(relRes){
-            (relRes.data || []).forEach(function(rel){
-              var idx = relatedMap[rel._id];
-              if(idx !== undefined){
-                newItems[idx].relatedWork = {
-                  _id: rel._id,
-                  title: rel.title || '',
-                  journal: rel.journal || ''
-                };
-              }
-            });
-            processItems(newItems);
-          })
-          .catch(function(e){
-            console.error('[投稿] 查询关联作品失败', e);
-            processItems(newItems);
-          });
-      })
-      .catch(function(e){
-        console.error('[投稿] 加载失败',e);
-        that.setData({ loadingMore:false });
-        if(!isLoadMore) that.setData({ list:[], filteredList:[] });
       });
 
-    function processItems(newItems){
+      var relatedIds = Object.keys(relatedMap);
+      if(relatedIds.length === 0){
+        processItems(newItems, optionsRes);
+        return;
+      }
+
+      // 批量查询关联作品
+      db.collection('submissions')
+        .where({ _id: _.in(relatedIds), deleteTime:null })
+        .get()
+        .then(function(relRes){
+          (relRes.data || []).forEach(function(rel){
+            var idx = relatedMap[rel._id];
+            if(idx !== undefined){
+              newItems[idx].relatedWork = {
+                _id: rel._id,
+                title: rel.title || '',
+                journal: rel.journal || ''
+              };
+            }
+          });
+          processItems(newItems, optionsRes);
+        })
+        .catch(function(e){
+          console.error('[投稿] 查询关联作品失败', e);
+          processItems(newItems, optionsRes);
+        });
+    }).catch(function(e){
+      console.error('[投稿] 加载失败',e);
+      that.setData({ loadingMore:false, searchLoading:false });
+      if(!isLoadMore) that.setData({ list:[], filteredList:[] });
+    });
+
+    function processItems(newItems, optionsRes){
       newItems.sort(function(a, b){
         if(!a.deadline && !b.deadline) return 0;
         if(!a.deadline) return 1;
@@ -150,35 +192,42 @@ Page({
       var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
       var hasMore = newItems.length >= pageSize;
       var extra = {};
+
+      // 构建高级筛选选项：优先用"不含 quickFilter"的选项数据，否则用当前 list
       if(!isLoadMore){
-        extra = that.buildAdvOptions(list);
+        if(optionsRes && optionsRes.data){
+          var optionsData = Array.isArray(optionsRes.data) ? optionsRes.data : [];
+          var optionsItems = optionsData.map(function(item){ return formatUtil.formatItem(item); });
+          extra = that.buildAdvOptions(optionsItems);
+        } else {
+          extra = that.buildAdvOptions(list);
+        }
       }
+
       extra.list = list;
       extra.page = isLoadMore ? page : 0;
       extra.hasMore = hasMore;
       extra.loadingMore = false;
+      extra.searchLoading = false;
       that.setData(extra, function() {
         that.applyFilter();
         // 处理首页跳转：用 targetId 精确定位
         if (that.data.targetId) {
           var targetTitle = that.data.targetTitle;
-          // 填充搜索栏（先检查目标是否已在当前列表中）
           var found = list.find(function(i){ return i._id === that.data.targetId; });
           if(found){
-            // 目标在列表中，填充标题到搜索栏并弹窗
             if(targetTitle) that.setData({ searchKeyword: targetTitle });
             if(that.data.pendingAutoEdit){
               that.setData({ showForm: true, isEdit: true, editId: that.data.targetId });
             }
             that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
           } else {
-            // 目标不在当前列表（可能在搜索结果之外），直接用 ID 查询
             that.locateById(that.data.targetId, targetTitle);
           }
         }
       });
-      // 全量统计（首次加载且无搜索词时，避免全局统计覆盖搜索后的计数）
-      if(!isLoadMore && !that.data.searchKeyword) that.loadStats();
+      // 每次加载完成后更新统计（支持搜索联动）
+      if(!isLoadMore) that.loadStats();
     }
   },
 
@@ -217,15 +266,17 @@ Page({
     this.loadList();
   },
 
-  /* ======== 全量统计（云函数）======= */
+  /* ======== 统计（云函数，支持搜索关键词联动）======= */
   loadStats:function(){
     var that = this;
-    // console.log('[投稿] 开始调用 loadStats 云函数');
+    var keyword = (this.data.searchKeyword || '').trim();
     wx.cloud.callFunction({
       name:'academicAPI',
-      data:{ action:'submissionStats' }
+      data:{
+        action:'submissionStats',
+        keyword: keyword
+      }
     }).then(function(res){
-      // console.log('[投稿] loadStats 返回结果:', JSON.stringify(res.result));
       if(res.result && res.result.success){
         that.setData({
           totalCount: res.result.total,
@@ -237,7 +288,7 @@ Page({
         console.warn('[投稿] loadStats 返回不成功:', res.result);
       }
     }).catch(function(e){
-      console.error('[投稿] 全量统计失败', e);
+      console.error('[投稿] 统计失败', e);
     });
   },
 
@@ -259,97 +310,10 @@ Page({
   setFilterGroup:function(e){ this.setData({ filterGroup:e.currentTarget.dataset.group }); this.applyFilter(); },
 
   applyFilter:function(){
-    var d = this.data;
-    // 关键词搜索已由服务端 db.RegExp 完成，客户端不再重复过滤
-    var baseList = Array.isArray(d.list) ? d.list : [];
-    var kwBase = baseList;
-
-    // 快速筛选（独立于高级筛选）
-    var qf = d.quickFilter;
-    if(qf && qf !== 'all'){
-      var now = new Date();
-      var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-      if(qf === 'incomplete'){
-        kwBase = kwBase.filter(function(i){ return !i.completed; });
-      } else if(qf === 'near'){
-        kwBase = kwBase.filter(function(i){
-          if(i.completed) return false;
-          if(!i.deadline) return false;
-          var dlDateStr = String(i.deadline).substring(0, 10);
-          var todayDate = new Date(todayStr + 'T00:00:00');
-          var dlDate = new Date(dlDateStr + 'T00:00:00');
-          var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
-          return days >= 2 && days <= 3;
-        });
-      } else if(qf === 'urgent'){
-        kwBase = kwBase.filter(function(i){
-          if(i.completed) return false;
-          if(!i.deadline) return false;
-          var dlDateStr = String(i.deadline).substring(0, 10);
-          var todayDate = new Date(todayStr + 'T00:00:00');
-          var dlDate = new Date(dlDateStr + 'T00:00:00');
-          var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
-          return days >= 0 && days <= 1;
-        });
-      }
-    }
-
-    var advStatus   = d.advStatus;
-    var advRole     = d.advRole;
-    var advJournal  = d.advJournal;
-    var advPriority = d.advPriority;
-    var advFrom     = d.advDeadlineFrom;
-    var advTo       = d.advDeadlineTo;
-    var advCompleted = d.advCompleted;
-
-    function applyFilters(base, skipField){
-      var r = base;
-      if(skipField !== 'status'    && advStatus)    r = r.filter(function(i){ return i.status === advStatus; });
-      if(skipField !== 'role'      && advRole)      r = r.filter(function(i){ return i.role === advRole; });
-      if(skipField !== 'journal'   && advJournal)   r = r.filter(function(i){ return i.journal === advJournal; });
-      if(skipField !== 'priority'  && advPriority)  r = r.filter(function(i){ return i.priority === advPriority; });
-      if(skipField !== 'deadline'  && advFrom)      r = r.filter(function(i){ return i.deadline && i.deadline >= advFrom; });
-      if(skipField !== 'deadline'  && advTo)        r = r.filter(function(i){ return i.deadline && i.deadline <= advTo; });
-      if(skipField !== 'completed' && advCompleted) r = r.filter(function(i){
-        return advCompleted === 'yes' ? !!i.completed : !i.completed;
-      });
-      return r;
-    }
-
-    var result = applyFilters(kwBase, null);
-
-    var statusBase   = applyFilters(kwBase, 'status');
-    var roleBase     = applyFilters(kwBase, 'role');
-    var journalBase  = applyFilters(kwBase, 'journal');
-    var priorityBase = applyFilters(kwBase, 'priority');
-
-    var that = this;
-    var advOpts = that._buildAdvOptionsFromBases(statusBase, roleBase, journalBase, priorityBase);
-
-    advOpts.filteredList = Array.isArray(result) ? result : [];
-
-    // 根据当前 list 重新计算快速筛选计数（搜索时也更新）
-    var allList = baseList;
-    var now = new Date();
-    var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    advOpts.totalCount = allList.length;
-    advOpts.incompleteCount = allList.filter(function(i){ return !i.completed; }).length;
-    advOpts.nearCount = allList.filter(function(i){
-      if(i.completed || !i.deadline) return false;
-      var dl = new Date(String(i.deadline).substring(0,10) + 'T00:00:00');
-      var td = new Date(todayStr + 'T00:00:00');
-      var days = Math.round((dl.getTime() - td.getTime()) / 86400000);
-      return days >= 2 && days <= 3;
-    }).length;
-    advOpts.urgentCount = allList.filter(function(i){
-      if(i.completed || !i.deadline) return false;
-      var dl = new Date(String(i.deadline).substring(0,10) + 'T00:00:00');
-      var td = new Date(todayStr + 'T00:00:00');
-      var days = Math.round((dl.getTime() - td.getTime()) / 86400000);
-      return days >= 0 && days <= 1;
-    }).length;
-
-    that.setData(advOpts);
+    // 所有筛选已在服务端完成，客户端只同步 filteredList
+    // 高级筛选选项由 processItems 用不含 quickFilter 的数据构建，此处不再重建
+    var baseList = Array.isArray(this.data.list) ? this.data.list : [];
+    this.setData({ filteredList: baseList });
   },
 
   _buildAdvOptionsFromBases:function(statusBase, roleBase, journalBase, priorityBase){
@@ -429,45 +393,97 @@ Page({
   onAdvStatusChange:function(e){
     var idx = parseInt(e.detail.value);
     var opt = this.data.advStatusOptions[idx] || {};
-    this.setData({ advStatusIndex:idx, advStatus:opt.value||'', advStatusLabel:opt.label||'' });
-    this.applyFilter();
+    this.setData({
+      advStatusIndex:idx, advStatus:opt.value||'', advStatusLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
   },
   onAdvRoleChange:function(e){
     var idx = parseInt(e.detail.value);
     var opt = this.data.advRoleOptions[idx] || {};
-    this.setData({ advRoleIndex:idx, advRole:opt.value||'', advRoleLabel:opt.label||'' });
-    this.applyFilter();
+    this.setData({
+      advRoleIndex:idx, advRole:opt.value||'', advRoleLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
   },
   onAdvJournalChange:function(e){
     var idx = parseInt(e.detail.value);
     var opt = this.data.advJournalOptions[idx] || {};
-    this.setData({ advJournalIndex:idx, advJournal:opt.value||'', advJournalLabel:opt.label||'' });
-    this.applyFilter();
+    this.setData({
+      advJournalIndex:idx, advJournal:opt.value||'', advJournalLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
   },
   onAdvPriorityChange:function(e){
     var idx = parseInt(e.detail.value);
     var opt = this.data.advPriorityOptions[idx] || {};
-    this.setData({ advPriorityIndex:idx, advPriority:opt.value||'', advPriorityLabel:opt.label||'' });
-    this.applyFilter();
+    this.setData({
+      advPriorityIndex:idx, advPriority:opt.value||'', advPriorityLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
   },
   onAdvCompletedChange:function(e){
     var idx = parseInt(e.detail.value);
     var opt = this.data.advCompletedOptions[idx] || {};
-    this.setData({ advCompletedIndex:idx, advCompleted:opt.value||'', advCompletedLabel:opt.label||'' });
-    this.applyFilter();
+    this.setData({
+      advCompletedIndex:idx, advCompleted:opt.value||'', advCompletedLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
   },
   onAdvDeadlineFromChange:function(e){
-    this.setData({ advDeadlineFrom:e.detail.value });
-    this.applyFilter();
+    this.setData({ advDeadlineFrom:e.detail.value, quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
   },
   onAdvDeadlineToChange:function(e){
-    this.setData({ advDeadlineTo:e.detail.value });
-    this.applyFilter();
+    this.setData({ advDeadlineTo:e.detail.value, quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+
+  // 高级筛选各条件清空
+  clearAdvStatus:function(){
+    this.setData({ advStatus:'', advStatusIndex:-1, advStatusLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvRole:function(){
+    this.setData({ advRole:'', advRoleIndex:-1, advRoleLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvJournal:function(){
+    this.setData({ advJournal:'', advJournalIndex:-1, advJournalLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvPriority:function(){
+    this.setData({ advPriority:'', advPriorityIndex:-1, advPriorityLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvCompleted:function(){
+    this.setData({ advCompleted:'', advCompletedIndex:-1, advCompletedLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvDeadlineFrom:function(){
+    this.setData({ advDeadlineFrom:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvDeadlineTo:function(){
+    this.setData({ advDeadlineTo:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
   },
 
   onTipFilter:function(e){
     var type = e.currentTarget.dataset.filter;
-    this.setData({ quickFilter: type === this.data.quickFilter ? '' : type, page:0, hasMore:true });
+    this.setData({
+      quickFilter: type === this.data.quickFilter ? '' : type,
+      page:0, hasMore:true,
+      // 清空高级筛选条件（quickFilter 和高级筛选互斥）
+      advStatus:'', advRole:'', advJournal:'', advPriority:'', advDeadlineFrom:'', advDeadlineTo:'', advCompleted:'',
+      advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1, advCompletedIndex:-1,
+      advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'', advCompletedLabel:''
+    });
     this.loadList(false);
   },
 
@@ -484,9 +500,10 @@ Page({
       advStatus:'', advRole:'', advJournal:'', advPriority:'',
       advDeadlineFrom:'', advDeadlineTo:'', advCompleted:'',
       advStatusIndex:-1, advRoleIndex:-1, advJournalIndex:-1, advPriorityIndex:-1, advCompletedIndex:-1,
-      advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'', advCompletedLabel:''
+      advStatusLabel:'', advRoleLabel:'', advJournalLabel:'', advPriorityLabel:'', advCompletedLabel:'',
+      page:0, hasMore:true
     });
-    this.applyFilter();
+    this.loadList(false);
   },
 
   /* ======== 表单控制 ======== */
