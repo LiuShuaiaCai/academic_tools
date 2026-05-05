@@ -244,14 +244,16 @@ Page({
         var shouldAutoEdit = that.data.pendingAutoEdit;
         that.setData({
           list: list,
+          filteredList: list,
           isTargetMode: true,
           targetId: '', targetTitle: '', pendingAutoEdit: false
         }, function(){
-          that.applyFilter();
           if(shouldAutoEdit){
             that.setData({ showForm: true, isEdit: true, editId: id });
           }
         });
+        // 首页跳转也需要更新统计数字
+        that.loadStats();
       }
     }).catch(function(e){
       console.error('[投稿] 定位失败', e);
