@@ -13,11 +13,14 @@ page { background: #F6F6F6; }
   font-size: 24rpx; padding: 8rpx 14rpx; border-radius: 8rpx;
   flex-shrink: 0; font-weight: 500; white-space: nowrap;
 }
-.tip-all { color: #065F46; background: #ECFDF5; border: 1rpx solid #6EE7B7; }
-.tip-btn.active { opacity: 1; font-weight: 700; box-shadow: 0 0 0 2rpx rgba(0,0,0,0.1); }
-.tip-info { color: #1E40AF; background: #EFF6FF; border: 1rpx solid #BFDBFE; }
-.tip-urgent { color: #92400E; background: #FEF3C7; border: 1rpx solid #FDE68A; }
-.tip-warn { color: #991B1B; background: #FEE2E2; border: 1rpx solid #FCA5A5; }
+.tip-all    { color: #065F46; background: transparent; border: 1rpx solid #6EE7B7; }
+.tip-info   { color: #1E40AF; background: transparent; border: 1rpx solid #BFDBFE; }
+.tip-urgent { color: #92400E; background: transparent; border: 1rpx solid #FDE68A; }
+.tip-warn   { color: #991B1B; background: transparent; border: 1rpx solid #FCA5A5; }
+.tip-all.active    { background: #ECFDF5; font-weight: 700; }
+.tip-info.active   { background: #EFF6FF; font-weight: 700; }
+.tip-urgent.active { background: #FEF3C7; font-weight: 700; }
+.tip-warn.active   { background: #FEE2E2; font-weight: 700; }
 .filter-tips .adv-toggle {
   font-size: 24rpx; padding: 8rpx 14rpx; border-radius: 8rpx;
   background: #F3F4F6; color: #374151; flex-shrink: 0; white-space: nowrap;
