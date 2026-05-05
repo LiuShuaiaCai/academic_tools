@@ -1,0 +1,19 @@
+{
+  "name": "aiService",
+  "version": "1.0.0",
+  "description": "AI 审稿服务云函数（多模型支持）",
+  "main": "index.js",
+  "scripts": { "test": "echo \"Error: no test specified\" && exit 1" },
+  "author": "",
+  "license": "ISC",
+  "cloudfunctionConfig": {
+    "memorySize": 512,
+    "timeout": 60
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest",
+    "pdf-parse": "^1.1.1",
+    "mammoth": "^1.8.0",
+    "axios": "^1.7.0"
+  }
+}

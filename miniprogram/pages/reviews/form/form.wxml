@@ -105,9 +105,69 @@
         </picker>
       </view>
 
+      <!-- 12. 上传稿件 -->
+      <view class="form-group">
+        <view class="form-label-row">
+          <view class="form-label"><text class="form-label-icon">📄</text> 上传稿件 <text class="form-label-hint">（PDF/Word，最大50MB）</text></view>
+          <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{form.manuscript && form.manuscript.fileID && !aiReviewLoading}}">
+            <text class="template-btn-icon">🤖</text>
+            <text class="template-btn-text">AI审稿</text>
+          </view>
+        </view>
+        <!-- 未上传时：选择文件按钮 -->
+        <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
+          <view class="manuscript-upload-icon">📄</view>
+          <view class="manuscript-upload-text">点击选择稿件文件</view>
+          <view class="manuscript-upload-hint">支持 PDF / Word，最大 50MB</view>
+        </view>
+        <!-- 已上传时：显示文件信息 -->
+        <view wx:else class="manuscript-file-card">
+          <view class="manuscript-file-info">
+            <view class="manuscript-file-icon">{{form.manuscript.fileType === 'pdf' ? '📕' : '📘'}}</view>
+            <view class="manuscript-file-detail">
+              <view class="manuscript-file-name">{{form.manuscript.fileName}}</view>
+              <view class="manuscript-file-size">{{form.manuscript.fileSizeText}}</view>
+            </view>
+          </view>
+          <view class="manuscript-file-actions">
+            <view class="manuscript-action-btn" bindtap="previewManuscript">预览</view>
+            <view class="manuscript-action-btn manuscript-action-del" bindtap="removeManuscript">删除</view>
+          </view>
+        </view>
+        <!-- 上传进度 -->
+        <view wx:if="{{manuscriptUploading}}" class="manuscript-progress">
+          <progress percent="{{manuscriptUploadPercent}}" stroke-width="4" activeColor="#2563EB" backgroundColor="#E5E7EB"/>
+          <text class="manuscript-progress-text">上传中 {{manuscriptUploadPercent}}%</text>
+        </view>
+        <!-- AI审稿进度 -->
+        <view wx:if="{{aiReviewLoading}}" class="manuscript-progress">
+          <view class="ai-review-loading">
+            <view class="ai-review-spinner"></view>
+            <text class="ai-review-loading-text">AI 正在分析稿件，请稍候...</text>
+          </view>
+        </view>
+      </view>
+
+
+      <!-- 13. 审稿笔记 -->
+      <view class="form-group">
+        <view class="form-label-row">
+          <view class="form-label">审稿笔记<text class="form-label-hint">（优点/缺点/建议/问题）</text></view>
+          <view class="template-btn" bindtap="showTemplateModal">
+            <text class="template-btn-icon">📋</text>
+            <text class="template-btn-text">插入模板</text>
+          </view>
+          <view class="template-btn clear-note-btn" bindtap="clearNote">
+            <text class="template-btn-icon">🗑</text>
+            <text class="template-btn-text">清空</text>
+          </view>
+        </view>
+        <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}" maxlength="-1"></textarea>
+      </view>
+      
       <!-- 12. 处理时间线 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📅</text> 处理时间线</view>
+        <view class="form-label"><text class="form-label-icon">📅</text> 处理时间线<text class="form-label-hint">（任务完成：最后一次处理时间大于到期时间）</text></view>
 
         <view class="tl-add-row">
           <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
@@ -149,12 +209,6 @@
             </view>
           </view>
         </view>
-      </view>
-
-      <!-- 13. 审稿笔记 -->
-      <view class="form-group">
-        <view class="form-label">审稿笔记<text class="form-label-hint">（优点/缺点/建议/问题）</text></view>
-        <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
       </view>
 
     </scroll-view>
@@ -222,6 +276,93 @@
     <view class="form-footer">
       <button class="btn-cancel" bindtap="closeDecision">取消</button>
       <button class="btn-confirm" bindtap="submitDecision">提交决定</button>
+    </view>
+  </view>
+</view>
+
+<!-- 审稿模板弹窗 -->
+<view class="form-overlay {{showTemplateModal ? 'active' : ''}}" bindtap="closeTemplateModal">
+  <view class="form-sheet template-sheet" catchtap="doNothing">
+    <view class="form-header">
+      <view class="form-title">📋 选择审稿模板</view>
+      <view class="form-close" bindtap="closeTemplateModal">✕</view>
+    </view>
+    <scroll-view scroll-y class="form-body">
+
+      <!-- 出版商筛选 -->
+      <view class="publisher-filter">
+        <view class="publisher-tag {{selectedPublisher === '' ? 'active' : ''}}" bindtap="filterByPublisher" data-publisher="">全部</view>
+        <view class="publisher-tag {{selectedPublisher === item.id ? 'active' : ''}}"
+          wx:for="{{templatePublishers}}" wx:key="id"
+          bindtap="filterByPublisher" data-publisher="{{item.id}}">
+          {{item.name}}
+        </view>
+      </view>
+
+      <!-- 未选择模板时：显示模板列表 -->
+      <view wx:if="{{!selectedTemplate}}" class="template-list">
+        <view class="template-card" wx:for="{{filteredTemplates}}" wx:key="_index" bindtap="selectTemplate" data-idx="{{index}}">
+          <view class="template-card-icon">{{item.icon}}</view>
+          <view class="template-card-info">
+            <view class="template-card-name">{{item.name}}</view>
+            <view class="template-card-meta">
+              <text class="template-card-publisher" style="color:{{publisherMap[item.publisher] ? publisherMap[item.publisher].color : '#6B7280'}}">
+                {{publisherMap[item.publisher] ? publisherMap[item.publisher].name : item.publisher}}
+              </text>
+              <text class="template-card-count">{{item.items.length}} 项</text>
+            </view>
+          </view>
+          <text class="template-card-arrow">›</text>
+        </view>
+        <view class="template-empty" wx:if="{{filteredTemplates.length === 0}}">
+          <text>该出版商暂无模板</text>
+        </view>
+      </view>
+
+      <!-- 已选择模板时：显示模板表单 -->
+      <view wx:if="{{selectedTemplate}}" class="template-form">
+        <view class="template-form-header">
+          <view class="template-back" bindtap="backToTemplateList">
+            <text>← 返回</text>
+          </view>
+          <view class="template-form-title">{{selectedTemplate.icon}} {{selectedTemplate.name}}</view>
+        </view>
+
+        <view class="template-items">
+          <view class="template-item" wx:for="{{selectedTemplate.items}}" wx:key="index">
+            <!-- 单选 -->
+            <block wx:if="{{item.type === 'radio'}}">
+              <view class="template-item-label">{{item.label}}</view>
+              <radio-group class="template-radio-group" bindchange="onTemplateRadioChange" data-idx="{{index}}">
+                <label class="template-radio-item" wx:for="{{item.options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="optIdx">
+                  <radio class="tmpl-radio" value="{{optIdx}}" color="#2563EB"/>
+                  <text class="template-radio-text">{{opt}}</text>
+                </label>
+              </radio-group>
+            </block>
+            <!-- 多选 -->
+            <block wx:elif="{{item.type === 'checkbox'}}">
+              <view class="template-item-label">{{item.label}}</view>
+              <checkbox-group class="template-checkbox-group" bindchange="onTemplateCheckboxChange" data-idx="{{index}}">
+                <label class="template-checkbox-item" wx:for="{{item.options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="optIdx">
+                  <checkbox class="tmpl-checkbox" value="{{optIdx}}" color="#2563EB"/>
+                  <text class="template-checkbox-text">{{opt}}</text>
+                </label>
+              </checkbox-group>
+            </block>
+            <!-- 文本 -->
+            <block wx:elif="{{item.type === 'text'}}">
+              <view class="template-item-label">{{item.label}}</view>
+              <textarea class="template-textarea" placeholder="{{item.placeholder || '请输入...'}}" bindinput="onTemplateTextInput" data-idx="{{index}}" value="{{templateSelections[index] || ''}}"></textarea>
+            </block>
+          </view>
+        </view>
+      </view>
+
+    </scroll-view>
+    <view class="form-footer" wx:if="{{selectedTemplate}}">
+      <button class="btn-cancel" bindtap="closeTemplateModal">取消</button>
+      <button class="btn-confirm" bindtap="useTemplate">使用模板</button>
     </view>
   </view>
 </view>

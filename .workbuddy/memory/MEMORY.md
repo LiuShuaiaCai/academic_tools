@@ -60,6 +60,18 @@
 - 搜索时调用 `loadList()` 重新请求服务端，`applyFilter()` 只做状态/高级筛选
 - 云数据库 `.get()` 默认最多返回 20 条，需注意数据量
 
+## 云函数架构
+
+- `academicAPI`：业务接口（用户配置、工具开关、投稿/审稿统计等），无AI依赖
+- `aiService`：文件文本提取 + 模型配置查询，**不含 AI 调用**
+  - AI 调用在**小程序端**用 `wx.cloud.extend.AI.createModel()` 实现
+  - `cloud.AI.createModel()` 在云函数端**不稳定**（有时报 undefined），已弃用
+  - API Key 和 BaseURL 在云开发后台 AI+ 模块配置，代码中不管理
+  - 默认模型：`hunyuan-exp`（混元 Turbo），无模型选择功能
+  - 小程序端正确写法：`wx.cloud.extend.AI.createModel(groupName)` — 有 `extend`
+  - 小程序端 generateText 参数**直接传**，不包在 data 里；streamText 才需要 `{ data: {...} }`
+  - AI 调用逻辑已提取到 `utils/ai-review.js`，form.js 只负责调云函数提取文本 + 调用 aiReviewUtil
+
 ## 用户偏好
 
 - 偏好简洁的中文指令与结构化输出

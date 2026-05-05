@@ -93,7 +93,7 @@
 
       <!-- 11. 时间线 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📅</text> 时间线</view>
+        <view class="form-label"><text class="form-label-icon">📅</text> 时间线<text class="form-label-hint">（任务完成：最后一次处理时间大于到期时间）</text></view>
 
         <view class="tl-add-row">
           <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">

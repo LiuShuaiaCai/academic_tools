@@ -331,6 +331,8 @@ async function fixCompleted() {
   return { success: true, fixed: fixed, total: list.length };
 }
 
+// AI 审稿功能已迁移至独立云函数 aiService（支持多模型：Kimi/DeepSeek 等）
+
 // ==================== 入口 ====================
 
 exports.main = async (event) => {

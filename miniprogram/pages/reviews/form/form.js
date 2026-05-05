@@ -4,6 +4,8 @@ var formatTime = dbInit.formatTime;
 var parseDate = dbInit.parseDate;
 var config = require('../../../utils/reviews-config');
 var formatUtil = require('../../../utils/reviews-format');
+var templateData = require('../../../utils/review-templates-data');
+var aiReviewUtil = require('../../../utils/review-ai');
 
 Component({
   properties: {
@@ -22,7 +24,8 @@ Component({
       tlNewDate: '', tlNewEventIdx: -1, tlNewRemark: '',
       timelineList: [],
       decisionIdx: -1,
-      roundIdx: 0
+      roundIdx: 0,
+      manuscript: { fileID: '', fileName: '', fileSize: 0, fileSizeText: '', fileType: '', uploadTime: '' }
     },
     statusOptions: config.STATUS_OPTIONS_FOR_FORM,
     decisionOptions: config.DECISION_OPTIONS,
@@ -35,7 +38,22 @@ Component({
     decisionPaper: '',
     decisionJournal: '',
     decision: '',
-    decisionNote: ''
+    decisionNote: '',
+
+    // ======== 审稿模板相关 ========
+    showTemplateModal: false,
+    templatePublishers: templateData.PUBLISHERS,
+    publisherMap: {},
+    templateList: [],
+    filteredTemplates: [],
+    selectedPublisher: '',
+    selectedTemplate: null,
+    templateSelections: [],   // 数组，索引对应模板 items 索引
+
+    // ======== 稿件上传相关 ========
+    manuscriptUploading: false,
+    manuscriptUploadPercent: 0,
+    aiReviewLoading: false
   },
 
   lifetimes: {
@@ -44,6 +62,7 @@ Component({
         this.loadEditData(this.data.editId);
       }
       this.loadRelatedReviews(this.data.editId || null);
+      this.initTemplates();
     }
   },
 
@@ -63,6 +82,20 @@ Component({
   },
 
   methods: {
+    initTemplates: function() {
+      var templates = templateData.TEMPLATES.map(function(t, idx) {
+        return Object.assign({}, t, { _index: idx });
+      });
+      // 建立出版商 id→{name,color} 映射
+      var pubMap = {};
+      templateData.PUBLISHERS.forEach(function(p) { pubMap[p.id] = { name: p.name, color: p.color }; });
+      this.setData({
+        templateList: templates,
+        filteredTemplates: templates,
+        publisherMap: pubMap
+      });
+    },
+
     resetForm: function() {
       this.setData({
         form: {
@@ -74,8 +107,14 @@ Component({
           tlNewDate: '', tlNewEventIdx: -1, tlNewRemark: '',
           timelineList: [],
           decisionIdx: -1,
-          roundIdx: 0
-        }
+          roundIdx: 0,
+          manuscript: { fileID: '', fileName: '', fileSize: 0, fileSizeText: '', fileType: '', uploadTime: '' }
+        },
+        selectedTemplate: null,
+        templateSelections: [],
+        manuscriptUploading: false,
+        manuscriptUploadPercent: 0,
+        aiReviewLoading: false
       });
       this.loadRelatedReviews(null);
     },
@@ -112,6 +151,13 @@ Component({
           if (config.ROUND_OPTIONS[ri].value === roundVal) { rIdx = ri; break; }
         }
 
+        // manuscript 文件大小格式化
+        var ms = item.manuscript || {};
+        var msFileSizeText = '';
+        if (ms.fileSize) {
+          msFileSizeText = ms.fileSize > 1048576 ? (ms.fileSize / 1048576).toFixed(1) + ' MB' : (ms.fileSize / 1024).toFixed(0) + ' KB';
+        }
+
         that.setData({
           form: {
             paperTitle: item.paperTitle || '',
@@ -131,7 +177,15 @@ Component({
             relatedReviewTitle: '',
             relatedReviewIdx: 0,
             tlNewDate: '', tlNewEventIdx: -1, tlNewRemark: '',
-            timelineList: tlList
+            timelineList: tlList,
+            manuscript: {
+              fileID: ms.fileID || '',
+              fileName: ms.fileName || '',
+              fileSize: ms.fileSize || 0,
+              fileSizeText: msFileSizeText,
+              fileType: ms.fileType || '',
+              uploadTime: ms.uploadTime || ''
+            }
           }
         });
 
@@ -241,6 +295,342 @@ Component({
       this.setData({ 'form.timelineList': tl });
     },
 
+    // 清空审稿笔记
+    clearNote: function() {
+      if (!this.data.form.note) return;
+      var that = this;
+      wx.showModal({
+        title: '确认清空',
+        content: '确定要清空审稿笔记吗？',
+        confirmColor: '#EF4444',
+        success: function(res) {
+          if (res.confirm) {
+            that.setData({ 'form.note': '' });
+          }
+        }
+      });
+    },
+
+    // ======== 审稿模板弹窗 ========
+    showTemplateModal: function() {
+      this.setData({
+        showTemplateModal: true,
+        selectedPublisher: '',
+        selectedTemplate: null,
+        templateSelections: [],
+        filteredTemplates: this.data.templateList
+      });
+    },
+
+    closeTemplateModal: function() {
+      this.setData({ showTemplateModal: false });
+    },
+
+    // 按出版商筛选
+    filterByPublisher: function(e) {
+      var pubId = e.currentTarget.dataset.publisher;
+      var filtered;
+      if (!pubId || pubId === '') {
+        filtered = this.data.templateList;
+      } else {
+        filtered = this.data.templateList.filter(function(t) { return t.publisher === pubId; });
+      }
+      this.setData({
+        selectedPublisher: pubId || '',
+        filteredTemplates: filtered,
+        selectedTemplate: null,
+        templateSelections: []
+      });
+    },
+
+    // 返回模板列表
+    backToTemplateList: function() {
+      this.setData({ selectedTemplate: null, templateSelections: [] });
+    },
+
+    // 选择模板
+    selectTemplate: function(e) {
+      var idx = e.currentTarget.dataset.idx;
+      var tmpl = this.data.filteredTemplates[idx];
+      var selections = [];
+      // 初始化选择
+      if (tmpl && tmpl.items) {
+        tmpl.items.forEach(function(item, i) {
+          if (item.type === 'radio') {
+            selections.push(0); // 默认第一个
+          } else if (item.type === 'checkbox') {
+            selections.push([]); // 空数组
+          } else if (item.type === 'text') {
+            selections.push('');
+          }
+        });
+      }
+      this.setData({
+        selectedTemplate: tmpl,
+        templateSelections: selections
+      });
+    },
+
+    // 模板内单选变化
+    onTemplateRadioChange: function(e) {
+      var itemIdx = e.currentTarget.dataset.idx;
+      var val = parseInt(e.detail.value);
+      var selections = this.data.templateSelections.slice();
+      selections[itemIdx] = val;
+      this.setData({ templateSelections: selections });
+    },
+
+    // 模板内复选框变化
+    onTemplateCheckboxChange: function(e) {
+      var itemIdx = e.currentTarget.dataset.idx;
+      var vals = e.detail.value.map(function(v) { return parseInt(v); });
+      var selections = this.data.templateSelections.slice();
+      selections[itemIdx] = vals;
+      this.setData({ templateSelections: selections });
+    },
+
+    // 模板内文本输入
+    onTemplateTextInput: function(e) {
+      var itemIdx = e.currentTarget.dataset.idx;
+      var val = e.detail.value;
+      var selections = this.data.templateSelections.slice();
+      selections[itemIdx] = val;
+      this.setData({ templateSelections: selections });
+    },
+
+    // 使用模板（生成文本并填入笔记）
+    useTemplate: function() {
+      var tmpl = this.data.selectedTemplate;
+      var selections = this.data.templateSelections;
+      if (!tmpl) {
+        wx.showToast({ title: '请先选择模板', icon: 'none' });
+        return;
+      }
+
+      var lines = [];
+      lines.push('【' + tmpl.name + '】');
+      lines.push('');
+
+      tmpl.items.forEach(function(item, i) {
+        var sel = selections[i];
+
+        if (item.type === 'radio') {
+          var selectedOption = (sel !== undefined && sel !== null) ? item.options[sel] : item.options[0];
+          lines.push('• ' + item.label + '：' + (selectedOption || ''));
+        } else if (item.type === 'checkbox') {
+          var checked = [];
+          if (sel && sel.length) {
+            sel.forEach(function(idx) {
+              if (item.options[idx]) checked.push(item.options[idx]);
+            });
+          }
+          lines.push('• ' + item.label + '：' + (checked.length > 0 ? checked.join('、') : '未选择'));
+        } else if (item.type === 'text') {
+          var textVal = (sel && sel.trim) ? sel.trim() : '';
+          if (textVal) {
+            lines.push('• ' + item.label + '：');
+            lines.push(textVal);
+          } else {
+            lines.push('• ' + item.label + '：（未填写）');
+          }
+        }
+      });
+
+      var generatedText = lines.join('\n');
+      var currentNote = this.data.form.note || '';
+      var newNote = currentNote ? currentNote + '\n\n' + generatedText : generatedText;
+
+      this.setData({
+        'form.note': newNote,
+        showTemplateModal: false
+      });
+      wx.showToast({ title: '模板已插入', icon: 'success' });
+    },
+
+    // ======== 稿件上传 ========
+
+    // 选择文件
+    chooseManuscript: function() {
+      var that = this;
+      wx.chooseMessageFile({
+        count: 1,
+        type: 'file',
+        extension: ['pdf', 'doc', 'docx'],
+        success: function(res) {
+          var file = res.tempFiles[0];
+          // 检查大小 50MB
+          if (file.size > 50 * 1024 * 1024) {
+            wx.showToast({ title: '文件不能超过50MB', icon: 'none' });
+            return;
+          }
+          that.uploadManuscript(file.path, file.name, file.size);
+        }
+      });
+    },
+
+    // 上传文件到云存储
+    uploadManuscript: function(filePath, fileName, fileSize) {
+      var that = this;
+      // 生成云存储路径
+      var ext = fileName.split('.').pop().toLowerCase();
+      var cloudPath = 'manuscripts/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.' + ext;
+
+      that.setData({ manuscriptUploading: true, manuscriptUploadPercent: 0 });
+
+      var uploadTask = wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: filePath,
+        success: function(res) {
+          var fileSizeText = fileSize > 1048576 ? (fileSize / 1048576).toFixed(1) + ' MB' : (fileSize / 1024).toFixed(0) + ' KB';
+          that.setData({
+            'form.manuscript': {
+              fileID: res.fileID,
+              fileName: fileName,
+              fileSize: fileSize,
+              fileSizeText: fileSizeText,
+              fileType: ext === 'pdf' ? 'pdf' : 'doc',
+              uploadTime: formatTime()
+            },
+            manuscriptUploading: false,
+            manuscriptUploadPercent: 100
+          });
+          wx.showToast({ title: '上传成功', icon: 'success' });
+        },
+        fail: function() {
+          that.setData({ manuscriptUploading: false, manuscriptUploadPercent: 0 });
+          wx.showToast({ title: '上传失败', icon: 'error' });
+        }
+      });
+
+      uploadTask.onProgressUpdate(function(res) {
+        that.setData({ manuscriptUploadPercent: res.progress });
+      });
+    },
+
+    // 删除稿件
+    removeManuscript: function() {
+      var that = this;
+      wx.showModal({
+        title: '确认删除',
+        content: '确定要删除已上传的稿件吗？',
+        confirmColor: '#EF4444',
+        success: function(res) {
+          if (res.confirm) {
+            // 可选：删除云存储文件
+            var fileID = that.data.form.manuscript.fileID;
+            if (fileID) {
+              wx.cloud.deleteFile({ fileList: [fileID] });
+            }
+            that.setData({
+              'form.manuscript': { fileID: '', fileName: '', fileSize: 0, fileSizeText: '', fileType: '', uploadTime: '' }
+            });
+          }
+        }
+      });
+    },
+
+    // 预览稿件
+    previewManuscript: function() {
+      var fileID = this.data.form.manuscript.fileID;
+      if (!fileID) return;
+      wx.showLoading({ title: '加载中...' });
+      wx.cloud.getTempFileURL({
+        fileList: [fileID],
+        success: function(res) {
+          wx.hideLoading();
+          var url = res.fileList[0] && res.fileList[0].tempFileURL;
+          if (url) {
+            // PDF 可以直接用 wx.openDocument 打开
+            wx.downloadFile({
+              url: url,
+              success: function(dlRes) {
+                wx.openDocument({
+                  filePath: dlRes.tempFilePath,
+                  showMenu: true,
+                  fail: function() {
+                    wx.showToast({ title: '无法打开文件', icon: 'none' });
+                  }
+                });
+              },
+              fail: function() {
+                wx.showToast({ title: '下载失败', icon: 'none' });
+              }
+            });
+          }
+        },
+        fail: function() {
+          wx.hideLoading();
+          wx.showToast({ title: '获取文件链接失败', icon: 'none' });
+        }
+      });
+    },
+
+    // ======== AI 审稿（调用 utils/ai-review.js）=======
+
+    startAiReview: function() {
+      var that = this;
+      var ms = this.data.form.manuscript;
+      if (!ms || !ms.fileID) {
+        wx.showToast({ title: '请先上传稿件', icon: 'none' });
+        return;
+      }
+
+      wx.showModal({
+        title: 'AI 审稿',
+        content: '将使用AI分析稿件并生成审稿意见，写入审稿笔记。确认开始？',
+        confirmColor: '#2563EB',
+        success: function(res) {
+          if (res.confirm) {
+            that.doAiReview(ms.fileID);
+          }
+        }
+      });
+    },
+
+    // Step1: 调云函数提取文本，Step 2: 小程序端调 AI
+    doAiReview: function(fileID) {
+      var that = this;
+      that.setData({ aiReviewLoading: true });
+
+      // Step 1: 云函数提取文本
+      wx.cloud.callFunction({
+        name: 'aiService',
+        data: { action: 'extractText', fileID: fileID },
+        success: function(res) {
+          var result = res.result;
+          if (!result || !result.success) {
+            that.setData({ aiReviewLoading: false });
+            wx.showToast({ title: (result && result.error) || '提取文本失败', icon: 'none' });
+            return;
+          }
+          // Step 2: 小程序端调用 AI
+          aiReviewUtil.callAIWithText(result.text, result.originalLength).then(function(aiResult) {
+            that.setData({ aiReviewLoading: false });
+
+            var currentNote = that.data.form.note || '';
+            var prefix = '【AI 审稿意见（' + aiResult.modelName + '）】\n';
+            if (aiResult.originalLength && aiResult.originalLength > aiResult.truncatedLength) {
+              prefix += '（原文 ' + aiResult.originalLength + ' 字，已截断至 ' + aiResult.truncatedLength + ' 字）\n';
+            } else if (aiResult.originalLength) {
+              prefix += '（原文 ' + aiResult.originalLength + ' 字）\n';
+            }
+            prefix += '\n';
+            var newNote = currentNote ? currentNote + '\n\n' + prefix + aiResult.text : prefix + aiResult.text;
+            that.setData({ 'form.note': newNote });
+            wx.showToast({ title: 'AI审稿完成', icon: 'success' });
+          }).catch(function(err) {
+            that.setData({ aiReviewLoading: false });
+            wx.showToast({ title: 'AI审稿失败: ' + (err.message || '未知错误'), icon: 'none' });
+            console.error('[AI Review] 调用失败:', err);
+          });
+        },
+        fail: function() {
+          that.setData({ aiReviewLoading: false });
+          wx.showToast({ title: '提取文本失败', icon: 'none' });
+        }
+      });
+    },
+
     // ======== 保存 ========
     saveForm: function() {
       var that = this;
@@ -267,6 +657,13 @@ Component({
         systemPassword: f.systemPassword,
         note: f.note,
         relatedReviewId: f.relatedReviewId || '',
+        manuscript: f.manuscript && f.manuscript.fileID ? {
+          fileID: f.manuscript.fileID,
+          fileName: f.manuscript.fileName,
+          fileSize: f.manuscript.fileSize,
+          fileType: f.manuscript.fileType,
+          uploadTime: f.manuscript.uploadTime
+        } : null,
         timeline: tlSave,
         updateTime: formatTime()
       };
