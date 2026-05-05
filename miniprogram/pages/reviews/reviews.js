@@ -1,16 +1,28 @@
 // pages/reviews/reviews.js
 var dbInit = require('../../utils/dbInit');
 var formatTime = dbInit.formatTime;
-var formatDate = dbInit.formatDate;
 var parseDate = dbInit.parseDate;
 var softDelete = dbInit.softDelete;
+var config = require('../../utils/reviews-config');
+var formatUtil = require('../../utils/reviews-format');
 
 Page({
   data: {
-    list:[], searchKeyword:'', showForm:false, isEdit:false, editId:'',
-    form:{ paperTitle:'', journal:'', deadline:'', status:'pending', note:'' },
-    showDecisionModal:false, decisionId:'', decisionPaper:'', decisionJournal:'', decision:'', decisionNote:'',
-    targetId:'', targetTitle:'', pendingAutoEdit:false
+    list:[], filteredList:[], searchKeyword:'',
+    showForm:false, isEdit:false, editId:'',
+    // 分页
+    page:0, pageSize:20, hasMore:true, loadingMore:false, searchLoading:false,
+    // 快速筛选
+    quickFilter:'',
+    totalCount:0, incompleteCount:0, nearCount:0, urgentCount:0,
+    // 高级筛选
+    showAdvanced: false,
+    advStatus:'', advJournal:'', advDeadlineFrom:'', advDeadlineTo:'',
+    advStatusIndex:-1, advJournalIndex:-1,
+    advStatusLabel:'', advJournalLabel:'',
+    advStatusOptions:[], advJournalOptions:[],
+    // 首页跳转
+    targetId:'', targetTitle:'', pendingAutoEdit:false, isTargetMode:false
   },
 
   onLoad:function(options){
@@ -18,213 +30,334 @@ Page({
       this.setData({
         targetId: options.targetId,
         targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-        pendingAutoEdit: options.autoEdit === 'true'
+        pendingAutoEdit: options.autoEdit === 'true',
+        isTargetMode: true
       });
+      this.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+    } else {
+      this.loadList();
     }
-    this.loadList();
   },
   onShow:function(){
-    if(!this.data.targetId) this.loadList();
+    if(!this.data.targetId && !this.data.isTargetMode) this.loadList();
   },
 
-  /* ========= 数据加载（服务端模糊搜索）========= */
-  loadList:function(){
+  /* ======== 统计（云函数，支持搜索关键词联动）======= */
+  loadStats:function(){
     var that = this;
+    var keyword = (this.data.searchKeyword || '').trim();
+    wx.cloud.callFunction({
+      name:'academicAPI',
+      data:{
+        action:'reviewStats',
+        keyword: keyword
+      }
+    }).then(function(res){
+      if(res.result && res.result.success){
+        that.setData({
+          totalCount: res.result.total,
+          incompleteCount: res.result.incomplete,
+          nearCount: res.result.near,
+          urgentCount: res.result.urgent
+        });
+      } else {
+        console.warn('[审稿] loadStats 返回不成功:', res.result);
+      }
+    }).catch(function(e){
+      console.error('[审稿] 统计失败', e);
+    });
+  },
+
+  /* ======== 数据加载（服务端分页 + 模糊搜索，按 deadline 升序）======= */
+  loadList:function(isLoadMore){
+    if(this.data.loadingMore) return;
+    var that = this;
+    var page = isLoadMore ? this.data.page + 1 : 0;
+    var pageSize = this.data.pageSize;
+    var skip = page * pageSize;
+
+    this.setData({ loadingMore:true });
+    if(!isLoadMore) this.setData({ searchLoading:true });
+
     var db = wx.cloud.database();
     var _ = db.command;
 
-    // 构建 where 条件
+    // 构建"基础条件"（搜索 + 高级筛选，不含 quickFilter）
+    var baseConditions = [{ deleteTime: null }];
     var kw = (this.data.searchKeyword || '').trim();
-    var where;
     if(kw){
       var reg = db.RegExp({ regexp: kw, options: 'i' });
-      where = _.or([
-        { deleteTime: null, paperTitle: reg },
-        { deleteTime: null, journal: reg }
-      ]);
-    } else {
-      where = { deleteTime: null };
+      baseConditions.push(_.or([
+        { paperTitle: reg },
+        { journal: reg }
+      ]));
+    }
+    // 高级筛选条件
+    var advStatus = this.data.advStatus;
+    var advJournal = this.data.advJournal;
+    var advFrom = this.data.advDeadlineFrom;
+    var advTo = this.data.advDeadlineTo;
+    if(advStatus)    baseConditions.push({ status: advStatus });
+    if(advJournal)   baseConditions.push({ journal: advJournal });
+    if(advFrom)      baseConditions.push({ deadline: _.gte(advFrom + ' 00:00:00') });
+    if(advTo)        baseConditions.push({ deadline: _.lte(advTo + ' 23:59:59') });
+
+    // 构建"列表条件"（基础条件 + quickFilter）
+    var listConditions = baseConditions.slice();
+    var qf = this.data.quickFilter;
+    if(qf && qf !== 'all'){
+      if(qf === 'incomplete'){
+        listConditions.push({ status: _.neq('completed') });
+      } else if(qf === 'near'){
+        listConditions.push({ status: _.neq('completed') });
+        var now = new Date();
+        var from = new Date(now); from.setDate(now.getDate() + 2);
+        var to = new Date(now); to.setDate(now.getDate() + 3);
+        var fStr = from.getFullYear()+'-'+String(from.getMonth()+1).padStart(2,'0')+'-'+String(from.getDate()).padStart(2,'0');
+        var tStr = to.getFullYear()+'-'+String(to.getMonth()+1).padStart(2,'0')+'-'+String(to.getDate()).padStart(2,'0');
+        listConditions.push({ deadline: _.gte(fStr + ' 00:00:00') });
+        listConditions.push({ deadline: _.lte(tStr + ' 23:59:59') });
+      } else if(qf === 'urgent'){
+        listConditions.push({ status: _.neq('completed') });
+        var now2 = new Date();
+        var fStr2 = now2.getFullYear()+'-'+String(now2.getMonth()+1).padStart(2,'0')+'-'+String(now2.getDate()).padStart(2,'0');
+        var to2 = new Date(now2); to2.setDate(now2.getDate() + 1);
+        var tStr2 = to2.getFullYear()+'-'+String(to2.getMonth()+1).padStart(2,'0')+'-'+String(to2.getDate()).padStart(2,'0');
+        listConditions.push({ deadline: _.gte(fStr2 + ' 00:00:00') });
+        listConditions.push({ deadline: _.lte(tStr2 + ' 23:59:59') });
+      }
     }
 
-    db.collection('reviews').where(where).orderBy('deadline','asc').get()
-      .then(function(res){
-        var now = new Date();
-        var list = (res.data||[]).map(function(i){
-          var dIso = i.deadline ? String(i.deadline).replace(' ', 'T') : i.deadline;
-          var d = parseDate(i.deadline);
-          var daysLeft = Math.ceil((d-now)/86400000);
-          return {
-            _id:i._id,
-            paperTitle:i.paperTitle||'',
-            journal:i.journal||'',
-            deadline:i.deadline||'',
-            status:i.status||'pending',
-            note:i.note||'',
-            decision:i.decision||'',
-            decisionNote:i.decisionNote||'',
-            decisionTime:i.decisionTime||'',
-            daysLeft:daysLeft,
-            urgent:daysLeft>=0&&daysLeft<=7
-          };
-        });
-        that.setData({ list:list }, function() {
-          // 处理首页跳转：用 targetId 精确定位
-          if (that.data.targetId) {
-            var targetTitle = that.data.targetTitle;
-            var found = list.find(function(i){ return i._id === that.data.targetId; });
-            if(found){
-              if(targetTitle) that.setData({ searchKeyword: targetTitle });
-              if(that.data.pendingAutoEdit){
-                var fmt = found.deadline ? (function(){
-                  var pd = parseDate(found.deadline);
-                  return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
-                })() : '';
-                that.setData({
-                  showForm:true, isEdit:true, editId:found._id,
-                  form:{
-                    paperTitle:found.paperTitle||'',
-                    journal:found.journal||'',
-                    deadline:fmt,
-                    status:found.status||'pending',
-                    note:found.note||''
-                  }
-                });
-              }
-              that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
-            } else {
-              that.locateById(that.data.targetId, targetTitle);
+    var whereForList = listConditions.length === 1 ? listConditions[0] : _.and(listConditions);
+    var whereForOptions = baseConditions.length === 1 ? baseConditions[0] : _.and(baseConditions);
+
+    // 两个查询并行：列表数据（含 quickFilter）+ 选项数据（不含 quickFilter）
+    var listQuery = db.collection('reviews')
+      .where(whereForList)
+      .orderBy('deadline', 'asc')
+      .skip(skip)
+      .limit(pageSize)
+      .get();
+
+    var queries = [listQuery];
+    if(that.data.quickFilter){
+      var optionsQuery = db.collection('reviews')
+        .where(whereForOptions)
+        .limit(1000)
+        .get();
+      queries.push(optionsQuery);
+    }
+
+    Promise.all(queries).then(function(results){
+      var listRes = results[0];
+      var optionsRes = results[1];
+
+      var rawData = Array.isArray(listRes.data) ? listRes.data : [];
+      var newItems = rawData.map(function(item){ return formatUtil.formatItem(item); });
+
+      var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
+      var hasMore = newItems.length >= pageSize;
+      var extra = {};
+
+      // 构建高级筛选选项：优先用"不含 quickFilter"的选项数据
+      if(!isLoadMore){
+        if(optionsRes && optionsRes.data){
+          var optionsData = Array.isArray(optionsRes.data) ? optionsRes.data : [];
+          var optionsItems = optionsData.map(function(item){ return formatUtil.formatItem(item); });
+          extra = formatUtil.buildAdvOptions(optionsItems, that.data);
+        } else {
+          extra = formatUtil.buildAdvOptions(list, that.data);
+        }
+      }
+
+      extra.list = list;
+      extra.page = isLoadMore ? page : 0;
+      extra.hasMore = hasMore;
+      extra.loadingMore = false;
+      extra.searchLoading = false;
+      that.setData(extra, function() {
+        that.applyFilter();
+        // 处理首页跳转：用 targetId 精确定位
+        if (that.data.targetId) {
+          var targetTitle = that.data.targetTitle;
+          var found = list.find(function(i){ return i._id === that.data.targetId; });
+          if(found){
+            if(targetTitle) that.setData({ searchKeyword: targetTitle });
+            if(that.data.pendingAutoEdit){
+              that.setData({
+                showForm: true, isEdit: true, editId: that.data.targetId
+              });
             }
+            that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+          } else {
+            that.locateById(that.data.targetId, targetTitle);
           }
-        });
-      }).catch(function(e){ console.error(e); });
+        }
+      });
+      // 每次加载完成后更新统计
+      if(!isLoadMore) that.loadStats();
+    }).catch(function(e){
+      console.error('[审稿] 加载失败',e);
+      that.setData({ loadingMore:false, searchLoading:false });
+      if(!isLoadMore) that.setData({ list:[], filteredList:[] });
+    });
   },
 
-  /* ========= 通过 ID 精确定位 ========= */
+  /* ======== 通过 ID 精确定位（首页跳转时只显示这一个）======= */
   locateById:function(id, title){
     var that = this;
     wx.cloud.database().collection('reviews').doc(id).get().then(function(res){
       if(res.data){
-        var i = res.data;
-        var now = new Date();
-        var d = parseDate(i.deadline);
-        var daysLeft = Math.ceil((d-now)/86400000);
-        var item = {
-          _id:i._id, paperTitle:i.paperTitle||'', journal:i.journal||'',
-          deadline:i.deadline||'', status:i.status||'pending', note:i.note||'',
-          decision:i.decision||'', decisionNote:i.decisionNote||'', decisionTime:i.decisionTime||'',
-          daysLeft:daysLeft, urgent:daysLeft>=0&&daysLeft<=7
-        };
-        var list = that.data.list.concat([item]);
+        var item = formatUtil.formatItem(res.data);
+        var list = [item];
         if(title) that.setData({ searchKeyword: title });
-        that.setData({ list: list }, function(){
-          if(that.data.pendingAutoEdit){
-            var fmt = item.deadline ? (function(){
-              var pd = parseDate(item.deadline);
-              return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
-            })() : '';
-            that.setData({
-              showForm:true, isEdit:true, editId:id,
-              form:{
-                paperTitle:item.paperTitle||'', journal:item.journal||'',
-                deadline:fmt, status:item.status||'pending', note:item.note||''
-              }
-            });
+        var shouldAutoEdit = that.data.pendingAutoEdit;
+        that.setData({
+          list: list,
+          filteredList: list,
+          isTargetMode: true,
+          targetId: '', targetTitle: '', pendingAutoEdit: false
+        }, function(){
+          if(shouldAutoEdit){
+            that.setData({ showForm: true, isEdit: true, editId: id });
           }
-          that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
         });
+        that.loadStats();
       }
     }).catch(function(e){
       console.error('[审稿] 定位失败', e);
-      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false, isTargetMode: false });
+      that.loadList();
     });
   },
 
-  /* ========= 搜索 ========= */
-  onSearch:function(e){
-    this.setData({ searchKeyword:e.detail.value });
+  /* ======== 查看全部（退出单条模式）======= */
+  showAll:function(){
+    this.setData({ isTargetMode: false, searchKeyword: '', targetId: '', targetTitle: '' });
     this.loadList();
   },
 
-  /* ========= 表单：打开 ========= */
-  showAddForm:function(){
+  /* ======== 搜索/筛选 ======== */
+  onSearch:function(e){
+    this.setData({ searchKeyword:e.detail.value, page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearSearch:function(){
+    this.setData({ searchKeyword:'', page:0, hasMore:true, isTargetMode:false, targetId:'', targetTitle:'', pendingAutoEdit:false });
+    this.loadList(false);
+  },
+
+  // 快速筛选
+  onTipFilter:function(e){
+    var type = e.currentTarget.dataset.filter;
     this.setData({
-      showForm:true, isEdit:false, editId:'',
-      form:{ paperTitle:'', journal:'', deadline:'', status:'pending', note:'' }
+      quickFilter: type === this.data.quickFilter ? '' : type,
+      page:0, hasMore:true,
+      // 关闭高级筛选面板，清空高级筛选条件（互斥）
+      showAdvanced: false,
+      advStatus:'', advJournal:'', advDeadlineFrom:'', advDeadlineTo:'',
+      advStatusIndex:-1, advJournalIndex:-1,
+      advStatusLabel:'', advJournalLabel:''
     });
+    this.loadList(false);
+  },
+
+  // 高级筛选
+  toggleAdvanced:function(){
+    var opening = !this.data.showAdvanced;
+    this.setData({
+      showAdvanced: opening,
+      // 展开高级筛选时，取消快速筛选选中
+      quickFilter: opening ? '' : this.data.quickFilter
+    });
+  },
+
+  onAdvStatusChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advStatusOptions[idx] || {};
+    this.setData({
+      advStatusIndex:idx, advStatus:opt.value||'', advStatusLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
+  },
+  onAdvJournalChange:function(e){
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advJournalOptions[idx] || {};
+    this.setData({
+      advJournalIndex:idx, advJournal:opt.value||'', advJournalLabel:opt.label||'',
+      quickFilter:'', page:0, hasMore:true
+    });
+    this.loadList(false);
+  },
+  onAdvDeadlineFromChange:function(e){
+    this.setData({ advDeadlineFrom:e.detail.value, quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  onAdvDeadlineToChange:function(e){
+    this.setData({ advDeadlineTo:e.detail.value, quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+
+  clearAdvStatus:function(){
+    this.setData({ advStatus:'', advStatusIndex:-1, advStatusLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvJournal:function(){
+    this.setData({ advJournal:'', advJournalIndex:-1, advJournalLabel:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvDeadlineFrom:function(){
+    this.setData({ advDeadlineFrom:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+  clearAdvDeadlineTo:function(){
+    this.setData({ advDeadlineTo:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList(false);
+  },
+
+  resetAdvanced:function(){
+    this.setData({
+      advStatus:'', advJournal:'', advDeadlineFrom:'', advDeadlineTo:'',
+      advStatusIndex:-1, advJournalIndex:-1,
+      advStatusLabel:'', advJournalLabel:'',
+      page:0, hasMore:true
+    });
+    this.loadList(false);
+  },
+
+  // 客户端过滤（服务端已完成，只同步 filteredList）
+  applyFilter:function(){
+    var baseList = Array.isArray(this.data.list) ? this.data.list : [];
+    this.setData({ filteredList: baseList });
+  },
+
+  onReachBottom:function(){
+    if(this.data.hasMore && !this.data.loadingMore){
+      this.loadList(true);
+    }
+  },
+
+  /* ======== 表单控制（通过 form 组件）======== */
+  showAddForm:function(){
+    this.setData({ showForm:true, isEdit:false, editId:'' });
   },
 
   showEditForm:function(e){
     var id = e.currentTarget.dataset.id;
-    var item = this.data.list.find(function(i){ return i._id===id; });
-    if(!item) return;
-    var d = item.deadline ? parseDate(item.deadline) : null;
-    var fmt = '';
-    if(d){
-      fmt = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    }
-    this.setData({
-      showForm:true, isEdit:true, editId:item._id,
-      form:{
-        paperTitle:item.paperTitle||'',
-        journal:item.journal||'',
-        deadline:fmt,
-        status:item.status||'pending',
-        note:item.note||''
-      }
-    });
+    this.setData({ showForm:true, isEdit:true, editId:id });
   },
 
-  /* ========= 表单：输入 ========= */
-  onFormInput:function(e){
-    var field = e.currentTarget.dataset.field;
-    var val = e.detail.value;
-    var data = {};
-    data['form.'+field] = val;
-    this.setData(data);
+  onFormSave:function(){
+    this.setData({ showForm:false, isEdit:false, editId:'', quickFilter:'', page:0, hasMore:true });
+    this.loadList();
   },
 
-  onDeadlineChange:function(e){
-    this.setData({ 'form.deadline': e.detail.value });
+  onFormCancel:function(){
+    this.setData({ showForm:false, isEdit:false, editId:'' });
   },
 
-  closeForm:function(){ this.setData({ showForm:false }); },
-
-  /* ========= 表单：保存 ========= */
-  saveForm:function(){
-    var that = this;
-    var f = this.data.form;
-    if(!f.paperTitle){ wx.showToast({ title:'请填写论文标题', icon:'none' }); return; }
-
-    var data = {
-      paperTitle:f.paperTitle,
-      journal:f.journal,
-      deadline:f.deadline ? formatTime(f.deadline+' 00:00:00') : null,
-      status:f.status,
-      note:f.note,
-      updateTime:formatTime()
-    };
-    var db = wx.cloud.database();
-    wx.showLoading({ title:'保存中...' });
-    var promise;
-    if(this.data.isEdit){
-      promise = db.collection('reviews').doc(this.data.editId).update({ data:data });
-    } else {
-      data.createTime = formatTime();
-      data.deleteTime = null;
-      promise = db.collection('reviews').add({ data:data });
-    }
-    promise.then(function(){
-      wx.hideLoading();
-      wx.showToast({ title:'保存成功', icon:'success' });
-      that.setData({ showForm:false });
-      that.loadList();
-    }).catch(function(){
-      wx.hideLoading();
-      wx.showToast({ title:'保存失败', icon:'error' });
-    });
-  },
-
-  /* ========= 删除 ========= */
+  /* ======== 删除 ======== */
   deleteItem:function(e){
     var that = this;
     var id = e.currentTarget.dataset.id;
@@ -232,64 +365,51 @@ Page({
       title:'删除确认', content:'确定删除？',
       success:function(res){
         if(res.confirm){
-          softDelete('reviews',id).then(function(){ that.loadList(); });
+          softDelete('reviews',id).then(function(){
+            wx.showToast({ title:'已删除', icon:'success' });
+            that.loadList();
+          });
         }
       }
     });
   },
 
-  /* ========= 审稿决定 ========= */
+  /* ======== 审稿决定（通过 form 组件）======== */
   showDecision:function(e){
     var id = e.currentTarget.dataset.id;
     var item = this.data.list.find(function(i){ return i._id===id; });
     if(!item) return;
-    this.setData({
-      showDecisionModal:true,
-      decisionId:id,
-      decisionPaper:item.paperTitle||'',
-      decisionJournal:item.journal||'',
-      decision:'',
-      decisionNote:''
-    });
-  },
-
-  closeDecision:function(){
-    this.setData({ showDecisionModal:false, decisionId:'', decision:'', decisionNote:'' });
-  },
-
-  setDecision:function(e){
-    this.setData({ decision:e.currentTarget.dataset.decision });
-  },
-
-  onDecisionNote:function(e){
-    this.setData({ decisionNote:e.detail.value });
-  },
-
-  submitDecision:function(){
-    var that = this;
-    var decisionId = this.data.decisionId;
-    var decision = this.data.decision;
-    var decisionNote = this.data.decisionNote;
-    if(!decision){ wx.showToast({ title:'请选择审稿决定', icon:'none' }); return; }
-    var newStatus = (decision==='accept'||decision==='reject') ? 'completed' : 'submitted';
-    var updateData = {
-      decision:decision,
-      decisionNote:decisionNote,
-      decisionTime:formatTime(),
-      status:newStatus,
-      updateTime:formatTime()
-    };
-    wx.showLoading({ title:'提交中...' });
-    wx.cloud.database().collection('reviews').doc(decisionId).update({ data:updateData })
-      .then(function(){
-        wx.hideLoading();
-        wx.showToast({ title:'决定已提交', icon:'success' });
-        that.setData({ showDecisionModal:false });
-        that.loadList();
-      }).catch(function(e){
-        wx.hideLoading();
-        wx.showToast({ title:'提交失败', icon:'error' });
-        console.error(e);
+    // 通过 selectComponent 调用 form 组件的 openDecision
+    var formComp = this.selectComponent('#reviewForm');
+    if(formComp){
+      formComp.openDecision({
+        currentTarget: {
+          dataset: {
+            id: id,
+            papertitle: item.paperTitle || '',
+            journal: item.journal || ''
+          }
+        }
       });
-  }
+    }
+  },
+
+  onDecisionSubmit:function(){
+    this.loadList();
+  },
+
+  /* ======== 打开审稿系统链接 ======== */
+  onOpenSystemUrl:function(e){
+    var url = e.currentTarget.dataset.url;
+    if(url){
+      wx.setClipboardData({
+        data: url,
+        success: function() {
+          wx.showToast({ title: '链接已复制', icon: 'success' });
+        }
+      });
+    }
+  },
+
+  doNothing:function(){}
 });

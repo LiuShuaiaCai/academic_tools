@@ -1,0 +1,221 @@
+<!--pages/reviews/form/form.wxml-->
+<!-- 编辑表单弹层 -->
+<view class="form-overlay {{show ? 'active' : ''}}" bindtap="closeForm">
+  <view class="form-sheet" catchtap="doNothing">
+    <view class="form-header">
+      <view class="form-title">{{isEdit ? '编辑审稿' : '添加审稿'}}</view>
+      <view class="form-close" bindtap="closeForm">✕</view>
+    </view>
+    <scroll-view scroll-y class="form-body">
+
+      <!-- 1. 论文标题 -->
+      <view class="form-group">
+        <view class="form-label">论文标题 <text class="required">*</text></view>
+        <input class="form-input" placeholder="审稿论文标题" bindinput="onFormInput" data-field="paperTitle" value="{{form.paperTitle}}"/>
+      </view>
+
+      <!-- 2. 期刊/会议 -->
+      <view class="form-group">
+        <view class="form-label">期刊/会议 <text class="required">*</text></view>
+        <input class="form-input" placeholder="来稿期刊/会议" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
+      </view>
+
+      <!-- 3. 邀请时间 -->
+      <view class="form-group">
+        <view class="form-label">邀请时间 <text class="required">*</text></view>
+        <picker mode="date" value="{{form.invitedDate}}" bindchange="onInvitedDateChange">
+          <view class="form-picker {{form.invitedDate ? '' : 'placeholder'}}">
+            <view class="cal-icon"></view>
+            <text style="flex:1">{{form.invitedDate || '请选择邀请日期'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 4. 截止时间 -->
+      <view class="form-group">
+        <view class="form-label">截止时间 <text class="required">*</text></view>
+        <picker mode="date" value="{{form.deadline}}" bindchange="onDeadlineChange">
+          <view class="form-picker {{form.deadline ? '' : 'placeholder'}}">
+            <view class="cal-icon"></view>
+            <text style="flex:1">{{form.deadline || '请选择截止日期'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 5. 轮次 -->
+      <view class="form-group">
+        <view class="form-label">轮次 <text class="form-label-hint">（同一稿件的第几轮审稿）</text></view>
+        <picker mode="selector" range="{{roundOptions}}" range-key="label" value="{{form.roundIdx}}" bindchange="onRoundChange">
+          <view class="form-picker {{form.roundIdx ? '' : 'placeholder'}}">{{form.roundIdx ? roundOptions[form.roundIdx].label : '请选择轮次'}} <text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+
+      <!-- 6. 审稿决定 -->
+      <view class="form-group">
+        <view class="form-label">审稿决定</view>
+        <picker mode="selector" range="{{decisionOptions}}" range-key="label" value="{{form.decisionIdx}}" bindchange="onDecisionChange">
+          <view class="form-picker {{form.decisionIdx >= 0 ? '' : 'placeholder'}}">
+            <text style="flex:1">{{form.decisionIdx >= 0 ? decisionOptions[form.decisionIdx].label : '请选择决定'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 7. 状态 -->
+      <!-- <view class="form-group">
+        <view class="form-label">状态</view>
+        <view class="radio-group">
+          <view class="radio-item {{form.status === 'pending' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="pending">待审稿</view>
+          <view class="radio-item {{form.status === 'in_progress' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="in_progress">审稿中</view>
+          <view class="radio-item {{form.status === 'submitted' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="submitted">已提交</view>
+        </view>
+      </view> -->
+
+      <!-- 8. 审稿系统链接 -->
+      <view class="form-group">
+        <view class="form-label">审稿系统链接</view>
+        <input class="form-input" placeholder="https://... 审稿系统地址" bindinput="onFormInput" data-field="systemUrl" value="{{form.systemUrl}}"/>
+      </view>
+
+      <!-- 9. 审稿系统账号（可选） -->
+      <!-- <view class="form-group">
+        <view class="form-label">审稿系统账号 <text class="form-label-hint">（选填，邮箱）</text></view>
+        <input class="form-input" placeholder="登录邮箱" bindinput="onFormInput" data-field="systemAccount" value="{{form.systemAccount}}"/>
+      </view> -->
+
+      <!-- 10. 审稿系统密码（可选） -->
+      <!-- <view class="form-group">
+        <view class="form-label">审稿系统密码 <text class="form-label-hint">（选填）</text></view>
+        <input class="form-input" placeholder="登录密码" password="true" bindinput="onFormInput" data-field="systemPassword" value="{{form.systemPassword}}"/>
+      </view> -->
+
+      <!-- 11. 关联稿件 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">🔗</text> 关联审稿 <text class="form-label-hint">（同一稿件多轮审稿）</text></view>
+        <picker mode="selector" range="{{relatedReviewOptions}}" range-key="title" value="{{form.relatedReviewIdx}}" bindchange="onRelatedReviewChange">
+          <view class="form-picker {{form.relatedReviewTitle ? '' : 'placeholder'}}">{{form.relatedReviewTitle || '不关联'}} <text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+
+      <!-- 12. 处理时间线 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">📅</text> 处理时间线</view>
+
+        <view class="tl-add-row">
+          <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
+            <view class="tl-picker-box">
+              <view class="cal-icon cal-icon-sm"></view>
+              <text class="tl-picker-text {{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
+              <text class="tl-picker-text tl-arrow">▼</text>
+            </view>
+          </picker>
+          <picker class="tl-event-picker" range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
+            <view class="tl-picker-box">
+              <text class="tl-picker-text {{form.tlNewEventIdx>=0 ? '' : 'tl-placeholder'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
+              <text class="tl-picker-text tl-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        <view class="tl-remark-row">
+          <input class="tl-remark-input" placeholder="备注（选填）" value="{{form.tlNewRemark}}" data-field="tlNewRemark" bindinput="onFormInput"/>
+          <view class="tl-add-btn" bindtap="addTimelineItem">
+            <text class="tl-add-text">添加</text>
+          </view>
+        </view>
+
+        <!-- 已有时间线事件列表 -->
+        <view class="tl-list" wx:if="{{form.timelineList.length > 0}}">
+          <view class="tl-item-card" wx:for="{{form.timelineList}}" wx:key="index">
+            <view class="tl-card-left">
+              <view class="tl-card-dot" style="background:{{item.dotColor}}"></view>
+            </view>
+            <view class="tl-card-content">
+              <view class="tl-card-top">
+                <text class="tl-card-date">{{item.date}}</text>
+                <text class="tl-card-event" style="color:{{item.dotColor}}">{{item.event}}</text>
+              </view>
+              <text class="tl-card-remark" wx:if="{{item.remark}}">{{item.remark}}</text>
+            </view>
+            <view class="tl-card-del" data-i="{{index}}" catchtap="removeTimelineItem">
+              <text>×</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 13. 审稿笔记 -->
+      <view class="form-group">
+        <view class="form-label">审稿笔记</view>
+        <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
+      </view>
+
+    </scroll-view>
+    <view class="form-footer">
+      <button class="btn-cancel" bindtap="closeForm">取消</button>
+      <button class="btn-confirm" bindtap="saveForm">保存</button>
+    </view>
+  </view>
+</view>
+
+<!-- 审稿决定弹窗 -->
+<view class="form-overlay {{showDecisionModal ? 'active' : ''}}">
+  <view class="form-sheet decision-sheet" catchtap="doNothing">
+    <view class="form-header">
+      <view class="form-title">审稿决定</view>
+      <view class="form-close" bindtap="closeDecision">✕</view>
+    </view>
+    <view class="form-body">
+      <view class="decision-info">
+        <view class="decision-paper">{{decisionPaper}}</view>
+        <view class="decision-journal" wx:if="{{decisionJournal}}">{{decisionJournal}}</view>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">审稿决定</view>
+        <view class="decision-options">
+          <view class="decision-btn {{decision === 'pending' ? 'selected pending' : ''}}" bindtap="setDecision" data-decision="pending">
+            <text class="decision-icon">⏳</text>
+            <text>待定</text>
+          </view>
+          <view class="decision-btn {{decision === 'peer' ? 'selected peer' : ''}}" bindtap="setDecision" data-decision="peer">
+            <text class="decision-icon">👥</text>
+            <text>同行</text>
+          </view>
+          <view class="decision-btn {{decision === 'accept' ? 'selected accept' : ''}}" bindtap="setDecision" data-decision="accept">
+            <text class="decision-icon">✅</text>
+            <text>接收</text>
+          </view>
+        </view>
+        <view class="decision-options decision-options-row2">
+          <view class="decision-btn {{decision === 'major' ? 'selected major' : ''}}" bindtap="setDecision" data-decision="major">
+            <text class="decision-icon">⚠️</text>
+            <text>大修</text>
+          </view>
+          <view class="decision-btn {{decision === 'minor' ? 'selected minor' : ''}}" bindtap="setDecision" data-decision="minor">
+            <text class="decision-icon">🔄</text>
+            <text>小修</text>
+          </view>
+          <view class="decision-btn {{decision === 'reject' ? 'selected reject' : ''}}" bindtap="setDecision" data-decision="reject">
+            <text class="decision-icon">❌</text>
+            <text>拒绝</text>
+          </view>
+          <view class="decision-btn {{decision === 'other' ? 'selected other' : ''}}" bindtap="setDecision" data-decision="other">
+            <text class="decision-icon">📝</text>
+            <text>其他</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">审稿意见</view>
+        <textarea class="form-textarea" placeholder="请输入审稿意见..." bindinput="onDecisionNote" value="{{decisionNote}}"></textarea>
+      </view>
+    </view>
+    <view class="form-footer">
+      <button class="btn-cancel" bindtap="closeDecision">取消</button>
+      <button class="btn-confirm" bindtap="submitDecision">提交决定</button>
+    </view>
+  </view>
+</view>

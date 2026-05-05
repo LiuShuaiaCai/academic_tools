@@ -266,6 +266,50 @@ async function submissionStats(event) {
   return { success: true, total: total, incomplete: incomplete, near: near, urgent: urgent };
 }
 
+// 审稿统计（支持搜索关键词过滤）
+// 参数: event.keyword - 可选，搜索关键词，匹配 paperTitle/journal
+async function reviewStats(event) {
+  var now = new Date();
+  // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
+  var beijingTime = new Date(now.getTime() + 8 * 3600000);
+  var todayStr = beijingTime.getFullYear() + '-' + String(beijingTime.getMonth()+1).padStart(2,'0') + '-' + String(beijingTime.getDate()).padStart(2,'0');
+
+  var _ = db.command;
+  var keyword = (event.keyword || '').trim();
+
+  // 构建查询条件
+  var conditions = [{ deleteTime: null }];
+  if (keyword) {
+    var reg = db.RegExp({ regexp: keyword, options: 'i' });
+    conditions.push(_.or([
+      { paperTitle: reg },
+      { journal: reg }
+    ]));
+  }
+  var where = conditions.length === 1 ? conditions[0] : _.and(conditions);
+
+  var res = await db.collection('reviews').where(where).limit(1000).get();
+  var list = res.data || [];
+  var total = 0, incomplete = 0, near = 0, urgent = 0;
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    total++;
+    if (item.status !== 'completed') {
+      incomplete++;
+      if (item.deadline) {
+        var dlDateStr = String(item.deadline).substring(0, 10);
+        var dlDate = new Date(dlDateStr + 'T00:00:00');
+        var todayDate = new Date(todayStr + 'T00:00:00');
+        var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
+        if (days >= 2 && days <= 3) near++;
+        if (days >= 0 && days <= 1) urgent++;
+      }
+    }
+  }
+  console.log('[reviewStats] keyword=' + keyword + ' total=' + total + ' incomplete=' + incomplete + ' near=' + near + ' urgent=' + urgent);
+  return { success: true, total: total, incomplete: incomplete, near: near, urgent: urgent };
+}
+
 // 修复被错误标记为 completed=true 的投稿（没有终态事件的应改为 false）
 async function fixCompleted() {
   var completedEvents = ['接收', '发表', '出版', 'online', 'Online', 'accepted', 'published'];
@@ -304,6 +348,7 @@ exports.main = async (event) => {
       case 'toggleUserTool':  return await toggleUserTool(event);
       case 'saveUserTools':   return await saveUserTools(event);
       case 'submissionStats': return await submissionStats(event);
+      case 'reviewStats':     return await reviewStats(event);
       case 'fixCompleted':    return await fixCompleted();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }

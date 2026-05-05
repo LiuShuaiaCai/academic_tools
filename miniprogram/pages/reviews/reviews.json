@@ -1,1 +1,1 @@
-{"navigationBarTitleText": "审稿任务","usingComponents": {}}
+{"navigationBarTitleText": "审稿任务","usingComponents": {"review-form": "./form/form"}}
