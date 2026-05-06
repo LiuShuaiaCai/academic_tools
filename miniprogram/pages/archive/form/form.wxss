@@ -1,0 +1,188 @@
+/* pages/archive/upload-form/upload-form.wxss */
+
+/* 弹窗容器 */
+.upload-form-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+.upload-form-modal .mask {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  pointer-events: auto;
+}
+
+/* 弹窗主体 */
+.upload-form-modal .modal {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  max-height: 85vh;
+  overflow-y: auto;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+.modal-title { font-size: 32rpx; font-weight: 600; color: #111827; }
+.modal-close { font-size: 32rpx; color: #9CA3AF; padding: 8rpx; }
+
+/* Form */
+.form-row {
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+.form-label { font-size: 24rpx; color: #6B7280; margin-bottom: 12rpx; }
+.form-control { display: flex; align-items: center; gap: 16rpx; }
+.picker-value {
+  width: 480rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 20rpx;
+  background: #F3F4F6;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #111827;
+}
+.picker-value.placeholder { color: #9CA3AF; }
+.manage-btn {
+  padding: 0 24rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #F3F4F6;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #0F766E;
+  flex-shrink: 0;
+}
+
+/* 文件选择区 */
+.file-pick-zone {
+  margin: 24rpx 32rpx;
+  border: 2rpx dashed #D1D5DB;
+  border-radius: 16rpx;
+  padding: 48rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+.pick-icon { font-size: 64rpx; }
+.pick-text { font-size: 28rpx; color: #374151; font-weight: 500; }
+.pick-sub { font-size: 22rpx; color: #9CA3AF; }
+
+/* 已选文件列表 */
+.file-list {
+  margin: 0 32rpx 24rpx;
+  border: 1rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+  gap: 16rpx;
+  background: #fff;
+}
+.file-item:last-child { border-bottom: none; }
+.file-name { flex: 1; font-size: 28rpx; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-size { font-size: 24rpx; color: #9CA3AF; flex-shrink: 0; }
+.file-remove { font-size: 32rpx; color: #EF4444; padding: 8rpx; flex-shrink: 0; }
+
+/* Footer */
+.modal-footer {
+  padding: 24rpx 32rpx;
+  margin-top: auto;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+.btn-upload {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #0F766E;
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+.btn-upload-disabled { background: #D1D5DB; color: #9CA3AF; }
+
+/* ==================== 管理分类弹窗 ==================== */
+.manage-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+.manage-content {
+  background: #fff;
+  width: 100%;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 0 32rpx 48rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.manage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 0 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+.manage-title { font-size: 32rpx; font-weight: 600; color: #111827; }
+.manage-close { font-size: 32rpx; color: #9CA3AF; padding: 8rpx; }
+
+.cat-list { margin-top: 16rpx; }
+.cat-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #F5F5F5;
+}
+.cat-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 16rpx;
+  background: #F9FAFB;
+  border: 1rpx solid #E5E7EB;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+.cat-del { font-size: 26rpx; color: #EF4444; flex-shrink: 0; }
+
+.cat-add-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.cat-add-btn {
+  padding: 0 24rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #0F766E;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  flex-shrink: 0;
+}
+.cat-tip { font-size: 24rpx; color: #9CA3AF; margin-top: 16rpx; text-align: center; }
+.cat-empty { font-size: 26rpx; color: #9CA3AF; text-align: center; padding: 32rpx 0; }

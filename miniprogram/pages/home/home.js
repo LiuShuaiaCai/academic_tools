@@ -49,6 +49,8 @@ Page({
             iconEmoji: t.iconEmoji || '🔧',
             color: t.color || 'blue',
             pagePath: t.pagePath || '',
+            // 云函数 getAllTools 已对 isTaskType 做缺省推断，前端直接用
+            isTaskType: t.isTaskType !== false,
             count: 0,
             urgent: 0
           });
@@ -82,16 +84,26 @@ Page({
     var urgentDate = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000); // 4天后（含0-3天）
     var urgentStr = urgentDate.getFullYear() + '-' + String(urgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(urgentDate.getDate()).padStart(2, '0') + ' ' + String(urgentDate.getHours()).padStart(2, '0') + ':' + String(urgentDate.getMinutes()).padStart(2, '0') + ':' + String(urgentDate.getSeconds()).padStart(2, '0');
     var promises = [];
-    var COUNT_MAP = {
+    var TASK_COLLECTION_MAP = {
       submission: 'submissions',
       review: 'reviews',
-      conference: 'conferences',
-      archive: 'archives'
+      conference: 'conferences'
     };
 
     for (var i = 0; i < enabledTools.length; i++) {
       (function(tool) {
-        var colName = COUNT_MAP[tool.id];
+        if (!tool.isTaskType) {
+          // 非任务型工具（如资料归档）：不查 count，不显示任务数
+          promises.push(Promise.resolve({
+            id: tool.id, name: tool.name, desc: tool.desc,
+            iconEmoji: tool.iconEmoji || '🔧', color: tool.color,
+            pagePath: tool.pagePath || '',
+            isTaskType: false,
+            count: 0, urgent: 0
+          }));
+          return;
+        }
+        var colName = TASK_COLLECTION_MAP[tool.id];
         if (colName) {
           // 总数查询：投稿排除已完成
           var countWhere = { deleteTime: null };
@@ -112,7 +124,6 @@ Page({
               deadline: _.gte(nowStr).and(_.lt(urgentStr))
             }).count();
           } else {
-            // archive 没有 deadline
             urgentPromise = Promise.resolve({ total: 0 });
           }
 
@@ -122,15 +133,16 @@ Page({
                 id: tool.id, name: tool.name, desc: tool.desc,
                 iconEmoji: tool.iconEmoji || '🔧', color: tool.color,
                 pagePath: tool.pagePath || '',
+                isTaskType: true,
                 count: results[0].total, urgent: results[1].total
               };
             }).catch(function() {
-              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', count: 0, urgent: 0 };
+              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', isTaskType: true, count: 0, urgent: 0 };
             })
           );
         } else {
           promises.push(Promise.resolve({
-            id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', count: 0, urgent: 0
+            id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', isTaskType: true, count: 0, urgent: 0
           }));
         }
       })(enabledTools[i]);

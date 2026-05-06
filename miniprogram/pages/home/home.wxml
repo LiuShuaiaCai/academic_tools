@@ -57,7 +57,7 @@
           <view class="card-title">{{item.name}}</view>
           <view class="card-desc">{{item.desc}}</view>
         </view>
-        <view class="card-stats">
+        <view class="card-stats" wx:if="{{item.isTaskType}}">
           <image class="card-stats-icon" src="/images/icon-task.png" />
           <text>{{item.count}} 任务待完成</text>
         </view>

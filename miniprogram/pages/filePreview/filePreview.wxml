@@ -1,0 +1,21 @@
+<view class="container">
+  <!-- HTML 用嵌入方式显示，可缩放 -->
+  <view wx:if="{{isHtml}}" class="zoom-wrapper">
+    <movable-area scale-area class="zoom-area">
+      <movable-view scale scale-min="0.5" scale-max="3" damping="50" class="zoom-view">
+        <rich-text nodes="{{renderedContent}}"></rich-text>
+      </movable-view>
+    </movable-area>
+  </view>
+  
+  <!-- MD/XML 文件渲染显示，可缩放 -->
+  <view wx:else class="zoom-wrapper">
+    <movable-area scale-area class="zoom-area">
+      <movable-view scale scale-min="0.5" scale-max="3" damping="50" class="zoom-view">
+        <view class="md-content">
+          <rich-text nodes="{{renderedContent}}"></rich-text>
+        </view>
+      </movable-view>
+    </movable-area>
+  </view>
+</view>

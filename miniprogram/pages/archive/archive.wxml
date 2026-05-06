@@ -1,39 +1,48 @@
 <!--pages/archive/archive.wxml-->
 <view class="page-container">
+  <!-- 搜索栏 -->
   <view class="search-bar">
     <view class="search-input-wrap">
-      <text>🔍</text>
-      <input class="search-input" placeholder="搜索文件名..." bindinput="onSearch"/>
+      <text class="icon">🔍</text>
+      <input class="search-input" placeholder="搜索文件名..." bindinput="onSearch" value="{{searchKw}}"/>
     </view>
-    <view class="upload-btn" bindtap="chooseFile">📎 上传</view>
   </view>
 
+  <!-- 分类选项卡（从数据库读取） -->
   <scroll-view scroll-x class="filter-scroll">
     <view class="filter-tabs">
-      <view class="filter-tab {{filterCategory==='all'?'active':''}}" bindtap="setFilter" data-cat="all">全部</view>
-      <view class="filter-tab {{filterCategory==='submission'?'active':''}}" bindtap="setFilter" data-cat="submission">投稿资料</view>
-      <view class="filter-tab {{filterCategory==='review'?'active':''}}" bindtap="setFilter" data-cat="review">审稿资料</view>
-      <view class="filter-tab {{filterCategory==='conference'?'active':''}}" bindtap="setFilter" data-cat="conference">会议资料</view>
-      <view class="filter-tab {{filterCategory==='other'?'active':''}}" bindtap="setFilter" data-cat="other">其他</view>
+      <view class="filter-tab {{filterCategory==='all'?'active':''}}" bindtap="setFilter" data-cat="all">全部 <text class="count">{{counts.all}}</text></view>
+      <view class="filter-tab {{filterCategory===item._id?'active':''}}" wx:for="{{categoryList}}" wx:key="_id" bindtap="setFilter" data-cat="{{item._id}}">{{item.name}} <text class="count">{{counts[item._id] || 0}}</text></view>
     </view>
   </scroll-view>
 
+  <!-- 文件列表 -->
   <view class="archive-list">
     <view wx:if="{{list.length === 0}}" class="empty-box">
-      <text>📁</text><text>暂无归档文件</text>
-      <button class="btn-add-first" bindtap="chooseFile">上传文件</button>
+      <text class="icon">📁</text>
+      <text class="tip">暂无归档文件</text>
+      <text class="sub-tip">点击右下角按钮上传文件</text>
     </view>
-    <view class="file-card" wx:for="{{list}}" wx:key="_id">
-      <view class="file-icon {{item.ext === 'pdf' ? 'pdf' : item.ext === 'doc' || item.ext === 'docx' ? 'doc' : 'other'}}">
-        <text>{{item.ext === 'pdf' ? '📄' : item.ext === 'doc' || item.ext === 'docx' ? '📝' : '📎'}}</text>
-      </view>
+    <view class="file-card" wx:for="{{list}}" wx:key="_id" bindtap="previewFile" data-id="{{item._id}}">
+      <view class="file-icon pdf" wx:if="{{item.ext === 'pdf'}}">📄</view>
+      <view class="file-icon doc" wx:elif="{{item.ext === 'doc' || item.ext === 'docx'}}">📝</view>
+      <view class="file-icon image-icon" wx:elif="{{item.ext === 'png' || item.ext === 'jpg' || item.ext === 'jpeg'}}">🖼️</view>
+      <view class="file-icon other" wx:else>📎</view>
       <view class="file-info">
         <view class="file-name">{{item.name}}</view>
-        <view class="file-meta">{{item.extLabel}} · {{item.sizeLabel}}</view>
+        <view class="file-meta">{{item.categoryName}} · {{item.extLabel}} · {{item.sizeLabel}} · {{item.createTime}}</view>
       </view>
-      <view class="file-del" bindtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}">🗑️</view>
+      <view class="file-del" catchtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}">🗑️</view>
     </view>
   </view>
 
-  <view class="fab" bindtap="chooseFile">+</view>
+  <!-- FAB：打开上传弹窗 -->
+  <view class="fab" bindtap="openUploadModal">+</view>
+
+  <!-- 上传弹窗组件 -->
+  <upload-form
+    visible="{{showUpload}}"
+    bind:close="onUploadClose"
+    bind:uploadSuccess="onUploadSuccess"
+  />
 </view>

@@ -1,1 +1,7 @@
-{"navigationBarTitleText": "资料归档","usingComponents": {}}
+{
+  "navigationBarTitleText": "资料归档",
+  "usingComponents": {
+    "upload-form": "form/form",
+    "image-preview": "/components/image-preview/image-preview"
+  }
+}

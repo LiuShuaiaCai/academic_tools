@@ -22,7 +22,7 @@ function formatDate(date) {
 
 // 获取当前时间字符串
 function now() {
-  return formatTime(new Date());
+  return formatTime(); // 不传参，formatTime 内部创建 new Date()
 }
 
 // 构建新增数据的基础字段

@@ -1,0 +1,14 @@
+{
+  "name": "aiChat",
+  "version": "1.0.0",
+  "description": "第三方 AI API 封装（OpenAI/DeepSeek/Kimi/腾讯混元/阿里通义千问），支持流式和同步调用",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2"
+  }
+}

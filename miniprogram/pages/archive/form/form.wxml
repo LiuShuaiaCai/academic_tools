@@ -1,0 +1,83 @@
+<!-- pages/archive/upload-form/upload-form.wxml -->
+<view class="upload-form-modal" wx:if="{{visible}}">
+  <!-- 遮罩 -->
+  <view class="mask" bindtap="onMaskTap"></view>
+
+  <!-- 弹窗主体 -->
+  <view class="modal">
+    <!-- Header -->
+    <view class="modal-header">
+      <text class="modal-title">上传文件</text>
+      <view class="modal-close" bindtap="onClose">✕</view>
+    </view>
+
+    <!-- 分类选择 + 管理 -->
+    <view class="form-row">
+      <view class="form-label">分类</view>
+      <view class="form-control">
+        <picker mode="selector" range="{{categoryOptions}}" range-key="label" bindchange="onCategoryChange">
+          <view class="picker-value {{selectedCategory ? '' : 'placeholder'}}">
+            {{selectedCategory ? selectedCategory.label : '请选择分类'}}
+          </view>
+        </picker>
+        <view class="manage-btn" bindtap="showManageModal">管理</view>
+      </view>
+    </view>
+
+    <!-- 文件选择区 -->
+    <view class="file-pick-zone" bindtap="chooseFiles" wx:if="{{files.length === 0}}">
+      <text class="pick-icon">📁</text>
+      <text class="pick-text">点击选择文件</text>
+      <text class="pick-sub">最多选9个，单个不超过10MB</text>
+    </view>
+
+    <!-- 已选文件列表 -->
+    <view class="file-list" wx:if="{{files.length > 0}}">
+      <view class="file-item" wx:for="{{files}}" wx:key="index">
+        <text class="file-name">{{item.name}}</text>
+        <text class="file-size">{{formatSize(item.size)}}</text>
+        <view class="file-remove" catchtap="removeFile" data-index="{{index}}">✕</view>
+      </view>
+    </view>
+
+    <!-- 底部操作 -->
+    <view class="modal-footer">
+    <button class="btn-upload {{uploading || files.length === 0 ? 'btn-upload-disabled' : ''}}" bindtap="onSubmit" disabled="{{uploading || files.length === 0}}">
+      <text wx:if="{{!uploading}}">确认上传{{files.length > 0 ? ' (' + files.length + '个)' : ''}}</text>
+      <text wx:else>上传中...</text>
+    </button>
+    </view>
+  </view>
+</view>
+
+<!-- 管理分类弹窗 -->
+<view class="manage-modal" wx:if="{{showManage}}" catchtap="onCloseManage">
+  <view class="manage-content" catchtap="stopBubbles">
+    <view class="manage-header">
+      <text class="manage-title">分类管理</text>
+      <view class="manage-close" bindtap="onCloseManage">✕</view>
+    </view>
+
+    <!-- 已有分类列表 -->
+    <view class="cat-list">
+      <view class="cat-item" wx:for="{{manageCategories}}" wx:key="_id">
+        <input class="cat-input" value="{{item.name}}" data-id="{{item._id}}" bindblur="onEditCategory" placeholder="分类名称" />
+        <view class="cat-del {{item.hasData ? 'disabled' : ''}}" bindtap="{{item.hasData ? '' : 'onDeleteCategory'}}" data-id="{{item._id}}">
+          {{item.hasData ? '有数据' : '删除'}}
+        </view>
+      </view>
+    </view>
+
+    <!-- 新增分类 -->
+    <view class="cat-add-row" wx:if="{{manageCategories.length < 5}}">
+      <input class="cat-input" value="{{newCatName}}" bindinput="onNewCatInput" placeholder="新分类名称" />
+      <view class="cat-add-btn" bindtap="onAddCategory">添加</view>
+    </view>
+    <view class="cat-tip" wx:if="{{manageCategories.length >= 5}}">已达上限（5个）</view>
+
+    <!-- 空状态 -->
+    <view class="cat-empty" wx:if="{{manageCategories.length === 0 && !newCatName}}">
+      <text>暂无分类，请先添加</text>
+    </view>
+  </view>
+</view>

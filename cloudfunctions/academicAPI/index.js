@@ -68,13 +68,19 @@ async function saveUserConfig(event) {
 
 // 获取已发布工具定义（所有页面统一使用）
 // isPublished !== false 的都返回（兼容老数据没有该字段的情况）
+// isTaskType 缺省时根据 id 判断：submission/review/conference 默认为 true，其余为 false
 async function getAllTools() {
+  var knownTaskIds = ['submission', 'review', 'conference'];
   var res = await db.collection('tools').where({ deleteTime: null }).orderBy('category', 'asc').orderBy('order', 'asc').get();
   var result = [];
   for (var i = 0; i < res.data.length; i++) {
-    if (res.data[i].isPublished !== false) {
-      result.push(res.data[i]);
+    var tool = res.data[i];
+    if (tool.isPublished === false) continue;
+    // isTaskType 缺省时按 id 推断，后续可在数据库中覆盖
+    if (tool.isTaskType === undefined) {
+      tool.isTaskType = knownTaskIds.indexOf(tool.id) !== -1;
     }
+    result.push(tool);
   }
   return result;
 }
@@ -140,6 +146,24 @@ async function migratePagePath() {
       });
       updated++;
     }
+  }
+  return { success: true, updated: updated };
+}
+
+// 数据迁移：给 tools 表补 isTaskType 字段（已设置过的跳过）
+// submission/review/conference = true，其余 = false
+async function migrateIsTaskType() {
+  var taskTypeIds = ['submission', 'review', 'conference'];
+  var res = await db.collection('tools').where({ deleteTime: null }).get();
+  var updated = 0;
+  for (var i = 0; i < res.data.length; i++) {
+    var tool = res.data[i];
+    if (tool.isTaskType !== undefined) continue; // 已设置过，跳过
+    var isTask = taskTypeIds.indexOf(tool.id) !== -1;
+    await db.collection('tools').doc(tool._id).update({
+      data: { isTaskType: isTask, updateTime: formatTime() }
+    });
+    updated++;
   }
   return { success: true, updated: updated };
 }
@@ -392,6 +416,7 @@ exports.main = async (event) => {
       case 'migrateTools':      return await migrateTools();
       case 'migrateIconEmoji': return await migrateIconEmoji();
       case 'migratePagePath': return await migratePagePath();
+      case 'migrateIsTaskType': return await migrateIsTaskType();
       case 'cleanUserTools':    return await cleanUserTools();
       case 'getUserId':         return await getUserId();
       case 'getUserConfig':   return await getUserConfig();

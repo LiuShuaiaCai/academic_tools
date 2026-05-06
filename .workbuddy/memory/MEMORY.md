@@ -66,10 +66,15 @@
 
 ## 云函数架构
 
-- `academicAPI`：业务接口（用户配置、工具开关、投稿/审稿统计等），无AI依赖
+- `academicAPI`：业务接口（用户配置、工具开关、投稿/审稿/会议统计等），无AI依赖
+- `aiChat`（新增 2026-05-06）：第三方 AI API 封装云函数
+  - 支持：openai / deepseek / kimi / tencent / alibaba
+  - 支持同步调用和流式调用（SSE 原始流透传）
+  - API Key 由调用方传入，不存储
+  - 调用方式：`wx.cloud.callFunction({ name: 'aiChat', data: { action: 'chat', provider, messages, apiKey, stream } })`
 - `aiService`：文件文本提取 + 模型配置查询，**不含 AI 调用**
   - AI 调用在**小程序端**用 `wx.cloud.extend.AI.createModel()` 实现
-  - `cloud.AI.createModel()` 在云函数端**不稳定**（有时报 undefined），已弃用
+  - cloud.AI.createModel() 在云函数端**不稳定**（有时报 undefined），已弃用
   - API Key 和 BaseURL 在云开发后台 AI+ 模块配置，代码中不管理
   - 默认模型：`hunyuan-exp`（混元 Turbo），无模型选择功能
   - 小程序端正确写法：`wx.cloud.extend.AI.createModel(groupName)` — 有 `extend`
