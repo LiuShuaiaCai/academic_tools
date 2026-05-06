@@ -158,6 +158,10 @@
               <text class="template-btn-icon">📋</text>
               <text class="template-btn-text">插入模板</text>
             </view>
+            <view class="template-btn" bindtap="openNoteEditor">
+              <text class="template-btn-icon">✏️</text>
+              <text class="template-btn-text">编辑</text>
+            </view>
             <view class="template-btn clear-note-btn" bindtap="clearNote">
               <text class="template-btn-icon">🗑</text>
               <text class="template-btn-text">清空</text>

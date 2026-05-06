@@ -452,6 +452,14 @@ Component({
 
     // ======== 稿件上传 ========
 
+    // 跳转到全屏编辑器
+    openNoteEditor: function() {
+      var note = encodeURIComponent(this.data.form.note || '');
+      wx.navigateTo({
+        url: '/pages/reviews/note-editor/note-editor?note=' + note
+      });
+    },
+
     chooseManuscript: function() {
       var that = this;
       wx.chooseMessageFile({
