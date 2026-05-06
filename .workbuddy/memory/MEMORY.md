@@ -83,3 +83,41 @@
 - 习惯编号描述 → AI 确认 → 逐步修改 → 验证总结的需求模式
 - 重视在线预览快速确认效果
 - **用户取消操作时不要继续修改，等用户明确指令再动**
+
+## 会议管理模块（2026-05-06）
+
+### 代码结构（参照审稿模块）
+
+```
+pages/conferences/
+├── conferences.js      # 列表页：搜索、筛选、调用表单组件
+├── conferences.wxml     # 列表页模板
+├── conferences.wxss    # 列表页样式
+├── conferences.json    # 注册 conference-form 组件
+└── form/               # 表单组件子目录
+    ├── form.js         # 表单组件逻辑（Component）
+    ├── form.wxml       # 表单组件模板
+    ├── form.wxss      # 表单组件样式（引用公共样式）
+    └── form.json       # component: true
+
+utils/
+├── conferences-config.js   # 公共配置（状态、选项等常量）
+├── conferences-format.js   # 格式化工具（formatItem、buildAdvOptions）
+└── conferences-form.wxss  # 表单公共样式
+```
+
+### 列表页功能
+- 快速筛选：全部 / 待截稿 / 急需处理 / 已报名
+- 高级筛选面板：状态、举办地点、截稿时间区间
+- 服务端模糊搜索：name / shortName / location
+- 首页跳转定位功能（targetId）
+- FAB 悬浮按钮调用表单组件
+
+### 表单组件功能
+- 字段：name, shortName, location, deadline, notificationDate, startDate, url, note, status
+- 处理时间线（TL_EVENT_OPTIONS）
+- 保存/取消事件触发
+
+### 筛选计数
+- loadStats 调用 academicAPI 的 conferenceStats action
+- 统计项：total, pending, near, registered

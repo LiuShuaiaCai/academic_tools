@@ -1,1 +1,6 @@
-{"navigationBarTitleText": "学术会议","usingComponents": {}}
+{
+  "navigationBarTitleText": "学术会议",
+  "usingComponents": {
+    "conference-form": "./form/form"
+  }
+}

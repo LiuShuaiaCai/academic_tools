@@ -1,248 +1,424 @@
 // pages/conferences/conferences.js
 var dbInit = require('../../utils/dbInit');
 var formatTime = dbInit.formatTime;
-var formatDate = dbInit.formatDate;
 var parseDate = dbInit.parseDate;
 var softDelete = dbInit.softDelete;
+var config = require('../../utils/conferences-config');
+var formatUtil = require('../../utils/conferences-format');
 
 Page({
   data: {
-    list:[], filteredList:[], searchKeyword:'', filterStatus:'all',
-    showForm:false, isEdit:false, editId:'',
-    form:{ name:'', shortName:'', location:'', deadline:'', notificationDate:'', startDate:'', url:'', note:'' },
-    filterTabs:[
-      { value:'all',      label:'全部' },
-      { value:'pending',   label:'待截稿' },
-      { value:'registered',label:'已报名' },
-      { value:'expired',  label:'已过期' }
-    ],
-    targetId:'', targetTitle:'', pendingAutoEdit:false
+    list: [],
+    filteredList: [],
+    searchKeyword: '',
+    showForm: false,
+    isEdit: false,
+    editId: '',
+    // 分页
+    page: 0,
+    pageSize: 20,
+    hasMore: true,
+    loadingMore: false,
+    searchLoading: false,
+    // 快速筛选
+    quickFilter: '',
+    totalCount: 0,
+    pendingCount: 0,
+    nearCount: 0,
+    registeredCount: 0,
+    // 高级筛选
+    showAdvanced: false,
+    advStatus: '',
+    advLocation: '',
+    advDeadlineFrom: '',
+    advDeadlineTo: '',
+    advStatusIndex: -1,
+    advLocationIndex: -1,
+    advStatusLabel: '',
+    advLocationLabel: '',
+    advStatusOptions: [],
+    advLocationOptions: [],
+    // 首页跳转
+    targetId: '',
+    targetTitle: '',
+    pendingAutoEdit: false,
+    isTargetMode: false
   },
 
-  onLoad:function(options){
-    if(options && options.targetId){
+  onLoad: function(options) {
+    if (options && options.targetId) {
       this.setData({
         targetId: options.targetId,
         targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-        pendingAutoEdit: options.autoEdit === 'true'
+        pendingAutoEdit: options.autoEdit === 'true',
+        isTargetMode: true
       });
+      this.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+    } else {
+      this.loadList();
     }
-    this.loadList();
-  },
-  onShow:function(){
-    if(!this.data.targetId) this.loadList();
   },
 
-  /* ========= 数据加载（服务端模糊搜索）========= */
-  loadList:function(){
+  onShow: function() {
+    if (!this.data.targetId && !this.data.isTargetMode) this.loadList();
+  },
+
+  /* ======== 统计（云函数，支持搜索关键词联动）======= */
+  loadStats: function() {
     var that = this;
+    var keyword = (this.data.searchKeyword || '').trim();
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'conferenceStats',
+        keyword: keyword
+      }
+    }).then(function(res) {
+      if (res.result && res.result.success) {
+        that.setData({
+          totalCount: res.result.total,
+          pendingCount: res.result.pending,
+          nearCount: res.result.near,
+          registeredCount: res.result.registered
+        });
+      } else {
+        console.warn('[会议] loadStats 返回不成功:', res.result);
+      }
+    }).catch(function(e) {
+      console.error('[会议] 统计失败', e);
+    });
+  },
+
+  /* ======== 数据加载（服务端分页 + 模糊搜索，按 deadline 升序）======= */
+  loadList: function(isLoadMore) {
+    if (this.data.loadingMore) return;
+    var that = this;
+    var page = isLoadMore ? this.data.page + 1 : 0;
+    var pageSize = this.data.pageSize;
+    var skip = page * pageSize;
+
+    this.setData({ loadingMore: true });
+    if (!isLoadMore) this.setData({ searchLoading: true });
+
     var db = wx.cloud.database();
     var _ = db.command;
 
-    // 构建 where 条件
+    // 构建"基础条件"（搜索 + 高级筛选，不含 quickFilter）
+    var baseConditions = [{ deleteTime: null }];
     var kw = (this.data.searchKeyword || '').trim();
-    var where;
-    if(kw){
+    if (kw) {
       var reg = db.RegExp({ regexp: kw, options: 'i' });
-      where = _.or([
-        { deleteTime: null, name: reg },
-        { deleteTime: null, shortName: reg },
-        { deleteTime: null, location: reg }
-      ]);
-    } else {
-      where = { deleteTime: null };
+      baseConditions.push(_.or([
+        { name: reg },
+        { shortName: reg },
+        { location: reg }
+      ]));
+    }
+    // 高级筛选条件
+    var advStatus = this.data.advStatus;
+    var advLocation = this.data.advLocation;
+    var advFrom = this.data.advDeadlineFrom;
+    var advTo = this.data.advDeadlineTo;
+    if (advStatus) baseConditions.push({ status: advStatus });
+    if (advLocation) baseConditions.push({ location: advLocation });
+    if (advFrom) baseConditions.push({ deadline: _.gte(advFrom + ' 00:00:00') });
+    if (advTo) baseConditions.push({ deadline: _.lte(advTo + ' 23:59:59') });
+
+    // 构建"列表条件"（基础条件 + quickFilter）
+    var listConditions = baseConditions.slice();
+    var qf = this.data.quickFilter;
+    if (qf && qf !== 'all') {
+      var now = new Date();
+      if (qf === 'pending') {
+        // 待截稿：deadline >= 今天
+        var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        listConditions.push({ deadline: _.gte(todayStr + ' 00:00:00') });
+      } else if (qf === 'near') {
+        // 急需处理：deadline 在 0-3 天内
+        var fromStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        var toDate = new Date(now);
+        toDate.setDate(now.getDate() + 3);
+        var toStr = toDate.getFullYear() + '-' + String(toDate.getMonth() + 1).padStart(2, '0') + '-' + String(toDate.getDate()).padStart(2, '0');
+        listConditions.push({ deadline: _.gte(fromStr + ' 00:00:00') });
+        listConditions.push({ deadline: _.lte(toStr + ' 23:59:59') });
+      } else if (qf === 'registered') {
+        // 已报名：deadline < 今天
+        var todayStr2 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        listConditions.push({ deadline: _.lt(todayStr2 + ' 00:00:00') });
+      }
     }
 
-    db.collection('conferences').where(where).orderBy('deadline','asc').get()
-      .then(function(res){
-        var now = new Date();
-        var list = (res.data||[]).map(function(i){
-          var d = i.deadline ? parseDate(i.deadline) : null;
-          var daysLeft = d ? Math.ceil((d-now)/86400000) : null;
-          return {
-            _id:i._id, name:i.name, shortName:i.shortName||'', location:i.location||'',
-            deadline:i.deadline||'', notificationDate:i.notificationDate||'', startDate:i.startDate||'',
-            url:i.url||'', note:i.note||'', status:i.status||'', createTime:i.createTime, updateTime:i.updateTime,
-            daysLeft:daysLeft, urgent:daysLeft!==null&&daysLeft>=0&&daysLeft<=14,
-            deadlineLabel: d ? that.formatDate(d) : '',
-            startDateLabel: i.startDate ? that.formatDate(parseDate(i.startDate)) : ''
-          };
-        });
-        that.setData({ list:list }, function() {
-          that.applyFilter();
-          // 处理首页跳转：用 targetId 精确定位
-          if (that.data.targetId) {
-            var targetTitle = that.data.targetTitle;
-            var found = list.find(function(i){ return i._id === that.data.targetId; });
-            if(found){
-              if(targetTitle) that.setData({ searchKeyword: targetTitle });
-              if(that.data.pendingAutoEdit){
-                var fmt = found.deadline ? (function(){
-                  var pd = parseDate(found.deadline);
-                  return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
-                })() : '';
-                var nfmt = found.notificationDate ? that.formatDate(parseDate(found.notificationDate)) : '';
-                that.setData({
-                  showForm:true, isEdit:true, editId:found._id,
-                  form:{
-                    name:found.name||'', shortName:found.shortName||'',
-                    location:found.location||'', deadline:fmt,
-                    notificationDate:nfmt,
-                    startDate:found.startDateLabel||'', url:found.url||'',
-                    note:found.note||''
-                  }
-                });
-              }
-              that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
-            } else {
-              that.locateById(that.data.targetId, targetTitle);
+    var whereForList = listConditions.length === 1 ? listConditions[0] : _.and(listConditions);
+    var whereForOptions = baseConditions.length === 1 ? baseConditions[0] : _.and(baseConditions);
+
+    // 两个查询并行：列表数据（含 quickFilter）+ 选项数据（不含 quickFilter）
+    var listQuery = db.collection('conferences')
+      .where(whereForList)
+      .orderBy('deadline', 'asc')
+      .skip(skip)
+      .limit(pageSize)
+      .get();
+
+    var queries = [listQuery];
+    if (that.data.quickFilter) {
+      var optionsQuery = db.collection('conferences')
+        .where(whereForOptions)
+        .limit(1000)
+        .get();
+      queries.push(optionsQuery);
+    }
+
+    Promise.all(queries).then(function(results) {
+      var listRes = results[0];
+      var optionsRes = results[1];
+
+      var rawData = Array.isArray(listRes.data) ? listRes.data : [];
+      var newItems = rawData.map(function(item) { return formatUtil.formatItem(item); });
+
+      var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
+      var hasMore = newItems.length >= pageSize;
+      var extra = {};
+
+      // 构建高级筛选选项：优先用"不含 quickFilter"的选项数据
+      if (!isLoadMore) {
+        if (optionsRes && optionsRes.data) {
+          var optionsData = Array.isArray(optionsRes.data) ? optionsRes.data : [];
+          var optionsItems = optionsData.map(function(item) { return formatUtil.formatItem(item); });
+          extra = formatUtil.buildAdvOptions(optionsItems, that.data);
+        } else {
+          extra = formatUtil.buildAdvOptions(list, that.data);
+        }
+      }
+
+      extra.list = list;
+      extra.page = isLoadMore ? page : 0;
+      extra.hasMore = hasMore;
+      extra.loadingMore = false;
+      extra.searchLoading = false;
+      that.setData(extra, function() {
+        that.applyFilter();
+        // 处理首页跳转：用 targetId 精确定位
+        if (that.data.targetId) {
+          var targetTitle = that.data.targetTitle;
+          var found = list.find(function(i) { return i._id === that.data.targetId; });
+          if (found) {
+            if (targetTitle) that.setData({ searchKeyword: targetTitle });
+            if (that.data.pendingAutoEdit) {
+              that.setData({
+                showForm: true,
+                isEdit: true,
+                editId: that.data.targetId
+              });
             }
+            that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
+          } else {
+            that.locateById(that.data.targetId, targetTitle);
           }
-        });
-      }).catch(function(e){
-        console.error('[会议] 加载失败',e);
-        that.setData({ list:[], filteredList:[] });
+        }
       });
+      // 每次加载完成后更新统计
+      if (!isLoadMore) that.loadStats();
+    }).catch(function(e) {
+      console.error('[会议] 加载失败', e);
+      that.setData({ loadingMore: false, searchLoading: false });
+      if (!isLoadMore) that.setData({ list: [], filteredList: [] });
+    });
   },
 
-  /* ========= 通过 ID 精确定位 ========= */
-  locateById:function(id, title){
+  /* ======== 通过 ID 精确定位（首页跳转时只显示这一个）======= */
+  locateById: function(id, title) {
     var that = this;
-    wx.cloud.database().collection('conferences').doc(id).get().then(function(res){
-      if(res.data){
-        var i = res.data;
-        var now = new Date();
-        var d = i.deadline ? parseDate(i.deadline) : null;
-        var daysLeft = d ? Math.ceil((d-now)/86400000) : null;
-        var item = {
-          _id:i._id, name:i.name, shortName:i.shortName||'', location:i.location||'',
-          deadline:i.deadline||'', notificationDate:i.notificationDate||'', startDate:i.startDate||'',
-          url:i.url||'', note:i.note||'', status:i.status||'', createTime:i.createTime, updateTime:i.updateTime,
-          daysLeft:daysLeft, urgent:daysLeft!==null&&daysLeft>=0&&daysLeft<=14,
-          deadlineLabel: d ? that.formatDate(d) : '',
-          startDateLabel: i.startDate ? that.formatDate(parseDate(i.startDate)) : ''
-        };
-        var list = that.data.list.concat([item]);
-        if(title) that.setData({ searchKeyword: title });
-        that.setData({ list: list }, function(){
-          that.applyFilter();
-          if(that.data.pendingAutoEdit){
-            var fmt = item.deadline ? (function(){
-              var pd = parseDate(item.deadline);
-              return pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
-            })() : '';
-            var nfmt = item.notificationDate ? that.formatDate(parseDate(item.notificationDate)) : '';
-            that.setData({
-              showForm:true, isEdit:true, editId:id,
-              form:{
-                name:item.name||'', shortName:item.shortName||'',
-                location:item.location||'', deadline:fmt,
-                notificationDate:nfmt,
-                startDate:item.startDateLabel||'', url:item.url||'',
-                note:item.note||''
-              }
-            });
+    wx.cloud.database().collection('conferences').doc(id).get().then(function(res) {
+      if (res.data) {
+        var item = formatUtil.formatItem(res.data);
+        var list = [item];
+        if (title) that.setData({ searchKeyword: title });
+        var shouldAutoEdit = that.data.pendingAutoEdit;
+        that.setData({
+          list: list,
+          filteredList: list,
+          isTargetMode: true,
+          targetId: '',
+          targetTitle: '',
+          pendingAutoEdit: false
+        }, function() {
+          if (shouldAutoEdit) {
+            that.setData({ showForm: true, isEdit: true, editId: id });
           }
-          that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
         });
+        that.loadStats();
       }
-    }).catch(function(e){
+    }).catch(function(e) {
       console.error('[会议] 定位失败', e);
-      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
-    });
-  },
-
-  /* ========= 搜索/筛选 ========= */
-  applyFilter:function(){
-    // 关键词搜索已由服务端 db.RegExp 完成，客户端只做状态筛选
-    var status = this.data.filterStatus;
-    var result = this.data.list;
-    if(status==='pending')   result = result.filter(function(i){ return i.daysLeft!==null&&i.daysLeft>=0; });
-    if(status==='registered') result = result.filter(function(i){ return i.daysLeft!==null&&i.daysLeft<0; });
-    if(status==='expired')  result = result.filter(function(i){ return i.daysLeft!==null&&i.daysLeft<-30; });
-    this.setData({ filteredList:result });
-  },
-
-  onSearch:function(e){ this.setData({ searchKeyword:e.detail.value }); this.loadList(); },
-  setFilter:function(e){ this.setData({ filterStatus:e.currentTarget.dataset.status }); this.applyFilter(); },
-
-  /* ========= 表单 ========= */
-  showAddForm:function(){
-    this.setData({ showForm:true, isEdit:false, editId:'', form:{ name:'', shortName:'', location:'', deadline:'', notificationDate:'', startDate:'', url:'', note:'' } });
-  },
-
-  showEditForm:function(e){
-    var id = e.currentTarget.dataset.id;
-    var item = this.data.list.find(function(i){ return i._id===id; });
-    if(!item) return;
-    this.setData({
-      showForm:true, isEdit:true, editId:item._id,
-      form:{
-        name:item.name||'', shortName:item.shortName||'', location:item.location||'',
-        deadline:item.deadlineLabel||'',
-        notificationDate:item.notificationDate ? this.formatDate(parseDate(item.notificationDate)) : '',
-        startDate:item.startDateLabel||'',
-        url:item.url||'', note:item.note||''
-      }
-    });
-  },
-
-  onFormInput:function(e){
-    var field = e.currentTarget.dataset.field;
-    var val = e.detail.value;
-    var data = {};
-    data['form.'+field] = val;
-    this.setData(data);
-  },
-
-  onDeadlineChange:function(e){ this.setData({ 'form.deadline': e.detail.value }); },
-  onNotifyChange:function(e){   this.setData({ 'form.notificationDate': e.detail.value }); },
-  onStartChange:function(e){    this.setData({ 'form.startDate': e.detail.value }); },
-
-  closeForm:function(){ this.setData({ showForm:false }); },
-
-  saveForm:function(){
-    var that = this;
-    var f = this.data.form;
-    if(!f.name){ wx.showToast({ title:'请填写会议名称', icon:'none' }); return; }
-
-    var data = {
-      name:f.name, shortName:f.shortName, location:f.location,
-      deadline:f.deadline ? formatTime(f.deadline+' 00:00:00') : null,
-      notificationDate:f.notificationDate ? formatTime(f.notificationDate+' 00:00:00') : null,
-      startDate:f.startDate ? formatTime(f.startDate+' 00:00:00') : null,
-      url:f.url, note:f.note, updateTime:formatTime()
-    };
-    var db = wx.cloud.database();
-    wx.showLoading({ title:'保存中...' });
-    var promise;
-    if(this.data.isEdit){
-      promise = db.collection('conferences').doc(this.data.editId).update({ data:data });
-    } else {
-      data.createTime = formatTime();
-      data.deleteTime = null;
-      promise = db.collection('conferences').add({ data:data });
-    }
-    promise.then(function(){
-      wx.hideLoading();
-      wx.showToast({ title:'保存成功', icon:'success' });
-      that.setData({ showForm:false });
+      that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false, isTargetMode: false });
       that.loadList();
-    }).catch(function(){
-      wx.hideLoading();
-      wx.showToast({ title:'保存失败', icon:'error' });
     });
   },
 
-  deleteItem:function(e){
+  /* ======== 查看全部（退出单条模式）======= */
+  showAll: function() {
+    this.setData({ isTargetMode: false, searchKeyword: '', targetId: '', targetTitle: '' });
+    this.loadList();
+  },
+
+  /* ======== 搜索/筛选 ======== */
+  onSearch: function(e) {
+    this.setData({ searchKeyword: e.detail.value, page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  clearSearch: function() {
+    this.setData({ searchKeyword: '', page: 0, hasMore: true, isTargetMode: false, targetId: '', targetTitle: '', pendingAutoEdit: false });
+    this.loadList(false);
+  },
+
+  // 快速筛选
+  onTipFilter: function(e) {
+    var type = e.currentTarget.dataset.filter;
+    this.setData({
+      quickFilter: type === this.data.quickFilter ? '' : type,
+      page: 0,
+      hasMore: true,
+      // 关闭高级筛选面板，清空高级筛选条件（互斥）
+      showAdvanced: false,
+      advStatus: '',
+      advLocation: '',
+      advDeadlineFrom: '',
+      advDeadlineTo: '',
+      advStatusIndex: -1,
+      advLocationIndex: -1,
+      advStatusLabel: '',
+      advLocationLabel: ''
+    });
+    this.loadList(false);
+  },
+
+  // 高级筛选
+  toggleAdvanced: function() {
+    var opening = !this.data.showAdvanced;
+    this.setData({
+      showAdvanced: opening,
+      // 展开高级筛选时，取消快速筛选选中
+      quickFilter: opening ? '' : this.data.quickFilter
+    });
+  },
+
+  onAdvStatusChange: function(e) {
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advStatusOptions[idx] || {};
+    this.setData({
+      advStatusIndex: idx,
+      advStatus: opt.value || '',
+      advStatusLabel: opt.label || '',
+      quickFilter: '',
+      page: 0,
+      hasMore: true
+    });
+    this.loadList(false);
+  },
+
+  onAdvLocationChange: function(e) {
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advLocationOptions[idx] || {};
+    this.setData({
+      advLocationIndex: idx,
+      advLocation: opt.value || '',
+      advLocationLabel: opt.label || '',
+      quickFilter: '',
+      page: 0,
+      hasMore: true
+    });
+    this.loadList(false);
+  },
+
+  onAdvDeadlineFromChange: function(e) {
+    this.setData({ advDeadlineFrom: e.detail.value, quickFilter: '', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  onAdvDeadlineToChange: function(e) {
+    this.setData({ advDeadlineTo: e.detail.value, quickFilter: '', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  clearAdvStatus: function() {
+    this.setData({ advStatus: '', advStatusIndex: -1, advStatusLabel: '', quickFilter: '', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  clearAdvLocation: function() {
+    this.setData({ advLocation: '', advLocationIndex: -1, advLocationLabel: '', quickFilter: '', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  clearAdvDeadlineFrom: function() {
+    this.setData({ advDeadlineFrom: '', quickFilter: '', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  clearAdvDeadlineTo: function() {
+    this.setData({ advDeadlineTo: '', quickFilter: '', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  resetAdvanced: function() {
+    this.setData({
+      advStatus: '',
+      advLocation: '',
+      advDeadlineFrom: '',
+      advDeadlineTo: '',
+      advStatusIndex: -1,
+      advLocationIndex: -1,
+      advStatusLabel: '',
+      advLocationLabel: '',
+      page: 0,
+      hasMore: true
+    });
+    this.loadList(false);
+  },
+
+  // 客户端过滤（服务端已完成，只同步 filteredList）
+  applyFilter: function() {
+    var baseList = Array.isArray(this.data.list) ? this.data.list : [];
+    this.setData({ filteredList: baseList });
+  },
+
+  onReachBottom: function() {
+    if (this.data.hasMore && !this.data.loadingMore) {
+      this.loadList(true);
+    }
+  },
+
+  /* ======== 表单控制（通过 form 组件）======== */
+  showAddForm: function() {
+    this.setData({ showForm: true, isEdit: false, editId: '' });
+  },
+
+  showEditForm: function(e) {
+    var id = e.currentTarget.dataset.id;
+    this.setData({ showForm: true, isEdit: true, editId: id });
+  },
+
+  onFormSave: function() {
+    this.setData({ showForm: false, isEdit: false, editId: '', quickFilter: '', page: 0, hasMore: true });
+    this.loadList();
+  },
+
+  onFormCancel: function() {
+    this.setData({ showForm: false, isEdit: false, editId: '' });
+  },
+
+  /* ======== 删除 ======== */
+  deleteItem: function(e) {
     var that = this;
     var id = e.currentTarget.dataset.id;
     wx.showModal({
-      title:'删除确认', content:'确定删除？',
-      success:function(res){
-        if(res.confirm){
-          softDelete('conferences',id).then(function(){
-            wx.showToast({ title:'已删除', icon:'success' });
+      title: '删除确认',
+      content: '确定删除该会议？',
+      success: function(res) {
+        if (res.confirm) {
+          softDelete('conferences', id).then(function() {
+            wx.showToast({ title: '已删除', icon: 'success' });
             that.loadList();
           });
         }
@@ -250,8 +426,18 @@ Page({
     });
   },
 
-  /* ========= 工具 ========= */
-  formatDate:function(d){
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  }
+  /* ======== 打开会议链接 ======== */
+  onOpenConfUrl: function(e) {
+    var url = e.currentTarget.dataset.url;
+    if (url) {
+      wx.setClipboardData({
+        data: url,
+        success: function() {
+          wx.showToast({ title: '链接已复制', icon: 'success' });
+        }
+      });
+    }
+  },
+
+  doNothing: function() {}
 });

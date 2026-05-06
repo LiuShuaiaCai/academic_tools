@@ -310,6 +310,56 @@ async function reviewStats(event) {
   return { success: true, total: total, incomplete: incomplete, near: near, urgent: urgent };
 }
 
+// 会议统计（支持搜索关键词过滤）
+// 参数: event.keyword - 可选，搜索关键词，匹配 name/shortName/location
+async function conferenceStats(event) {
+  var now = new Date();
+  // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
+  var beijingTime = new Date(now.getTime() + 8 * 3600000);
+  var todayStr = beijingTime.getFullYear() + '-' + String(beijingTime.getMonth()+1).padStart(2,'0') + '-' + String(beijingTime.getDate()).padStart(2,'0');
+
+  var _ = db.command;
+  var keyword = (event.keyword || '').trim();
+
+  // 构建查询条件
+  var conditions = [{ deleteTime: null }];
+  if (keyword) {
+    var reg = db.RegExp({ regexp: keyword, options: 'i' });
+    conditions.push(_.or([
+      { name: reg },
+      { shortName: reg },
+      { location: reg }
+    ]));
+  }
+  var where = conditions.length === 1 ? conditions[0] : _.and(conditions);
+
+  var res = await db.collection('conferences').where(where).limit(1000).get();
+  var list = res.data || [];
+  var total = 0, pending = 0, near = 0, registered = 0;
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    total++;
+    // pending: 待截稿（status = 'pending' 且 deadline 未过）
+    if (item.status === 'pending') {
+      pending++;
+    }
+    // near: deadline 3天内
+    if (item.deadline) {
+      var dlDateStr = String(item.deadline).substring(0, 10);
+      var dlDate = new Date(dlDateStr + 'T00:00:00');
+      var todayDate = new Date(todayStr + 'T00:00:00');
+      var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
+      if (days >= 0 && days <= 3) near++;
+    }
+    // registered: 已报名
+    if (item.status === 'registered') {
+      registered++;
+    }
+  }
+  console.log('[conferenceStats] keyword=' + keyword + ' total=' + total + ' pending=' + pending + ' near=' + near + ' registered=' + registered);
+  return { success: true, total: total, pending: pending, near: near, registered: registered };
+}
+
 // 修复被错误标记为 completed=true 的投稿（没有终态事件的应改为 false）
 async function fixCompleted() {
   var completedEvents = ['接收', '发表', '出版', 'online', 'Online', 'accepted', 'published'];
@@ -351,7 +401,8 @@ exports.main = async (event) => {
       case 'saveUserTools':   return await saveUserTools(event);
       case 'submissionStats': return await submissionStats(event);
       case 'reviewStats':     return await reviewStats(event);
-      case 'fixCompleted':    return await fixCompleted();
+      case 'conferenceStats': return await conferenceStats(event);
+      case 'fixCompleted':   return await fixCompleted();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

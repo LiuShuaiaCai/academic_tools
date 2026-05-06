@@ -1,0 +1,59 @@
+/* utils/conferences-form.wxss - 会议表单公共样式（从审稿表单提取） */
+
+/* ========== 表单弹层 ========== */
+.form-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: flex-end; justify-content: center; }
+.form-overlay.active { display: flex; }
+.form-sheet { background: #fff; border-radius: 32rpx 32rpx 0 0; width: 100%; max-width: 100vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+.form-header { display: flex; justify-content: space-between; align-items: center; padding: 32rpx 32rpx 16rpx; border-bottom: 1rpx solid #E5E7EB; flex-shrink: 0; box-sizing: border-box; }
+.form-title { font-size: 32rpx; font-weight: 700; color: #111827; }
+.form-close { font-size: 36rpx; color: #6B7280; padding: 8rpx; }
+.form-body { flex: 1; padding: 24rpx 32rpx; overflow-y: auto; box-sizing: border-box; }
+
+/* ========== 表单元素 ========== */
+.form-group { margin-bottom: 28rpx; }
+.form-label { font-size: 26rpx; font-weight: 500; color: #374151; margin-bottom: 12rpx; display: block; }
+.form-label-icon { margin-right: 4rpx; }
+.form-label-hint { font-size: 22rpx; color: #9CA3AF; font-weight: 400; }
+.required { color: #EF4444; }
+.form-input { display: block; width: 100%; min-height: 88rpx; padding: 20rpx; border: 1rpx solid #D1D5DB; border-radius: 12rpx; font-size: 28rpx; color: #111827; background: #fff; box-sizing: border-box; }
+.form-picker { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 88rpx; padding: 20rpx; border: 1rpx solid #D1D5DB; border-radius: 12rpx; font-size: 28rpx; color: #111827; box-sizing: border-box; background: #fff; }
+.form-picker.placeholder { color: #9CA3AF; }
+.picker-arrow { color: #9CA3AF; font-size: 28rpx; margin-left: 8rpx; }
+.form-textarea { display: block; width: 100%; padding: 20rpx; border: 1rpx solid #D1D5DB; border-radius: 12rpx; font-size: 28rpx; color: #111827; min-height: 160rpx; box-sizing: border-box; background: #fff; }
+.radio-group { display: flex; gap: 16rpx; flex-wrap: wrap; }
+.radio-item { padding: 12rpx 24rpx; border: 1rpx solid #E5E7EB; border-radius: 40rpx; font-size: 26rpx; color: #6B7280; }
+.radio-item.active { background: #DBEAFE; border-color: #10B981; color: #059669; }
+.form-footer { display: flex; gap: 16rpx; padding: 20rpx 32rpx 48rpx; border-top: 1rpx solid #E5E7EB; flex-shrink: 0; box-sizing: border-box; }
+.btn-cancel { flex: 1; background: #F3F4F6; color: #374151; border-radius: 12rpx; font-size: 28rpx; padding: 24rpx 0; border: none; box-sizing: border-box; }
+.btn-confirm { flex: 2; background: #10B981; color: #fff; border-radius: 12rpx; font-size: 28rpx; padding: 24rpx 0; border: none; box-sizing: border-box; }
+
+/* ========== 日历图标 ========== */
+.cal-icon { width: 32rpx; height: 32rpx; border: 3rpx solid #9CA3AF; border-radius: 6rpx; position: relative; margin-right: 12rpx; flex-shrink: 0; }
+.cal-icon::before { content: ''; position: absolute; top: -10rpx; left: 5rpx; width: 6rpx; height: 10rpx; background: #9CA3AF; border-radius: 2rpx; }
+.cal-icon::after { content: ''; position: absolute; top: -10rpx; right: 5rpx; width: 6rpx; height: 10rpx; background: #9CA3AF; border-radius: 2rpx; }
+.cal-icon-sm { width: 24rpx; height: 24rpx; border-width: 2rpx; margin-right: 8rpx; }
+.cal-icon-sm::before { top: -8rpx; left: 3rpx; width: 5rpx; height: 8rpx; }
+.cal-icon-sm::after { top: -8rpx; right: 3rpx; width: 5rpx; height: 8rpx; }
+
+/* ========== 时间线 ========== */
+.tl-add-row { display: flex; gap: 12rpx; margin-bottom: 12rpx; }
+.tl-date-picker { flex: 1; }
+.tl-event-picker { flex: 1; }
+.tl-picker-box { display: flex; align-items: center; min-height: 72rpx; padding: 12rpx 16rpx; border: 1rpx solid #D1D5DB; border-radius: 10rpx; background: #fff; box-sizing: border-box; }
+.tl-picker-text { font-size: 24rpx; color: #111827; }
+.tl-placeholder { color: #9CA3AF; }
+.tl-arrow { margin-left: auto; color: #9CA3AF; font-size: 20rpx; }
+.tl-remark-row { display: flex; gap: 12rpx; align-items: center; }
+.tl-remark-input { flex: 1; min-height: 72rpx; padding: 12rpx 16rpx; border: 1rpx solid #D1D5DB; border-radius: 10rpx; font-size: 24rpx; background: #fff; box-sizing: border-box; }
+.tl-add-btn { padding: 12rpx 28rpx; background: #10B981; border-radius: 10rpx; flex-shrink: 0; }
+.tl-add-text { color: #fff; font-size: 24rpx; font-weight: 500; }
+.tl-list { margin-top: 16rpx; }
+.tl-item-card { display: flex; align-items: flex-start; padding: 16rpx 0; border-bottom: 1rpx solid #F3F4F6; }
+.tl-card-left { width: 32rpx; display: flex; justify-content: center; padding-top: 6rpx; flex-shrink: 0; }
+.tl-card-dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.tl-card-content { flex: 1; margin-left: 12rpx; }
+.tl-card-top { display: flex; align-items: center; gap: 12rpx; }
+.tl-card-date { font-size: 24rpx; color: #6B7280; }
+.tl-card-event { font-size: 24rpx; font-weight: 500; }
+.tl-card-remark { font-size: 22rpx; color: #9CA3AF; margin-top: 4rpx; }
+.tl-card-del { padding: 8rpx 12rpx; color: #D1D5DB; font-size: 32rpx; flex-shrink: 0; }
