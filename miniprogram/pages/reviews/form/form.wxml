@@ -20,6 +20,12 @@
         <input class="form-input" placeholder="来稿期刊/会议" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
       </view>
 
+      <!-- 2.5 审稿ID -->
+      <view class="form-group">
+        <view class="form-label">审稿ID</view>
+        <input class="form-input" placeholder="如 #XX-2026-01" bindinput="onFormInput" data-field="reviewId" value="{{form.reviewId}}"/>
+      </view>
+
       <!-- 3. 邀请时间 -->
       <view class="form-group">
         <view class="form-label">邀请时间 <text class="required">*</text></view>
@@ -142,19 +148,20 @@
       <!-- 13. 审稿笔记 -->
       <view class="form-group">
         <view class="form-label-row">
-          <view class="form-label">审稿笔记<text class="form-label-hint">（优点/缺点/建议/问题）</text></view>
-          <!-- <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{form.manuscript && form.manuscript.fileID && !aiReviewLoading}}"> -->
-          <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{!aiReviewLoading}}">
-            <text class="template-btn-icon">🤖</text>
-            <text class="template-btn-text">AI审稿</text>
-          </view>
-          <view class="template-btn" bindtap="showTemplateModal">
-            <text class="template-btn-icon">📋</text>
-            <text class="template-btn-text">插入模板</text>
-          </view>
-          <view class="template-btn clear-note-btn" bindtap="clearNote">
-            <text class="template-btn-icon">🗑</text>
-            <text class="template-btn-text">清空</text>
+          <view class="form-label">审稿意见</view>
+          <view class="decision-btns">
+            <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{!aiReviewLoading}}">
+              <text class="template-btn-icon">🤖</text>
+              <text class="template-btn-text">AI审稿</text>
+            </view>
+            <view class="template-btn" bindtap="showTemplateModal">
+              <text class="template-btn-icon">📋</text>
+              <text class="template-btn-text">插入模板</text>
+            </view>
+            <view class="template-btn clear-note-btn" bindtap="clearNote">
+              <text class="template-btn-icon">🗑</text>
+              <text class="template-btn-text">清空</text>
+            </view>
           </view>
         </view>
         <!-- AI审稿进度 -->
@@ -236,43 +243,45 @@
 
       <view class="form-group">
         <view class="form-label">审稿决定</view>
-        <view class="decision-options">
-          <view class="decision-btn {{decision === 'pending' ? 'selected pending' : ''}}" bindtap="setDecision" data-decision="pending">
-            <text class="decision-icon">⏳</text>
-            <text>待定</text>
-          </view>
-          <view class="decision-btn {{decision === 'peer' ? 'selected peer' : ''}}" bindtap="setDecision" data-decision="peer">
-            <text class="decision-icon">👥</text>
-            <text>同行</text>
-          </view>
-          <view class="decision-btn {{decision === 'accept' ? 'selected accept' : ''}}" bindtap="setDecision" data-decision="accept">
-            <text class="decision-icon">✅</text>
-            <text>接收</text>
-          </view>
-        </view>
-        <view class="decision-options decision-options-row2">
-          <view class="decision-btn {{decision === 'major' ? 'selected major' : ''}}" bindtap="setDecision" data-decision="major">
-            <text class="decision-icon">⚠️</text>
-            <text>大修</text>
-          </view>
-          <view class="decision-btn {{decision === 'minor' ? 'selected minor' : ''}}" bindtap="setDecision" data-decision="minor">
-            <text class="decision-icon">🔄</text>
-            <text>小修</text>
-          </view>
-          <view class="decision-btn {{decision === 'reject' ? 'selected reject' : ''}}" bindtap="setDecision" data-decision="reject">
-            <text class="decision-icon">❌</text>
-            <text>拒绝</text>
-          </view>
-          <view class="decision-btn {{decision === 'other' ? 'selected other' : ''}}" bindtap="setDecision" data-decision="other">
-            <text class="decision-icon">📝</text>
-            <text>其他</text>
+        <view class="decision-options decision-options-grid">
+          <view
+            class="decision-btn {{item.value}} {{decision === item.value ? 'selected' : ''}}"
+            wx:for="{{decisionOptions}}"
+            wx:key="value"
+            bindtap="setDecision"
+            data-decision="{{item.value}}">
+            <text class="decision-icon">{{item.icon}}</text>
+            <text>{{item.label}}</text>
           </view>
         </view>
       </view>
 
       <view class="form-group">
-        <view class="form-label">审稿意见</view>
-        <textarea class="form-textarea" placeholder="请输入审稿意见..." bindinput="onDecisionNote" value="{{decisionNote}}"></textarea>
+        <view class="form-label-row">
+          <view class="form-label">审稿意见</view>
+          <view class="decision-btns">
+            <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{!aiReviewLoading}}">
+              <text class="template-btn-icon">🤖</text>
+              <text class="template-btn-text">AI审稿</text>
+            </view>
+            <view class="template-btn" bindtap="showTemplateModal">
+              <text class="template-btn-icon">📋</text>
+              <text class="template-btn-text">插入模板</text>
+            </view>
+            <view class="template-btn clear-note-btn" bindtap="clearNote">
+              <text class="template-btn-icon">🗑</text>
+              <text class="template-btn-text">清空</text>
+            </view>
+          </view>
+        </view>
+        <!-- AI审稿进度 -->
+        <view wx:if="{{aiReviewLoading}}" class="manuscript-progress">
+          <view class="ai-review-loading">
+            <view class="ai-review-spinner"></view>
+            <text class="ai-review-loading-text">AI 正在分析稿件，请稍候...</text>
+          </view>
+        </view>
+        <textarea class="form-textarea" placeholder="审稿意见..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
       </view>
     </view>
     <view class="form-footer">

@@ -16,7 +16,7 @@ Component({
 
   data: {
     form: {
-      paperTitle: '', journal: '', deadline: '', invitedDate: '',
+      paperTitle: '', journal: '', reviewId: '', deadline: '', invitedDate: '',
       status: 'pending', decision: '', round: 0,
       systemUrl: '', systemAccount: '', systemPassword: '',
       note: '',
@@ -38,7 +38,6 @@ Component({
     decisionPaper: '',
     decisionJournal: '',
     decision: '',
-    decisionNote: '',
 
     // ======== 审稿模板相关 ========
     showTemplateModal: false,
@@ -99,7 +98,7 @@ Component({
     resetForm: function() {
       this.setData({
         form: {
-          paperTitle: '', journal: '', deadline: '', invitedDate: '',
+          paperTitle: '', journal: '', reviewId: '', deadline: '', invitedDate: '',
           status: 'pending', decision: '', round: 0,
           systemUrl: '', systemAccount: '', systemPassword: '',
           note: '',
@@ -162,6 +161,7 @@ Component({
           form: {
             paperTitle: item.paperTitle || '',
             journal: item.journal || '',
+            reviewId: item.reviewId || '',
             deadline: formatUtil.formatDeadlineToDate(item.deadline),
             invitedDate: formatUtil.formatDeadlineToDate(item.invitedDate),
             status: item.status || 'pending',
@@ -472,7 +472,6 @@ Component({
     // 上传文件到云存储
     uploadManuscript: function(filePath, fileName, fileSize) {
       var that = this;
-      // 生成云存储路径
       var ext = fileName.split('.').pop().toLowerCase();
       var cloudPath = 'manuscripts/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.' + ext;
 
@@ -636,20 +635,13 @@ Component({
         return { date: item.date, event: item.event, remark: item.remark || '', dotColor: item.dotColor || '' };
       });
 
-      // 判断是否完成：时间线最大时间 >= deadline 则 completed = true
-      var deadlineDate = f.deadline ? new Date(String(f.deadline).replace(' ', 'T')) : null;
-      var maxTlDate = null;
-      tlSave.forEach(function(t){
-        if(t.date){
-          var d = new Date(String(t.date).replace(' ', 'T'));
-          if(!maxTlDate || d.getTime() > maxTlDate.getTime()) maxTlDate = d;
-        }
-      });
-      var completed = !!(deadlineDate && maxTlDate && maxTlDate.getTime() >= deadlineDate.getTime());
+      // 判断是否完成：时间线中是否有「审稿完成」事件
+      var completed = tlSave.some(function(t){ return t.event === '审稿完成'; });
 
       var data = {
         paperTitle: f.paperTitle,
         journal: f.journal,
+        reviewId: f.reviewId || '',
         deadline: f.deadline ? formatTime(f.deadline + ' 00:00:00') : null,
         invitedDate: f.invitedDate ? formatTime(f.invitedDate + ' 00:00:00') : null,
         status: f.status,
@@ -698,41 +690,44 @@ Component({
 
     /* ======== 审稿决定弹窗 ======== */
     openDecision: function(e) {
-      var id = e.currentTarget.dataset.id;
-      var paperTitle = e.currentTarget.dataset.papertitle || '';
-      var journal = e.currentTarget.dataset.journal || '';
+      var that = this;
+      var ds = e.currentTarget.dataset;
+      var id = ds.id || '';
+      // 先设置弹窗可见 + 基本信息
       this.setData({
         showDecisionModal: true,
         decisionId: id,
-        decisionPaper: paperTitle,
-        decisionJournal: journal,
-        decision: '',
-        decisionNote: ''
+        decisionPaper: ds.papertitle || '',
+        decisionJournal: ds.journal || '',
+        decision: ds.decision || ''
       });
+      // 从数据库查询 note，回显到 form.note
+      if (id) {
+        wx.cloud.database().collection('reviews').doc(id).field({ note: true }).get().then(function(res) {
+          if (res.data) {
+            that.setData({ 'form.note': res.data.note || '' });
+          }
+        });
+      }
     },
 
     closeDecision: function() {
-      this.setData({ showDecisionModal: false, decisionId: '', decision: '', decisionNote: '' });
+      this.setData({ showDecisionModal: false, decisionId: '', decision: '' });
     },
 
     setDecision: function(e) {
       this.setData({ decision: e.currentTarget.dataset.decision });
     },
 
-    onDecisionNote: function(e) {
-      this.setData({ decisionNote: e.detail.value });
-    },
-
     submitDecision: function() {
       var that = this;
       var decisionId = this.data.decisionId;
       var decision = this.data.decision;
-      var decisionNote = this.data.decisionNote;
+      var note = this.data.form.note || '';
       if (!decision) { wx.showToast({ title: '请选择审稿决定', icon: 'none' }); return; }
-      // 不再手动设 status，completed 由保存时根据时间线自动计算
       var updateData = {
         decision: decision,
-        decisionNote: decisionNote,
+        note: note,
         decisionTime: formatTime(),
         updateTime: formatTime()
       };

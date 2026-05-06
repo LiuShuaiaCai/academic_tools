@@ -387,7 +387,9 @@ Page({
           dataset: {
             id: id,
             papertitle: item.paperTitle || '',
-            journal: item.journal || ''
+            journal: item.journal || '',
+            decision: item.decision || '',
+            decisionnote: item.decisionNote || ''
           }
         }
       });
