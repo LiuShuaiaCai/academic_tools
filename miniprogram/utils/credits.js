@@ -1,0 +1,119 @@
+// miniprogram/utils/credits.js
+// 积分工具函数：扣费检查、余额不足弹窗
+
+/**
+ * 检查余额并消耗积分
+ * @param {string} action - 消耗类型：'ai_review' / 'new_submission' / 'new_review' / 'new_conference'
+ * @param {number} points - 消耗积分数（可选，不传则用默认值）
+ * @param {string} description - 描述（可选）
+ * @param {string} relatedId - 关联业务ID（可选）
+ * @returns {Promise<{success: boolean, balance: number}>}
+ */
+function spendCredits(action, points, description, relatedId) {
+  return wx.cloud.callFunction({
+    name: 'academicAPI',
+    data: {
+      action: 'spendCredits',
+      actionType: action,
+      points: points,
+      description: description,
+      relatedId: relatedId
+    }
+  }).then(function(res) {
+    var result = res.result;
+    if (result.insufficient) {
+      // 余额不足，弹出提示
+      return showInsufficientDialog(result.balance, result.required);
+    }
+    return result;
+  });
+}
+
+/**
+ * 显示积分不足弹窗
+ */
+function showInsufficientDialog(balance, required) {
+  return new Promise(function(resolve) {
+    wx.showModal({
+      title: '积分不足',
+      content: '当前余额 ' + balance + ' 积分，需要 ' + required + ' 积分。每日签到可获取积分。',
+      confirmText: '去签到',
+      cancelText: '取消',
+      success: function(res) {
+        if (res.confirm) {
+          wx.navigateTo({ url: '/pages/credits/credits' });
+        }
+        resolve({ success: false, insufficient: true, balance: balance });
+      },
+      fail: function() {
+        resolve({ success: false, insufficient: true, balance: balance });
+      }
+    });
+  });
+}
+
+/**
+ * 获取积分信息
+ */
+function getCreditsInfo() {
+  return wx.cloud.callFunction({
+    name: 'academicAPI',
+    data: { action: 'getCreditsInfo' }
+  }).then(function(res) {
+    return res.result || {};
+  });
+}
+
+/**
+ * 执行签到
+ */
+function doSignin() {
+  return wx.cloud.callFunction({
+    name: 'academicAPI',
+    data: { action: 'doSignin' }
+  }).then(function(res) {
+    return res.result || {};
+  });
+}
+
+/**
+ * 初始化积分（新用户）
+ */
+function initCredits() {
+  return wx.cloud.callFunction({
+    name: 'academicAPI',
+    data: { action: 'initCredits' }
+  }).then(function(res) {
+    return res.result || {};
+  });
+}
+
+/**
+ * 获取积分流水列表
+ */
+function getCreditsList(page, pageSize) {
+  return wx.cloud.callFunction({
+    name: 'academicAPI',
+    data: { action: 'getCreditsList', page: page || 1, pageSize: pageSize || 20 }
+  }).then(function(res) {
+    return res.result || {};
+  });
+}
+
+// 积分消耗默认值映射
+var CREDIT_COSTS = {
+  ai_review: 20,
+  new_submission: 5,
+  new_review: 5,
+  new_conference: 5
+};
+
+module.exports = {
+  spendCredits: spendCredits,
+  showInsufficientDialog: showInsufficientDialog,
+  getCreditsInfo: getCreditsInfo,
+  doSignin: doSignin,
+  initCredits: initCredits,
+  getCreditsList: getCreditsList,
+  CREDIT_COSTS: CREDIT_COSTS
+};

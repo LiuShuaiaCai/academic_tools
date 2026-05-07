@@ -3,6 +3,7 @@ var dbInit = require('../../../utils/dbInit');
 var formatTime = dbInit.formatTime;
 var parseDate = dbInit.parseDate;
 var formatUtil = require('../../../utils/conferences-format');
+var creditsUtil = require('../../../utils/credits');
 
 Component({
   properties: {
@@ -213,9 +214,16 @@ Component({
       if (this.data.isEdit) {
         promise = db.collection('conferences').doc(this.data.editId).update({ data: data });
       } else {
-        data.createTime = formatTime();
-        data.deleteTime = null;
-        promise = db.collection('conferences').add({ data: data });
+        // 新增会议消耗积分
+        promise = creditsUtil.spendCredits('new_conference', 5).then(function(spendResult) {
+          if (!spendResult.success) {
+            wx.hideLoading();
+            return Promise.reject('insufficient');
+          }
+          data.createTime = formatTime();
+          data.deleteTime = null;
+          return db.collection('conferences').add({ data: data });
+        });
       }
       promise.then(function() {
         wx.hideLoading();

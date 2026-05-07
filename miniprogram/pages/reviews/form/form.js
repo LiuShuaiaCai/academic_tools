@@ -6,6 +6,7 @@ var config = require('../../../utils/reviews-config');
 var formatUtil = require('../../../utils/reviews-format');
 var templateData = require('../../../utils/review-templates-data');
 var aiReviewUtil = require('../../../utils/review-ai');
+var creditsUtil = require('../../../utils/credits');
 
 Component({
   properties: {
@@ -576,11 +577,17 @@ Component({
 
       wx.showModal({
         title: 'AI 审稿',
-        content: '将使用AI分析稿件并生成审稿意见，写入审稿笔记。确认开始？',
+        content: '将使用AI分析稿件并生成审稿意见（消耗20积分），确认开始？',
         confirmColor: '#2563EB',
         success: function(res) {
           if (res.confirm) {
-            that.doAiReview(ms.fileID);
+            // 先扣费
+            creditsUtil.spendCredits('ai_review', 20).then(function(spendResult) {
+              if (spendResult.success) {
+                that.doAiReview(ms.fileID);
+              }
+              // 余额不足时 spendCredits 内部已弹出提示
+            });
           }
         }
       });
@@ -678,9 +685,16 @@ Component({
       if (this.data.isEdit) {
         promise = db.collection('reviews').doc(this.data.editId).update({ data: data });
       } else {
-        data.createTime = formatTime();
-        data.deleteTime = null;
-        promise = db.collection('reviews').add({ data: data });
+        // 新增审稿消耗积分
+        promise = creditsUtil.spendCredits('new_review', 5).then(function(spendResult) {
+          if (!spendResult.success) {
+            wx.hideLoading();
+            return Promise.reject('insufficient');
+          }
+          data.createTime = formatTime();
+          data.deleteTime = null;
+          return db.collection('reviews').add({ data: data });
+        });
       }
       promise.then(function() {
         wx.hideLoading();

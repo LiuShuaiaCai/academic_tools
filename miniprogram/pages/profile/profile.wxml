@@ -7,6 +7,25 @@
     <view class="profile-role-tag">{{roleLabels[userRole]}}</view>
   </view>
 
+  <!-- 积分条 -->
+  <view class="credits-bar" bindtap="goToCredits">
+    <view class="credits-bar-item">
+      <text class="credits-bar-icon">💰</text>
+      <text class="credits-bar-num">{{credits}}</text>
+      <text class="credits-bar-label">积分</text>
+    </view>
+    <view class="credits-bar-divider"></view>
+    <view class="credits-bar-item">
+      <text class="credits-bar-icon">🔥</text>
+      <text class="credits-bar-num">{{continuousDays}}</text>
+      <text class="credits-bar-label">连续签到</text>
+    </view>
+    <view class="signin-btn-bar {{signedToday ? 'signed' : ''}}" catchtap="doSignin">
+      <text wx:if="{{signedToday}}">✓已签到</text>
+      <text wx:else>签到</text>
+    </view>
+  </view>
+
   <!-- 统计数据 -->
   <view class="profile-stats">
     <view class="pstat-item">

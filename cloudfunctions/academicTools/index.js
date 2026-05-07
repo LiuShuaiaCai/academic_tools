@@ -20,7 +20,7 @@ const DEFAULT_TOOLS = [
 ];
 
 // 所有集合
-const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config'];
+const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config', 'credits'];
 
 // 格式化时间 YYYY-MM-DD HH:mm:ss
 function formatTime(date) {

@@ -1,0 +1,128 @@
+<!--pages/credits/credits.wxml-->
+<view class="credits-page">
+  <!-- 顶部积分卡片 -->
+  <view class="credits-header">
+    <view class="credits-balance" bindtap="goToRecord">
+      <view class="balance-label">我的积分</view>
+      <view class="balance-num">{{credits}}</view>
+      <view class="balance-hint">点击查看积分记录 ›</view>
+    </view>
+    <view class="signin-area">
+      <view class="signin-info" wx:if="{{signedToday}}">
+        <text class="signin-icon">✅</text>
+        <text>今日已签到</text>
+      </view>
+      <view class="signin-btn {{signinLoading ? 'disabled' : ''}}" bindtap="doSignin" wx:else>
+        <text>签到 +5</text>
+      </view>
+      <view class="signin-streak" wx:if="{{continuousDays > 0}}">
+        <text>🔥 已连续签到{{continuousDays}}天</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 积分规则 -->
+  <view class="rules-section">
+    <view class="rules-toggle" bindtap="toggleRules">
+      <text class="rules-title">积分规则</text>
+      <text class="rules-arrow {{showRules ? 'open' : ''}}">›</text>
+    </view>
+    <view class="rules-content" wx:if="{{showRules}}">
+      <view class="rule-group">
+        <view class="rule-group-title">获得积分</view>
+        <view class="rule-item">
+          <text class="rule-label">注册赠送</text>
+          <text class="rule-points earn">+100</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">每日签到</text>
+          <text class="rule-points earn">+5</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">连续签到3天</text>
+          <text class="rule-points earn">额外+2</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">连续签到7天</text>
+          <text class="rule-points earn">额外+5</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">连续签到14天</text>
+          <text class="rule-points earn">额外+10</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">连续签到30天</text>
+          <text class="rule-points earn">额外+20</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">邀请好友</text>
+          <text class="rule-points earn">+50</text>
+        </view>
+      </view>
+      <view class="rule-group">
+        <view class="rule-group-title">消耗积分</view>
+        <view class="rule-item">
+          <text class="rule-label">AI审稿</text>
+          <text class="rule-points spend">-20</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">新增投稿</text>
+          <text class="rule-points spend">-5</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">新增审稿</text>
+          <text class="rule-points spend">-5</text>
+        </view>
+        <view class="rule-item">
+          <text class="rule-label">新增会议</text>
+          <text class="rule-points spend">-5</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 积分明细 -->
+  <view class="records-section">
+    <view class="section-title">积分明细</view>
+
+    <!-- 加载中 -->
+    <view wx:if="{{loading}}" class="records-loading">
+      <text>加载中...</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:elif="{{records.length === 0 && !loading}}" class="records-empty">
+      <text class="empty-icon">📝</text>
+      <text class="empty-text">暂无积分记录</text>
+    </view>
+
+    <!-- 列表 -->
+    <view wx:else class="records-list">
+      <view class="record-item" wx:for="{{records}}" wx:key="_id">
+        <view class="record-left">
+          <view class="record-icon {{item.type === 'earn' ? 'earn' : 'spend'}}">
+            <text>{{item.type === 'earn' ? '↓' : '↑'}}</text>
+          </view>
+          <view class="record-info">
+            <view class="record-desc">{{item.description}}</view>
+            <view class="record-time">{{item.createTime}}</view>
+          </view>
+        </view>
+        <view class="record-points {{item.type === 'earn' ? 'earn' : 'spend'}}">
+          <text>{{item.type === 'earn' ? '+' : '-'}}{{item.points}}</text>
+        </view>
+      </view>
+
+      <!-- 加载更多 -->
+      <view class="load-more" wx:if="{{hasMore && !loadingMore}}">
+        <text bindtap="loadMore">点击加载更多</text>
+      </view>
+      <view class="load-more" wx:if="{{loadingMore}}">
+        <text>加载中...</text>
+      </view>
+      <view class="no-more" wx:if="{{!hasMore && records.length > 0}}">
+        <text>— 已加载全部 —</text>
+      </view>
+    </view>
+  </view>
+</view>

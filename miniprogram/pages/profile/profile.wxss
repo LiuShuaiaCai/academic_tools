@@ -21,6 +21,43 @@ page { background: #F6F6F6; }
   color: #fff;
 }
 
+/* ========== 积分条 ========== */
+.credits-bar {
+  background: #fff;
+  margin: 24rpx;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.credits-bar-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.credits-bar-icon { font-size: 28rpx; }
+.credits-bar-num { font-size: 36rpx; font-weight: 700; color: #F59E0B; }
+.credits-bar-label { font-size: 22rpx; color: #6B7280; }
+
+.credits-bar-divider { width: 1rpx; height: 60rpx; background: #E5E7EB; }
+
+.signin-btn-bar {
+  padding: 10rpx 24rpx;
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  border-radius: 28rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fff;
+}
+.signin-btn-bar.signed {
+  background: #E5E7EB;
+  color: #9CA3AF;
+}
+.signin-btn-bar:active { opacity: 0.8; }
+
 .profile-stats {
   background: #fff;
   margin: 24rpx;

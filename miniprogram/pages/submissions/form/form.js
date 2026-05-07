@@ -4,6 +4,7 @@ var formatTime = dbInit.formatTime;
 var parseDate = dbInit.parseDate;
 var config = require('../../../utils/submissions-config');
 var formatUtil = require('../../../utils/submissions-format');
+var creditsUtil = require('../../../utils/credits');
 
 Component({
   properties: {
@@ -319,10 +320,17 @@ Component({
       if(this.data.isEdit){
         promise = db.collection('submissions').doc(this.data.editId).update({ data:data });
       } else {
-        data.createTime = formatTime();
-        data.attachments = [];
-        data.deleteTime = null;
-        promise = db.collection('submissions').add({ data:data });
+        // 新增投稿消耗积分
+        promise = creditsUtil.spendCredits('new_submission', 5).then(function(spendResult) {
+          if (!spendResult.success) {
+            wx.hideLoading();
+            return Promise.reject('insufficient');
+          }
+          data.createTime = formatTime();
+          data.attachments = [];
+          data.deleteTime = null;
+          return db.collection('submissions').add({ data:data });
+        });
       }
       promise.then(function(){
         wx.hideLoading();

@@ -1,9 +1,14 @@
 // pages/profile/profile.js
+var creditsUtil = require('../../utils/credits.js');
+
 Page({
   data: {
     userRole: '',
     roleLabels: { researcher: '科研人员', reviewer: '审稿人', editor: '学术编辑' },
     stats: { submissions: 0, reviews: 0, conferences: 0, archives: 0 },
+    credits: 0,
+    signedToday: false,
+    continuousDays: 0,
     menuItems: [
       { icon: '🔧', text: '工具管理', action: 'goToToolManager' },
       { icon: '💾', text: '数据备份', action: 'backupData' },
@@ -25,6 +30,40 @@ Page({
 
   onShow: function () {
     this.loadStats();
+    this.loadCreditsInfo();
+  },
+
+  loadCreditsInfo: function() {
+    var self = this;
+    creditsUtil.getCreditsInfo().then(function(res) {
+      if (res.success !== false) {
+        self.setData({
+          credits: res.credits || 0,
+          signedToday: res.signedToday || false,
+          continuousDays: res.continuousDays || 0
+        });
+      }
+    }).catch(function() {});
+  },
+
+  doSignin: function() {
+    var self = this;
+    if (self.data.signedToday) return;
+    creditsUtil.doSignin().then(function(res) {
+      if (res.success) {
+        wx.showToast({ title: '签到成功 +' + res.earnedPoints + '积分', icon: 'none' });
+        self.setData({ credits: res.credits, signedToday: true, continuousDays: res.continuousDays });
+      } else if (res.alreadySigned) {
+        wx.showToast({ title: '今日已签到', icon: 'none' });
+        self.setData({ signedToday: true });
+      }
+    }).catch(function() {
+      wx.showToast({ title: '签到失败', icon: 'none' });
+    });
+  },
+
+  goToCredits: function() {
+    wx.navigateTo({ url: '/pages/credits/credits' });
   },
 
   loadStats: function () {

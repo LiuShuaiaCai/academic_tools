@@ -8,6 +8,33 @@
 - **技术栈**：微信小程序 + 微信云开发
 - **AppID**：wx81328607a82cd47e
 
+## 积分系统（2026-05-07 新增）
+
+### 核心设计
+- 消耗驱动型积分系统：使用功能消耗积分 → 驱动用户签到/邀请获取积分
+- 硬限制：积分不足禁止使用消耗功能
+
+### 数据库
+- **credits 集合**：积分流水记录（type/action/points/balance/description）
+- **user_config 扩展字段**：credits（余额）、signinDays、continuousDays、lastSigninDate、inviteCount
+
+### 云函数 action（academicAPI）
+- `initCredits`：新用户初始化+赠送100积分
+- `getCreditsInfo`：获取余额+签到状态
+- `doSignin`：执行签到（含连续签到奖励计算）
+- `getCreditsList`：分页获取积分流水
+- `spendCredits`：消耗积分（原子操作），前端传 `actionType`（非 action，避免与路由冲突）
+
+### 积分规则
+- 获得：注册+100、签到+5/天、连续3/7/14/30天额外+2/5/10/20、邀请+50
+- 消耗：AI审稿-20、新增投稿/审稿/会议各-5
+
+### 前端文件
+- `miniprogram/utils/credits.js`：积分工具函数
+- `miniprogram/pages/credits/credits`：积分记录页
+- 首页橙色积分卡片、个人中心积分条
+- AI审稿扣费（startAiReview）、表单扣费（仅新增时）
+
 ## 产品规划（来自 prototype/原型.html）
 
 ### 核心工具（4个）

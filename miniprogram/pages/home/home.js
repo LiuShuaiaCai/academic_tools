@@ -1,5 +1,6 @@
 // pages/home/home.js
 var app = getApp();
+var creditsUtil = require('../../utils/credits.js');
 
 Page({
   data: {
@@ -8,11 +9,84 @@ Page({
     hasMoreTools: false,
     totalCount: 0,
     upcomingItems: [],
-    loading: true
+    loading: true,
+    credits: 0,
+    signedToday: false,
+    continuousDays: 0,
+    greeting: '',
+    showSigninModal: false
   },
 
-  onLoad: function() { this.loadEnabledTools(); },
-  onShow: function() { this.loadEnabledTools(); },
+  onLoad: function() {
+    this.setGreeting();
+    this.loadEnabledTools();
+  },
+  onShow: function() { this.loadEnabledTools(); this.loadCreditsInfo(); },
+
+  setGreeting: function() {
+    var h = new Date().getHours();
+    var g = '晚上好';
+    if (h >= 6 && h < 12) g = '早上好';
+    else if (h >= 12 && h < 14) g = '中午好';
+    else if (h >= 14 && h < 18) g = '下午好';
+    this.setData({ greeting: g });
+  },
+
+  checkSigninModal: function() {
+    if (this.data.signedToday) return;
+    var today = new Date().toISOString().slice(0, 10);
+    var dismissed = wx.getStorageSync('signin_dismissed_' + today);
+    if (!dismissed) {
+      this.setData({ showSigninModal: true });
+    }
+  },
+
+  closeSigninModal: function() {
+    this.setData({ showSigninModal: false });
+    var today = new Date().toISOString().slice(0, 10);
+    wx.setStorageSync('signin_dismissed_' + today, true);
+  },
+
+  loadCreditsInfo: function() {
+    var that = this;
+    creditsUtil.getCreditsInfo().then(function(res) {
+      if (res.success !== false) {
+        that.setData({
+          credits: res.credits || 0,
+          signedToday: res.signedToday || false,
+          continuousDays: res.continuousDays || 0
+        });
+        that.checkSigninModal();
+      }
+    }).catch(function() {});
+  },
+
+  doSignin: function() {
+    var that = this;
+    if (that.data.signedToday) return;
+    that.setData({ showSigninModal: false });
+    creditsUtil.doSignin().then(function(res) {
+      if (res.success) {
+        var msg = '签到成功 +' + res.earnedPoints + '积分';
+        if (res.bonusPoints > 0) msg += '（连续签到奖励 +' + res.bonusPoints + '）';
+        wx.showToast({ title: msg, icon: 'none' });
+        that.setData({
+          credits: res.credits,
+          signedToday: true,
+          continuousDays: res.continuousDays || that.data.continuousDays + 1
+        });
+      } else if (res.alreadySigned) {
+        wx.showToast({ title: '今日已签到', icon: 'none' });
+        that.setData({ signedToday: true });
+      }
+    }).catch(function() {
+      wx.showToast({ title: '签到失败', icon: 'none' });
+    });
+  },
+
+  goToCredits: function() {
+    wx.navigateTo({ url: '/pages/credits/credits' });
+  },
 
   loadEnabledTools: function() {
     var that = this;
