@@ -201,12 +201,18 @@ Component({
       });
     },
 
-    /** 选择文件 */
+    /** 选择文件（追加模式） */
     chooseFiles: function() {
       var that = this;
       var MAX = 10 * 1024 * 1024;
+      var existing = that.data.files || [];
+      var remain = 9 - existing.length;
+      if (remain <= 0) {
+        wx.showToast({ title: '最多选9个文件', icon: 'none' });
+        return;
+      }
       wx.chooseMessageFile({
-        count: 9,
+        count: remain,
         type: 'all',
         success: function(res) {
           var over = res.tempFiles.filter(function(f) { return f.size > MAX; });
@@ -214,7 +220,9 @@ Component({
             wx.showToast({ title: '单个文件不能超过10MB', icon: 'none' });
             return;
           }
-          that.setData({ files: res.tempFiles });
+          // 追加到已有列表
+          var merged = existing.concat(res.tempFiles);
+          that.setData({ files: merged });
         }
       });
     },
@@ -279,8 +287,7 @@ Component({
         }
         Promise.all(tasks).then(function() {
           wx.showToast({ title: '上传成功', icon: 'success' });
-          that.setData({ uploading: false });
-          that._close();
+          that.setData({ uploading: false, files: [] }); // 清空已选文件，弹窗保持打开
           that.triggerEvent('uploadSuccess');
         }).catch(function(e) {
           that.setData({ uploading: false });

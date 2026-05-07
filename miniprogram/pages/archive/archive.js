@@ -11,11 +11,28 @@ Page({
     filterCategory: 'all',
     searchKw: '',
     counts: {},         // { all: N, [catId]: N }
-    showUpload: false   // 上传弹窗显示状态
+    showUpload: false,  // 上传弹窗显示状态
+    fileCache: {},      // fileID → savedFilePath 本地缓存，避免重复下载
+    pendingShare: null, // { fileId, fileName } 供 onShareAppMessage 使用
+    autoOpening: false, // 是否正在自动打开分享的文件
+    autoOpenFileName: '', // 自动打开时显示的文件名
+    autoOpenTip: ''        // 自动打开时的提示文字
   },
 
-  onLoad: function() { this.loadAll(); },
+  onLoad: function(options) {
+    this.loadAll();
+    wx.showShareMenu({ withShareTicket: true });
+    // 通过分享卡片打开，携带了 fileId 参数 → 自动触发下载
+    if (options && options.fileId) {
+      this.setData({ autoOpening: true, autoOpenFileName: '正在打开...', autoOpenTip: '正在准备文件...' });
+      this._autoDownloadSharedFile(options.fileId);
+    }
+  },
   onShow: function() { this.loadAll(); },
+  onUnload: function() {
+    // 页面卸载时清空分享状态
+    this.setData({ pendingShare: null });
+  },
 
   formatSize: function(size) {
     if (size > 1048576) return (size / 1048576).toFixed(1) + 'MB';
@@ -134,6 +151,110 @@ Page({
     });
   },
 
+  /** 获取文件本地路径（优先走缓存，避免重复下载） */
+  _getFilePath: function(file, callback) {
+    var fileID = file.fileID;
+    var cache = this.data.fileCache;
+    if (cache[fileID]) {
+      // 缓存命中，直接用（同步）
+      callback(cache[fileID]);
+      return;
+    }
+    var that = this;
+    wx.cloud.downloadFile({
+      fileID: fileID,
+      success: function(res) {
+        // 下载后写入本地永久存储
+        wx.getFileSystemManager().saveFile({
+          tempFilePath: res.tempFilePath,
+          success: function(saveRes) {
+            // 缓存起来，下次直接用
+            var newCache = {};
+            newCache[fileID] = saveRes.savedFilePath;
+            that.setData({ fileCache: Object.assign({}, that.data.fileCache, newCache) });
+            callback(saveRes.savedFilePath);
+          },
+          fail: function() {
+            // 写本地失败，降级用临时路径
+            callback(res.tempFilePath);
+          }
+        });
+      },
+      fail: function(err) {
+        wx.hideLoading(); // 下载失败时也要隐藏 loading
+        wx.showToast({ title: '下载失败', icon: 'none' });
+      }
+    });
+  },
+
+  /** 分享卡片打开时自动下载并打开文件（无需查数据库，直接用 fileId 当 fileID 下载） */
+  _autoDownloadSharedFile: function(fileId) {
+    var that = this;
+    // fileId 在分享链接里是云数据库的 _id，但下载需要 cloud fileID
+    // 所以还是要查一下数据库拿到真实的 fileID
+    var db = wx.cloud.database();
+    db.collection('archives').doc(fileId).get().then(function(res) {
+      var item = res.data;
+      if (!item || !item.fileID) {
+        that.setData({ autoOpening: false });
+        wx.showToast({ title: '文件不存在或已被删除', icon: 'none' });
+        return;
+      }
+      var file = {
+        fileID: item.fileID,
+        name: item.name,
+        ext: item.ext || (item.name || '').split('.').pop().toLowerCase()
+      };
+      // 显示文件名
+      that.setData({ autoOpenFileName: item.name, autoOpenTip: '正在加载...' });
+      var ext = file.ext;
+      var imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'];
+      if (imageExts.indexOf(ext) !== -1) {
+        that.setData({ autoOpening: false });
+        wx.previewImage({ urls: [file.fileID] });
+        return;
+      }
+      var previewExts = ['html', 'htm', 'md', 'xml'];
+      if (previewExts.indexOf(ext) !== -1) {
+        that.setData({ autoOpening: false });
+        wx.navigateTo({ url: '/pages/filePreview/filePreview?fileId=' + file.fileID + '&fileType=' + ext });
+        return;
+      }
+      var fileTypeMap = {
+        pdf: 'pdf', doc: 'doc', docx: 'doc',
+        xls: 'xls', xlsx: 'xls', csv: 'xls',
+        ppt: 'ppt', pptx: 'ppt', txt: 'txt'
+      };
+      var ft = fileTypeMap[ext] || '';
+      if (!ft) {
+        that.setData({ autoOpening: false });
+        wx.showToast({ title: '该格式暂不支持预览', icon: 'none' });
+        return;
+      }
+      wx.showLoading({ title: '正在加载...' });
+      that._getFilePath(file, function(localPath) {
+        wx.hideLoading();
+        that.setData({ autoOpening: false });
+        wx.openDocument({ filePath: localPath, fileType: ft });
+      });
+    }).catch(function() {
+      that.setData({ autoOpening: false });
+      wx.showToast({ title: '文件不存在', icon: 'none' });
+    });
+  },
+
+  /** 页面分享配置（分享卡片时使用） */
+  onShareAppMessage: function() {
+    var share = this.data.pendingShare;
+    if (!share) return {};
+    // 卡片标题 = 文件名
+    // 页面路径携带 fileId 参数，onLoad 时自动下载
+    return {
+      title: share.fileName || '学术工具箱文件',
+      path: '/pages/archive/archive?fileId=' + share.fileId
+    };
+  },
+
   /** 预览文件 */
   previewFile: function(e) {
     var id = e.currentTarget.dataset.id;
@@ -168,32 +289,104 @@ Page({
       return;
     }
     
-    // 文档格式：先下载再打开
-    var fileTypeMap = { pdf:'pdf', doc:'doc', docx:'doc', xls:'xls', xlsx:'xls', ppt:'ppt', pptx:'ppt' };
+    // 文档格式：下载后用 openDocument 打开（微信原生预览界面支持分享）
+    var fileTypeMap = {
+      pdf: 'pdf',
+      doc: 'doc', docx: 'doc',
+      xls: 'xls', xlsx: 'xls', csv: 'xls',
+      ppt: 'ppt', pptx: 'ppt',
+      docm: 'doc', dotx: 'doc', rtf: 'doc', wps: 'doc',
+      txt: 'txt'
+    };
     var fileType = fileTypeMap[ext] || '';
     if (!fileType) {
       wx.showToast({ title: '该格式暂不支持预览', icon: 'none' });
       return;
     }
-    wx.showLoading({ title: '正在下载...' });
     var that = this;
-    wx.cloud.downloadFile({
-      fileID: file.fileID,
-      success: function(res) {
-        wx.hideLoading();
-        wx.openDocument({
-          filePath: res.tempFilePath,
-          fileType: fileType,
-          fail: function(err) {
-            wx.showToast({ title: '预览失败', icon: 'none' });
-            console.error(err);
-          }
-        });
-      },
-      fail: function(err) {
-        wx.hideLoading();
-        wx.showToast({ title: '下载失败', icon: 'none' });
-        console.error(err);
+    wx.showLoading({ title: '正在加载...' });
+    that._getFilePath(file, function(localPath) {
+      wx.hideLoading();
+      wx.openDocument({
+        filePath: localPath,
+        fileType: fileType,
+        fail: function(err) {
+          var msg = '预览失败，请确认手机已安装对应应用';
+          if ((err.errMsg || '').indexOf('permission') !== -1) msg = '文件权限异常，请重试';
+          if ((err.errMsg || '').indexOf('format') !== -1) msg = '不支持此文件格式';
+          wx.showModal({ title: '预览失败', content: msg, showCancel: false });
+        }
+      });
+    });
+  },
+
+  /** 分享文件：优先直接分享文件，失败则分享小程序卡片 */
+  shareFile: function(e) {
+    var id = e.currentTarget.dataset.id;
+    if (!id) return;
+    var file = null;
+    var list = this.data.allList;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i]._id === id) { file = list[i]; break; }
+    }
+    if (!file || !file.fileID) {
+      wx.showToast({ title: '文件信息异常', icon: 'none' });
+      return;
+    }
+    var ext = (file.ext || '').toLowerCase();
+    var fileTypeMap = {
+      pdf: 'pdf', doc: 'doc', docx: 'doc',
+      xls: 'xls', xlsx: 'xls', csv: 'xls',
+      ppt: 'ppt', pptx: 'ppt', txt: 'txt',
+      docm: 'doc', dotx: 'doc', rtf: 'doc', wps: 'doc'
+    };
+    var ft = fileTypeMap[ext] || '';
+
+    // 优先：有本地缓存时尝试直接分享文件
+    var cache = this.data.fileCache;
+    if (cache[file.fileID] && ft) {
+      wx.shareFileMessage({
+        filePath: cache[file.fileID],
+        fileName: file.name,
+        success: function() {},
+        fail: function() {
+          // 直接分享失败，降级为分享小程序卡片
+          this._shareAsCard(file);
+        }.bind(this)
+      });
+      return;
+    }
+
+    // 无缓存：先下载，下载完后尝试分享，失败则卡片兜底
+    var that = this;
+    wx.showLoading({ title: '正在准备...' });
+    that._getFilePath(file, function(localPath) {
+      wx.hideLoading();
+      wx.shareFileMessage({
+        filePath: localPath,
+        fileName: file.name,
+        success: function() {},
+        fail: function() {
+          that._shareAsCard(file);
+        }
+      });
+    });
+  },
+
+  /** 分享小程序卡片（兜底方案） */
+  _shareAsCard: function(file) {
+    var that = this;
+    // 写入 pendingShare，onShareAppMessage 会读取它生成卡片
+    // 不要在这里清空！等用户真正分享后再清
+    this.setData({ pendingShare: { fileId: file._id, fileName: file.name } });
+    wx.showModal({
+      title: '文件已就绪',
+      content: '请点击右上角「···」→「发送给朋友」分享文件链接',
+      confirmText: '我知道了',
+      showCancel: false,
+      complete: function() {
+        // 用户关闭弹窗后，保持 pendingShare 不变
+        // 直到用户实际触发了分享（onShareAppMessage）才清空
       }
     });
   }

@@ -1,5 +1,13 @@
 <!--pages/archive/archive.wxml-->
 <view class="page-container">
+  <!-- 分享卡片打开时的自动下载遮罩 -->
+  <view class="auto-open-mask" wx:if="{{autoOpening}}">
+    <view class="auto-open-box">
+      <text class="auto-open-icon">📄</text>
+      <text class="auto-open-name">{{autoOpenFileName || '文件'}}</text>
+      <text class="auto-open-tip">{{autoOpenTip || '正在准备文件...'}}</text>
+    </view>
+  </view>
   <!-- 搜索栏 -->
   <view class="search-bar">
     <view class="search-input-wrap">
@@ -32,7 +40,10 @@
         <view class="file-name">{{item.name}}</view>
         <view class="file-meta">{{item.categoryName}} · {{item.extLabel}} · {{item.sizeLabel}} · {{item.createTime}}</view>
       </view>
-      <view class="file-del" catchtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}">🗑️</view>
+      <view class="file-actions">
+        <view class="file-share" catchtap="shareFile" data-id="{{item._id}}">↗️</view>
+        <view class="file-del" catchtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}">🗑️</view>
+      </view>
     </view>
   </view>
 

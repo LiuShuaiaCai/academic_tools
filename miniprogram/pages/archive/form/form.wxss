@@ -85,7 +85,7 @@
 
 /* 已选文件列表 */
 .file-list {
-  margin: 0 32rpx 24rpx;
+  margin: 24rpx 32rpx 0;
   border: 1rpx solid #E5E7EB;
   border-radius: 12rpx;
   overflow: hidden;
@@ -102,6 +102,21 @@
 .file-name { flex: 1; font-size: 28rpx; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-size { font-size: 24rpx; color: #9CA3AF; flex-shrink: 0; }
 .file-remove { font-size: 32rpx; color: #EF4444; padding: 8rpx; flex-shrink: 0; }
+
+/* 追加文件按钮 */
+.file-add-more {
+  margin: 0 32rpx 24rpx;
+  border: 2rpx dashed #D1D5DB;
+  border-top: none;
+  border-radius: 0 0 12rpx 12rpx;
+  padding: 20rpx 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #FAFAFA;
+}
+.add-more-icon { font-size: 32rpx; color: #0F766E; font-weight: 600; }
+.add-more-text { font-size: 26rpx; color: #0F766E; }
 
 /* Footer */
 .modal-footer {

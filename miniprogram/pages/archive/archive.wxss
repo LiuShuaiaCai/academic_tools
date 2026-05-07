@@ -67,7 +67,9 @@
 .file-info { flex: 1; min-width: 0; }
 .file-name { font-size: 26rpx; font-weight: 500; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-meta { font-size: 22rpx; color: #9CA3AF; margin-top: 4rpx; }
-.file-del { font-size: 32rpx; padding: 8rpx; flex-shrink: 0; }
+.file-actions { display: flex; align-items: center; gap: 4rpx; flex-shrink: 0; }
+.file-share { font-size: 32rpx; padding: 8rpx; }
+.file-del { font-size: 32rpx; padding: 8rpx; }
 
 /* 空状态 */
 .empty-box {
@@ -83,6 +85,26 @@
 .empty-box .icon { font-size: 80rpx; }
 .empty-box .tip { font-size: 28rpx; color: #374151; font-weight: 500; }
 .empty-box .sub-tip { font-size: 24rpx; color: #9CA3AF; }
+
+/* 自动下载遮罩 */
+.auto-open-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.97);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auto-open-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+.auto-open-icon { font-size: 96rpx; }
+.auto-open-name { font-size: 32rpx; font-weight: 600; color: #111827; max-width: 500rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auto-open-tip { font-size: 28rpx; color: #9CA3AF; }
 
 /* FAB */
 .fab {

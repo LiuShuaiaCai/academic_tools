@@ -24,7 +24,7 @@
       </view>
     </view>
 
-    <!-- 文件选择区 -->
+    <!-- 文件选择区（无文件时显示大区域） -->
     <view class="file-pick-zone" bindtap="chooseFiles" wx:if="{{files.length === 0}}">
       <text class="pick-icon">📁</text>
       <text class="pick-text">点击选择文件</text>
@@ -32,11 +32,18 @@
     </view>
 
     <!-- 已选文件列表 -->
-    <view class="file-list" wx:if="{{files.length > 0}}">
-      <view class="file-item" wx:for="{{files}}" wx:key="index">
-        <text class="file-name">{{item.name}}</text>
-        <text class="file-size">{{formatSize(item.size)}}</text>
-        <view class="file-remove" catchtap="removeFile" data-index="{{index}}">✕</view>
+    <view wx:if="{{files.length > 0}}">
+      <view class="file-list">
+        <view class="file-item" wx:for="{{files}}" wx:key="index">
+          <text class="file-name">{{item.name}}</text>
+          <text class="file-size">{{formatSize(item.size)}}</text>
+          <view class="file-remove" catchtap="removeFile" data-index="{{index}}">✕</view>
+        </view>
+      </view>
+      <!-- 追加按钮（未满9个时显示） -->
+      <view class="file-add-more" bindtap="chooseFiles" wx:if="{{files.length < 9}}">
+        <text class="add-more-icon">＋</text>
+        <text class="add-more-text">继续添加文件（已选 {{files.length}}/9）</text>
       </view>
     </view>
 
