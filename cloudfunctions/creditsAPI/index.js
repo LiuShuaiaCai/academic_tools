@@ -494,6 +494,7 @@ async function getCreditsList(event) {
       balance: item.balance,
       description: item.description,
       createTime: item.createTime,
+      expireTime: item.expireTime ? item.expireTime.split(' ')[0] : '',
       label: ACTION_LABELS[item.action] || item.action
     });
   }

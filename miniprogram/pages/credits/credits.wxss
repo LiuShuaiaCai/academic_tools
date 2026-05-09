@@ -31,9 +31,23 @@ page { background: #F6F6F6; }
   color: #fff;
 }
 
-.credits-balance { text-align: center; margin-bottom: 24rpx; }
-.balance-label { font-size: 26rpx; opacity: 0.85; }
-.balance-num { font-size: 72rpx; font-weight: 700; margin: 8rpx 0; }
+.credits-balance {
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+.balance-row {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 16rpx;
+}
+.balance-placeholder { flex: 1; }
+.balance-center {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+.balance-num { font-size: 56rpx; font-weight: 700; }
+.balance-label { font-size: 28rpx; opacity: 0.85; }
 .balance-hint { font-size: 22rpx; opacity: 0.7; }
 
 .signin-area { 
@@ -41,7 +55,6 @@ page { background: #F6F6F6; }
   align-items: center; 
   justify-content: center; 
   gap: 20rpx;
-  margin-bottom: 16rpx;
 }
 
 .signin-btn {
@@ -535,6 +548,7 @@ page { background: #F6F6F6; }
   white-space: nowrap;
 }
 .record-time { font-size: 22rpx; color: #9CA3AF; margin-top: 4rpx; }
+.record-expire { font-size: 20rpx; color: #F59E0B; margin-top: 4rpx; }
 
 .record-points { font-size: 32rpx; font-weight: 700; flex-shrink: 0; margin-left: 16rpx; }
 .record-points.earn { color: #10B981; }
@@ -603,7 +617,10 @@ page { background: #F6F6F6; }
   max-height: 60vh;
   box-sizing: border-box;
   width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
+.rules-modal-body::-webkit-scrollbar { display: none; }
 
 .rules-modal-section {
   margin-bottom: 32rpx;

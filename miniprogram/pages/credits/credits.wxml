@@ -2,9 +2,13 @@
 <view class="credits-page">
   <!-- 顶部积分卡片 -->
   <view class="credits-header">
-    <view class="credits-balance" bindtap="goToRecord">
-      <view class="balance-label">我的积分</view>
-      <view class="balance-num">{{credits}}</view>
+    <view class="balance-row">
+      <view class="balance-placeholder"></view>
+      <view class="balance-center">
+        <text class="balance-label">我的积分 </text>
+        <text class="balance-num">{{credits}}</text>
+      </view>
+      <view class="balance-placeholder"></view>
     </view>
     <view class="signin-area">
       <view class="signin-info" wx:if="{{signedToday}}">
@@ -16,7 +20,7 @@
       </view>
     </view>
     <!-- 签到统计 -->
-    <view class="signin-stats-row">
+    <!-- <view class="signin-stats-row">
       <view class="signin-stat-item">
         <text class="stat-value">{{continuousDays}}</text>
         <text class="stat-label">连续签到</text>
@@ -26,13 +30,13 @@
         <text class="stat-value">{{signinDays}}</text>
         <text class="stat-label">累计签到</text>
       </view>
-    </view>
+    </view> -->
 
     <!-- 连续签到进度条 -->
     <view class="streak-row">
       <view class="streak-progress">
         <view class="progress-node {{continuousDays >= 1 ? 'done' : ''}}">
-          <view class="node-reward" wx:if="{{continuousDays >= 1}}">+5</view>
+          <!-- <view class="node-reward" wx:if="{{continuousDays >= 1}}">+5</view> -->
           <view class="node-circle">
             <text wx:if="{{continuousDays >= 1}}" class="node-check">✓</text>
             <text wx:else class="node-num">1</text>
@@ -40,7 +44,7 @@
         </view>
         <view class="progress-line {{continuousDays >= 2 ? 'done' : ''}}"></view>
         <view class="progress-node {{continuousDays >= 2 ? 'done' : ''}}">
-          <view class="node-reward" wx:if="{{continuousDays >= 2}}">+5</view>
+          <!-- <view class="node-reward" wx:if="{{continuousDays >= 2}}">+5</view> -->
           <view class="node-circle">
             <text wx:if="{{continuousDays >= 2}}" class="node-check">✓</text>
             <text wx:else class="node-num">2</text>
@@ -48,7 +52,7 @@
         </view>
         <view class="progress-line {{continuousDays >= 3 ? 'done' : ''}}"></view>
         <view class="progress-node {{continuousDays >= 3 ? 'done' : ''}}">
-          <view class="node-reward reward-bonus" wx:if="{{continuousDays >= 3}}">+10</view>
+          <!-- <view class="node-reward reward-bonus" wx:if="{{continuousDays >= 3}}">+10</view> -->
           <view class="node-circle {{continuousDays >= 3 ? 'bonus' : ''}}">
             <text wx:if="{{continuousDays >= 3}}" class="node-check">✓</text>
             <text wx:else class="node-num">3</text>
@@ -56,7 +60,7 @@
         </view>
         <view class="progress-line {{continuousDays >= 4 ? 'done' : ''}}"></view>
         <view class="progress-node {{continuousDays >= 4 ? 'done' : ''}}">
-          <view class="node-reward" wx:if="{{continuousDays >= 4}}">+5</view>
+          <!-- <view class="node-reward" wx:if="{{continuousDays >= 4}}">+5</view> -->
           <view class="node-circle">
             <text wx:if="{{continuousDays >= 4}}" class="node-check">✓</text>
             <text wx:else class="node-num">4</text>
@@ -64,7 +68,7 @@
         </view>
         <view class="progress-line {{continuousDays >= 5 ? 'done' : ''}}"></view>
         <view class="progress-node {{continuousDays >= 5 ? 'done' : ''}}">
-          <view class="node-reward" wx:if="{{continuousDays >= 5}}">+5</view>
+          <!-- <view class="node-reward" wx:if="{{continuousDays >= 5}}">+5</view> -->
           <view class="node-circle">
             <text wx:if="{{continuousDays >= 5}}" class="node-check">✓</text>
             <text wx:else class="node-num">5</text>
@@ -72,7 +76,7 @@
         </view>
         <view class="progress-line {{continuousDays >= 6 ? 'done' : ''}}"></view>
         <view class="progress-node {{continuousDays >= 6 ? 'done' : ''}}">
-          <view class="node-reward" wx:if="{{continuousDays >= 6}}">+5</view>
+          <!-- <view class="node-reward" wx:if="{{continuousDays >= 6}}">+5</view> -->
           <view class="node-circle">
             <text wx:if="{{continuousDays >= 6}}" class="node-check">✓</text>
             <text wx:else class="node-num">6</text>
@@ -80,7 +84,7 @@
         </view>
         <view class="progress-line {{continuousDays >= 7 ? 'done' : ''}}"></view>
         <view class="progress-node {{continuousDays >= 7 ? 'done big' : ''}}">
-          <view class="node-reward reward-big" wx:if="{{continuousDays >= 7}}">+15</view>
+          <!-- <view class="node-reward reward-big" wx:if="{{continuousDays >= 7}}">+15</view> -->
           <view class="node-circle big-circle">
             <text wx:if="{{continuousDays >= 7}}" class="node-check">✓</text>
             <text wx:else class="node-icon">💎</text>
@@ -209,6 +213,7 @@
           <view class="record-info">
             <view class="record-desc">{{item.description}}</view>
             <view class="record-time">{{item.createTime}}</view>
+            <view class="record-expire" wx:if="{{item.expireTime}}">有效期至 {{item.expireTime}}</view>
           </view>
         </view>
         <view class="record-points {{item.type === 'earn' ? 'earn' : 'spend'}}">
@@ -236,7 +241,7 @@
         <text class="rules-modal-title">积分规则</text>
         <text class="rules-modal-close" bindtap="hideRulesModal">×</text>
       </view>
-      <scroll-view class="rules-modal-body" scroll-y>
+      <view class="rules-modal-body">
         <view class="rules-modal-section">
           <view class="rules-modal-section-title">获得积分</view>
           <view class="rules-modal-item">
@@ -267,7 +272,15 @@
             <text class="rules-modal-value spend">-20</text>
           </view>
           <view class="rules-modal-item">
-            <text class="rules-modal-label">新增投稿/审稿/会议</text>
+            <text class="rules-modal-label">新增投稿</text>
+            <text class="rules-modal-value spend">-5</text>
+          </view>
+          <view class="rules-modal-item">
+            <text class="rules-modal-label">新增审稿</text>
+            <text class="rules-modal-value spend">-5</text>
+          </view>
+          <view class="rules-modal-item">
+            <text class="rules-modal-label">新增会议</text>
             <text class="rules-modal-value spend">-5</text>
           </view>
         </view>
@@ -275,7 +288,7 @@
           <view class="rules-modal-section-title">积分有效期</view>
           <text class="rules-modal-tip">每次获取的积分有效期为1年\n到期后自动清除\n\n注册赠送的100积分永久有效</text>
         </view>
-      </scroll-view>
+      </view>
       <view class="rules-modal-footer">
         <button class="rules-modal-btn" bindtap="hideRulesModal">知道了</button>
       </view>
