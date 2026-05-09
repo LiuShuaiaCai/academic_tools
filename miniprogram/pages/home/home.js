@@ -10,27 +10,15 @@ Page({
     totalCount: 0,
     upcomingItems: [],
     loading: true,
-    credits: 0,
     signedToday: false,
     continuousDays: 0,
-    greeting: '',
     showSigninModal: false
   },
 
   onLoad: function() {
-    this.setGreeting();
     this.loadEnabledTools();
   },
   onShow: function() { this.loadEnabledTools(); this.loadCreditsInfo(); },
-
-  setGreeting: function() {
-    var h = new Date().getHours();
-    var g = '晚上好';
-    if (h >= 6 && h < 12) g = '早上好';
-    else if (h >= 12 && h < 14) g = '中午好';
-    else if (h >= 14 && h < 18) g = '下午好';
-    this.setData({ greeting: g });
-  },
 
   checkSigninModal: function() {
     if (this.data.signedToday) return;
@@ -52,7 +40,6 @@ Page({
     creditsUtil.getCreditsInfo().then(function(res) {
       if (res.success !== false) {
         that.setData({
-          credits: res.credits || 0,
           signedToday: res.signedToday || false,
           continuousDays: res.continuousDays || 0
         });
@@ -71,7 +58,6 @@ Page({
         if (res.bonusPoints > 0) msg += '（连续签到奖励 +' + res.bonusPoints + '）';
         wx.showToast({ title: msg, icon: 'none' });
         that.setData({
-          credits: res.credits,
           signedToday: true,
           continuousDays: res.continuousDays || that.data.continuousDays + 1
         });
@@ -82,10 +68,6 @@ Page({
     }).catch(function() {
       wx.showToast({ title: '签到失败', icon: 'none' });
     });
-  },
-
-  goToCredits: function() {
-    wx.navigateTo({ url: '/pages/credits/credits' });
   },
 
   loadEnabledTools: function() {
