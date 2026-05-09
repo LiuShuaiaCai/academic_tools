@@ -28,7 +28,7 @@ App({
 
     // 初始化积分（新用户赠送100）
     wx.cloud.callFunction({
-      name: 'academicAPI',
+      name: 'creditsAPI',
       data: { action: 'initCredits' }
     }).then(function(res) {
       if (res.result && res.result.initialized) {

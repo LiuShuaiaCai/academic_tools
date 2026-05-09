@@ -7,7 +7,27 @@ page { background: #F6F6F6; }
   background: linear-gradient(135deg, #F59E0B, #D97706);
   margin: 24rpx;
   border-radius: 16rpx;
-  padding: 40rpx 32rpx;
+  padding: 32rpx 24rpx 24rpx;
+  color: #fff;
+  position: relative;
+}
+
+.rules-icon {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rules-icon .icon-circle {
+  font-size: 24rpx;
+  font-style: normal;
+  font-weight: 600;
   color: #fff;
 }
 
@@ -16,18 +36,25 @@ page { background: #F6F6F6; }
 .balance-num { font-size: 72rpx; font-weight: 700; margin: 8rpx 0; }
 .balance-hint { font-size: 22rpx; opacity: 0.7; }
 
-.signin-area { display: flex; align-items: center; justify-content: center; gap: 20rpx; }
+.signin-area { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+}
 
 .signin-btn {
-  padding: 12rpx 40rpx;
-  background: rgba(255,255,255,0.25);
-  border-radius: 32rpx;
-  font-size: 26rpx;
-  font-weight: 600;
-  backdrop-filter: blur(4px);
+  padding: 16rpx 48rpx;
+  background: linear-gradient(135deg, #FFFFFF, #FFF8E6);
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #D97706;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.15);
 }
 .signin-btn.disabled { opacity: 0.5; }
-.signin-btn:active { opacity: 0.8; }
+.signin-btn:active { transform: scale(0.96); }
 
 .signin-info {
   display: flex;
@@ -38,10 +65,142 @@ page { background: #F6F6F6; }
 }
 .signin-icon { font-size: 28rpx; }
 
-.signin-streak { font-size: 22rpx; opacity: 0.8; }
+/* ========== 签到统计 ========== */
+.signin-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40rpx;
+  margin: 16rpx 0;
+  padding: 16rpx 24rpx;
+  background: rgba(255,255,255,0.15);
+  border-radius: 12rpx;
+}
 
-/* ========== 积分规则 ========== */
-.rules-section {
+.signin-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.8);
+  margin-top: 6rpx;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 50rpx;
+  background: rgba(255,255,255,0.3);
+}
+
+/* ========== 连续签到进度条 ========== */
+.streak-row {
+  margin: 20rpx 0 0;
+  padding: 0 8rpx;
+}
+
+.streak-progress {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.progress-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.node-reward {
+  font-size: 18rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  padding: 2rpx 8rpx;
+  border-radius: 8rpx;
+  margin-bottom: 6rpx;
+  white-space: nowrap;
+}
+
+.node-reward.reward-bonus {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+}
+
+.node-reward.reward-big {
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+}
+
+.node-circle {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 3rpx solid rgba(255,255,255,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.7);
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.node-circle.bonus {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  border-color: #fff;
+}
+
+.node-circle.big-circle {
+  width: 52rpx;
+  height: 52rpx;
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+  border-color: #fff;
+}
+
+.progress-node.done .node-circle {
+  background: linear-gradient(135deg, #10B981, #059669);
+  border-color: #fff;
+  color: #fff;
+}
+
+.node-check { font-size: 24rpx; }
+.node-num { font-size: 22rpx; }
+.node-icon { font-size: 28rpx; }
+
+.progress-line {
+  width: 20rpx;
+  height: 4rpx;
+  background: rgba(255,255,255,0.25);
+  margin-bottom: 20rpx;
+  transition: background 0.3s;
+}
+
+.progress-line.done {
+  background: #10B981;
+}
+
+.streak-hint {
+  text-align: center;
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.8);
+  margin-top: 16rpx;
+}
+
+.streak-hint.done-hint {
+  color: #FCD34D;
+  font-weight: 600;
+}
+
+/* ========== 积分统计概览 ========== */
+.stats-section {
   background: #fff;
   border-radius: 16rpx;
   margin: 0 24rpx 24rpx;
@@ -49,38 +208,272 @@ page { background: #F6F6F6; }
   overflow: hidden;
 }
 
-.rules-toggle {
+.stats-title-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 28rpx 28rpx;
 }
-.rules-title { font-size: 28rpx; font-weight: 600; color: #374151; }
-.rules-arrow { font-size: 32rpx; color: #9CA3AF; transition: transform 0.3s; }
-.rules-arrow.open { transform: rotate(90deg); }
+.stats-title { font-size: 28rpx; font-weight: 600; color: #374151; }
+.stats-hint { font-size: 22rpx; color: #9CA3AF; }
 
-.rules-content { padding: 0 28rpx 24rpx; }
+.stats-content { padding: 0 28rpx 24rpx; }
 
-.rule-group { margin-bottom: 16rpx; }
-.rule-group:last-child { margin-bottom: 0; }
-.rule-group-title {
-  font-size: 24rpx;
-  color: #6B7280;
-  margin-bottom: 12rpx;
-  padding-bottom: 8rpx;
-  border-bottom: 1rpx solid #F3F4F6;
+.stats-loading {
+  text-align: center;
+  padding: 40rpx 0;
+  font-size: 26rpx;
+  color: #9CA3AF;
 }
 
-.rule-item {
+/* ========== 骨架屏 ========== */
+.stats-skeleton {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10rpx 0;
+  background: #F9FAFB;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
 }
-.rule-label { font-size: 26rpx; color: #374151; }
-.rule-points { font-size: 26rpx; font-weight: 600; }
-.rule-points.earn { color: #10B981; }
-.rule-points.spend { color: #EF4444; }
+
+.stats-skeleton-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.skeleton-label {
+  height: 22rpx;
+  width: 80rpx;
+  border-radius: 6rpx;
+  background: #E5E7EB;
+  margin-bottom: 12rpx;
+}
+
+.skeleton-value {
+  height: 36rpx;
+  width: 60rpx;
+  border-radius: 6rpx;
+  background: #E5E7EB;
+}
+
+.skeleton-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: #E5E7EB;
+}
+
+.skeleton-trend {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 160rpx;
+  padding: 0 8rpx;
+}
+
+.skeleton-trend-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.skeleton-bar-group {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4rpx;
+  max-height: 120rpx;
+}
+
+.skeleton-bar {
+  width: 24rpx;
+  background: #E5E7EB;
+  border-radius: 4rpx;
+}
+
+.skeleton-bar-label {
+  height: 20rpx;
+  width: 32rpx;
+  border-radius: 4rpx;
+  background: #E5E7EB;
+  margin-top: 8rpx;
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* ========== 积分明细骨架屏 ========== */
+.skeleton-list {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.skeleton-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx 28rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.skeleton-item:last-child {
+  border-bottom: none;
+}
+
+.skeleton-circle {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #E5E7EB;
+  flex-shrink: 0;
+}
+
+.skeleton-content {
+  flex: 1;
+}
+
+.skeleton-line {
+  height: 28rpx;
+  border-radius: 6rpx;
+  background: #E5E7EB;
+  margin-bottom: 10rpx;
+}
+
+.skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+/* 本月收支摘要 */
+.stats-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F9FAFB;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.summary-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.summary-label { font-size: 22rpx; color: #6B7280; margin-bottom: 8rpx; }
+.summary-value { font-size: 36rpx; font-weight: 700; }
+.summary-item.earn .summary-value { color: #10B981; }
+.summary-item.spend .summary-value { color: #EF4444; }
+
+.summary-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: #E5E7EB;
+}
+
+/* 趋势图 */
+.trend-section { }
+.trend-title { font-size: 24rpx; color: #6B7280; margin-bottom: 16rpx; }
+
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 160rpx;
+  padding: 0 8rpx;
+}
+
+.trend-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.bar-container {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4rpx;
+  max-height: 120rpx;
+}
+
+.bar-earn {
+  width: 24rpx;
+  background: #10B981;
+  border-radius: 4rpx 4rpx 0 0;
+  min-height: 4rpx;
+  transition: height 0.3s;
+}
+
+.bar-spend {
+  width: 24rpx;
+  background: #EF4444;
+  border-radius: 0 0 4rpx 4rpx;
+  min-height: 4rpx;
+  transition: height 0.3s;
+}
+
+.bar-label {
+  font-size: 20rpx;
+  color: #9CA3AF;
+  margin-top: 8rpx;
+}
+
+.trend-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32rpx;
+  margin-top: 16rpx;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 22rpx;
+  color: #6B7280;
+}
+
+.legend-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 4rpx;
+}
+.legend-dot.earn { background: #10B981; }
+.legend-dot.spend { background: #EF4444; }
+
+/* ========== 积分有效期提示 ========== */
+.expire-notice {
+  background: #FEF3C7;
+  border-radius: 8rpx;
+  padding: 16rpx;
+  margin-top: 16rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+}
+.expire-icon { font-size: 28rpx; flex-shrink: 0; }
+.expire-text { font-size: 22rpx; color: #92400E; line-height: 1.5; }
 
 /* ========== 积分明细 ========== */
 .records-section { margin: 0 24rpx; }
@@ -155,3 +548,122 @@ page { background: #F6F6F6; }
   color: #9CA3AF;
 }
 .load-more text { padding: 12rpx 32rpx; }
+
+/* ========== 积分规则弹窗 ========== */
+.rules-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 60rpx;
+  box-sizing: border-box;
+}
+
+.rules-modal-content {
+  width: 100%;
+  max-width: 600rpx;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.rules-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.rules-modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.rules-modal-close {
+  font-size: 48rpx;
+  color: #999;
+  line-height: 1;
+}
+
+.rules-modal-body {
+  flex: 1;
+  padding: 24rpx 32rpx;
+  max-height: 60vh;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.rules-modal-section {
+  margin-bottom: 32rpx;
+}
+
+.rules-modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.rules-modal-section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid #F5F5F5;
+}
+
+.rules-modal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+}
+
+.rules-modal-label {
+  font-size: 28rpx;
+  color: #666;
+  flex: 1;
+}
+
+.rules-modal-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-left: 20rpx;
+}
+
+.rules-modal-value.earn { color: #10B981; }
+.rules-modal-value.spend { color: #EF4444; }
+
+.rules-modal-tip {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.8;
+}
+
+.rules-modal-footer {
+  padding: 24rpx 32rpx;
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.rules-modal-btn {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 40rpx;
+  border: none;
+}

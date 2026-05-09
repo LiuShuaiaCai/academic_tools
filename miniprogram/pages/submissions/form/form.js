@@ -320,16 +320,17 @@ Component({
       if(this.data.isEdit){
         promise = db.collection('submissions').doc(this.data.editId).update({ data:data });
       } else {
-        // 新增投稿消耗积分
-        promise = creditsUtil.spendCredits('new_submission', 5).then(function(spendResult) {
-          if (!spendResult.success) {
-            wx.hideLoading();
-            return Promise.reject('insufficient');
-          }
-          data.createTime = formatTime();
-          data.attachments = [];
-          data.deleteTime = null;
-          return db.collection('submissions').add({ data:data });
+        // 新增投稿：先保存，成功后再扣积分
+        data.createTime = formatTime();
+        data.attachments = [];
+        data.deleteTime = null;
+        promise = db.collection('submissions').add({ data:data }).then(function(addRes) {
+          return creditsUtil.spendCredits('new_submission', 5).then(function(spendResult) {
+            if (!spendResult.success) {
+              return Promise.reject('insufficient');
+            }
+            return addRes;
+          });
         });
       }
       promise.then(function(){
@@ -338,8 +339,12 @@ Component({
         that.triggerEvent('save');
       }).catch(function(e){
         wx.hideLoading();
-        wx.showToast({ title:'保存失败', icon:'error' });
-        console.error(e);
+        if (e === 'insufficient') {
+          wx.showToast({ title:'积分不足', icon:'error' });
+        } else {
+          wx.showToast({ title:'保存失败', icon:'error' });
+          console.error(e);
+        }
       });
     },
 

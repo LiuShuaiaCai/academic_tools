@@ -581,12 +581,22 @@ Component({
         confirmColor: '#2563EB',
         success: function(res) {
           if (res.confirm) {
-            // 先扣费
-            creditsUtil.spendCredits('ai_review', 20).then(function(spendResult) {
-              if (spendResult.success) {
-                that.doAiReview(ms.fileID);
+            // 先检查余额
+            creditsUtil.getCreditsInfo().then(function(info) {
+              if (!info.success) {
+                wx.showToast({ title: '获取积分信息失败', icon: 'none' });
+                return;
               }
-              // 余额不足时 spendCredits 内部已弹出提示
+              if (info.credits < 20) {
+                wx.showModal({
+                  title: '积分不足',
+                  content: '您的积分不足20，无法使用AI审稿',
+                  showCancel: false
+                });
+                return;
+              }
+              // 余额充足，开始AI审稿
+              that.doAiReview(ms.fileID);
             });
           }
         }
@@ -611,19 +621,36 @@ Component({
           }
           // Step 2: 小程序端调用 AI
           aiReviewUtil.callAIWithText(result.text, result.originalLength).then(function(aiResult) {
-            that.setData({ aiReviewLoading: false });
+            // AI调用成功，扣减积分
+            creditsUtil.spendCredits('ai_review', 20).then(function(spendResult) {
+              that.setData({ aiReviewLoading: false });
 
-            var currentNote = that.data.form.note || '';
-            var prefix = '【AI 审稿意见（' + aiResult.modelName + '）】\n';
-            if (aiResult.originalLength && aiResult.originalLength > aiResult.truncatedLength) {
-              prefix += '（原文 ' + aiResult.originalLength + ' 字，已截断至 ' + aiResult.truncatedLength + ' 字）\n';
-            } else if (aiResult.originalLength) {
-              prefix += '（原文 ' + aiResult.originalLength + ' 字）\n';
-            }
-            prefix += '\n';
-            var newNote = currentNote ? currentNote + '\n\n' + prefix + aiResult.text : prefix + aiResult.text;
-            that.setData({ 'form.note': newNote });
-            wx.showToast({ title: 'AI审稿完成', icon: 'success' });
+              var currentNote = that.data.form.note || '';
+              var prefix = '【AI 审稿意见（' + aiResult.modelName + '）】\n';
+              if (aiResult.originalLength && aiResult.originalLength > aiResult.truncatedLength) {
+                prefix += '（原文 ' + aiResult.originalLength + ' 字，已截断至 ' + aiResult.truncatedLength + ' 字）\n';
+              } else if (aiResult.originalLength) {
+                prefix += '（原文 ' + aiResult.originalLength + ' 字）\n';
+              }
+              prefix += '\n';
+              var newNote = currentNote ? currentNote + '\n\n' + prefix + aiResult.text : prefix + aiResult.text;
+              that.setData({ 'form.note': newNote });
+              wx.showToast({ title: 'AI审稿完成', icon: 'success' });
+            }).catch(function(err) {
+              // 扣积分失败，但AI已成功，告知用户
+              that.setData({ aiReviewLoading: false });
+              var currentNote = that.data.form.note || '';
+              var prefix = '【AI 审稿意见（' + aiResult.modelName + '）】\n';
+              if (aiResult.originalLength && aiResult.originalLength > aiResult.truncatedLength) {
+                prefix += '（原文 ' + aiResult.originalLength + ' 字，已截断至 ' + aiResult.truncatedLength + ' 字）\n';
+              } else if (aiResult.originalLength) {
+                prefix += '（原文 ' + aiResult.originalLength + ' 字）\n';
+              }
+              prefix += '\n';
+              var newNote = currentNote ? currentNote + '\n\n' + prefix + aiResult.text : prefix + aiResult.text;
+              that.setData({ 'form.note': newNote });
+              wx.showToast({ title: 'AI审稿完成（积分扣除失败，请联系管理员）', icon: 'none', duration: 3000 });
+            });
           }).catch(function(err) {
             that.setData({ aiReviewLoading: false });
             wx.showToast({ title: 'AI审稿失败: ' + (err.message || '未知错误'), icon: 'none' });
@@ -685,24 +712,30 @@ Component({
       if (this.data.isEdit) {
         promise = db.collection('reviews').doc(this.data.editId).update({ data: data });
       } else {
-        // 新增审稿消耗积分
-        promise = creditsUtil.spendCredits('new_review', 5).then(function(spendResult) {
-          if (!spendResult.success) {
-            wx.hideLoading();
-            return Promise.reject('insufficient');
-          }
-          data.createTime = formatTime();
-          data.deleteTime = null;
-          return db.collection('reviews').add({ data: data });
+        // 新增审稿：先保存，成功后再扣积分
+        data.createTime = formatTime();
+        data.deleteTime = null;
+        promise = db.collection('reviews').add({ data: data }).then(function(addRes) {
+          return creditsUtil.spendCredits('new_review', 5).then(function(spendResult) {
+            if (!spendResult.success) {
+              return Promise.reject('insufficient');
+            }
+            return addRes;
+          });
         });
       }
       promise.then(function() {
         wx.hideLoading();
         wx.showToast({ title: '保存成功', icon: 'success' });
         that.triggerEvent('save');
-      }).catch(function() {
+      }).catch(function(e) {
         wx.hideLoading();
-        wx.showToast({ title: '保存失败', icon: 'error' });
+        if (e === 'insufficient') {
+          wx.showToast({ title: '积分不足', icon: 'error' });
+        } else {
+          wx.showToast({ title: '保存失败', icon: 'error' });
+          console.error(e);
+        }
       });
     },
 

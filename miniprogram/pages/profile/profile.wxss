@@ -1,6 +1,5 @@
 /* pages/profile/profile.wxss */
-page { background: #F6F6F6; }
-.profile-page { padding-bottom: 120rpx; }
+.profile-page { padding-bottom: 120rpx; background: #F6F6F6; }
 
 .profile-header {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -8,7 +7,16 @@ page { background: #F6F6F6; }
   text-align: center;
 }
 
+.profile-avatar-wrapper {
+  display: inline-block;
+  position: relative;
+}
 .profile-avatar { font-size: 100rpx; }
+.profile-avatar-img {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+}
 .profile-name { font-size: 36rpx; font-weight: 700; color: #fff; margin-top: 12rpx; }
 
 .profile-role-tag {
@@ -90,6 +98,16 @@ page { background: #F6F6F6; }
   align-items: center;
   padding: 32rpx 28rpx;
   border-bottom: 1rpx solid #F3F4F6;
+}
+
+.profile-badge {
+  margin-left: auto;
+  margin-right: 16rpx;
+  font-size: 22rpx;
+  color: #F59E0B;
+  background: #FEF3C7;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
 }
 
 .menu-item:last-child { border-bottom: none; }

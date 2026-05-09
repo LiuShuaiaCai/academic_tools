@@ -1,0 +1,18 @@
+{
+  "envId": "cloud1-d9gwkfeid5c310b5a",
+  "region": "ap-shanghai",
+  "functions": [
+    {
+      "name": "creditsAPI",
+      "timeout": 60,
+      "memorySize": 256,
+      "triggers": [
+        {
+          "name": "cleanExpiredCredits",
+          "type": "timer",
+          "config": "0 0 3 * * * *"
+        }
+      ]
+    }
+  ]
+}

@@ -2,8 +2,11 @@
 <view class="profile-page">
   <!-- 头部 -->
   <view class="profile-header">
-    <view class="profile-avatar">🎓</view>
-    <view class="profile-name">我的学术空间</view>
+    <view class="profile-avatar-wrapper" bindtap="goToEditProfile">
+      <image class="profile-avatar-img" src="{{avatar}}" mode="aspectFill" wx:if="{{isWechatAvatar}}"></image>
+      <text class="profile-avatar" wx:else>{{avatar}}</text>
+    </view>
+    <view class="profile-name">{{nickname}}</view>
     <view class="profile-role-tag">{{roleLabels[userRole]}}</view>
   </view>
 
@@ -46,6 +49,16 @@
     <view class="pstat-item">
       <view class="pstat-num orange">{{stats.archives}}</view>
       <view class="pstat-label">归档</view>
+    </view>
+  </view>
+
+  <!-- 资料入口 -->
+  <view class="menu-group">
+    <view class="menu-item" bindtap="goToEditProfile">
+      <text class="menu-icon">👤</text>
+      <text class="menu-text">完善资料</text>
+      <text class="profile-badge" wx:if="{{!profileCompleted}}">送50积分</text>
+      <text class="menu-arrow">›</text>
     </view>
   </view>
 

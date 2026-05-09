@@ -13,6 +13,23 @@ function formatTime(date) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
 }
 
+// 计算过期时间（当前时间 + 1年）
+function getExpireTime() {
+  var now = new Date();
+  var beijing = new Date(now.getTime() + 8 * 3600000);
+  var expireDate = new Date(beijing.getFullYear() + 1, beijing.getMonth(), beijing.getDate());
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return expireDate.getFullYear() + '-' + pad(expireDate.getMonth() + 1) + '-' + pad(expireDate.getDate()) + ' 23:59:59';
+}
+
+// 获取北京时间日期字符串
+function getBeijingDateStr(date) {
+  var d = date ? new Date(date) : new Date();
+  var beijing = new Date(d.getTime() + 8 * 3600000);
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return beijing.getFullYear() + '-' + pad(beijing.getMonth() + 1) + '-' + pad(beijing.getDate());
+}
+
 // 查询单条记录
 async function findRecord(collection, whereCondition) {
   var res = await db.collection(collection).where(whereCondition).limit(1).get();
@@ -407,321 +424,7 @@ async function fixCompleted() {
 
 // AI 审稿功能已迁移至独立云函数 aiService（支持多模型：Kimi/DeepSeek 等）
 
-// ==================== 积分系统 ====================
-
-// 积分规则常量
-var CREDITS_RULES = {
-  register_bonus: 100,
-  daily_signin: 5,
-  continuous_bonus: { 3: 5, 7: 10 },
-  share_reward: 50,
-  ai_review: 20,
-  new_submission: 5,
-  new_review: 5,
-  new_conference: 5
-};
-
-// 积分动作描述映射
-var ACTION_LABELS = {
-  register_bonus: '注册赠送',
-  daily_signin: '每日签到',
-  continuous_bonus: '连续签到奖励',
-  share_reward: '邀请好友奖励',
-  ai_review: 'AI审稿',
-  new_submission: '新增投稿',
-  new_review: '新增审稿',
-  new_conference: '新增会议'
-};
-
-// 获取今日日期字符串 YYYY-MM-DD（北京时间）
-function getTodayStr() {
-  var now = new Date();
-  var beijing = new Date(now.getTime() + 8 * 3600000);
-  return beijing.getFullYear() + '-' + String(beijing.getMonth() + 1).padStart(2, '0') + '-' + String(beijing.getDate()).padStart(2, '0');
-}
-
-// 初始化新用户积分（赠送100积分，仅首次调用）
-async function initCredits(event) {
-  var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
-
-  // 检查是否已初始化
-  var config = await findRecord('user_config', { _openid: openid });
-  if (config && config.credits !== undefined) {
-    return { success: true, initialized: false, credits: config.credits };
-  }
-
-  var points = CREDITS_RULES.register_bonus;
-  var now = formatTime();
-
-  // 更新 user_config
-  var configData = {
-    credits: points,
-    signinDays: 0,
-    continuousDays: 0,
-    lastSigninDate: '',
-    inviteCount: 0
-  };
-
-  if (config) {
-    await db.collection('user_config').doc(config._id).update({ data: configData });
-  } else {
-    configData.createTime = now;
-    configData.deleteTime = null;
-    await db.collection('user_config').add({ data: Object.assign({ _openid: openid }, configData) });
-  }
-
-  // 写入积分流水
-  await db.collection('credits').add({
-    data: {
-      _openid: openid,
-      type: 'earn',
-      action: 'register_bonus',
-      points: points,
-      balance: points,
-      description: '注册赠送 +' + points,
-      createTime: now,
-      updateTime: now,
-      deleteTime: null
-    }
-  });
-
-  return { success: true, initialized: true, credits: points };
-}
-
-// 获取积分信息（余额 + 签到状态）
-async function getCreditsInfo() {
-  var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
-
-  var config = await findRecord('user_config', { _openid: openid });
-  var todayStr = getTodayStr();
-
-  return {
-    success: true,
-    credits: (config && config.credits) || 0,
-    signinDays: (config && config.signinDays) || 0,
-    continuousDays: (config && config.continuousDays) || 0,
-    signedToday: (config && config.lastSigninDate) === todayStr
-  };
-}
-
-// 执行签到
-async function doSignin() {
-  var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
-  var todayStr = getTodayStr();
-  var now = formatTime();
-
-  // 获取当前配置
-  var config = await findRecord('user_config', { _openid: openid });
-  if (!config) {
-    // 未初始化，先初始化
-    await initCredits({});
-    config = await findRecord('user_config', { _openid: openid });
-  }
-
-  // 已签到
-  if (config.lastSigninDate === todayStr) {
-    return { success: false, alreadySigned: true, credits: config.credits };
-  }
-
-  // 计算连续签到天数
-  var lastDate = config.lastSigninDate;
-  var continuousDays = config.continuousDays || 0;
-  var signinDays = config.signinDays || 0;
-
-  if (lastDate) {
-    // 判断是否连续（昨天）
-    var last = new Date(lastDate + 'T00:00:00');
-    var yesterday = new Date(todayStr + 'T00:00:00');
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (last.getTime() === yesterday.getTime()) {
-      continuousDays++;
-    } else {
-      continuousDays = 1; // 断签重新计算
-    }
-  } else {
-    continuousDays = 1;
-  }
-  signinDays++;
-
-  // 计算积分
-  var basePoints = CREDITS_RULES.daily_signin;
-  var bonusPoints = CREDITS_RULES.continuous_bonus[continuousDays] || 0;
-  var totalPoints = basePoints + bonusPoints;
-  var newBalance = config.credits + totalPoints;
-
-  // 更新 user_config
-  await db.collection('user_config').doc(config._id).update({
-    data: {
-      credits: newBalance,
-      signinDays: signinDays,
-      continuousDays: continuousDays,
-      lastSigninDate: todayStr,
-      updateTime: now
-    }
-  });
-
-  // 写入基础签到流水
-  await db.collection('credits').add({
-    data: {
-      _openid: openid,
-      type: 'earn',
-      action: 'daily_signin',
-      points: basePoints,
-      balance: newBalance,
-      description: '每日签到 +' + basePoints,
-      createTime: now,
-      updateTime: now,
-      deleteTime: null
-    }
-  });
-
-  // 写入连续签到奖励流水
-  if (bonusPoints > 0) {
-    await db.collection('credits').add({
-      data: {
-        _openid: openid,
-        type: 'earn',
-        action: 'continuous_bonus',
-        points: bonusPoints,
-        balance: newBalance,
-        description: '连续签到' + continuousDays + '天 +' + bonusPoints,
-        createTime: now,
-        updateTime: now,
-        deleteTime: null
-      }
-    });
-  }
-
-  return {
-    success: true,
-    credits: newBalance,
-    continuousDays: continuousDays,
-    signinDays: signinDays,
-    earnedPoints: totalPoints,
-    basePoints: basePoints,
-    bonusPoints: bonusPoints
-  };
-}
-
-// 分页获取积分流水
-async function getCreditsList(event) {
-  var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
-  var page = event.page || 1;
-  var pageSize = event.pageSize || 20;
-
-  var total = await db.collection('credits').where({ _openid: openid, deleteTime: null }).count();
-
-  var skip = (page - 1) * pageSize;
-  var res = await db.collection('credits')
-    .where({ _openid: openid, deleteTime: null })
-    .orderBy('createTime', 'desc')
-    .skip(skip)
-    .limit(pageSize)
-    .get();
-
-  // 格式化列表
-  var list = [];
-  for (var i = 0; i < res.data.length; i++) {
-    var item = res.data[i];
-    list.push({
-      _id: item._id,
-      type: item.type,
-      action: item.action,
-      points: item.points,
-      balance: item.balance,
-      description: item.description,
-      createTime: item.createTime,
-      label: ACTION_LABELS[item.action] || item.action
-    });
-  }
-
-  return {
-    success: true,
-    list: list,
-    total: total.total,
-    page: page,
-    pageSize: pageSize,
-    hasMore: skip + res.data.length < total.total
-  };
-}
-
-// 消耗积分（原子操作：检查余额 → 扣费 → 写流水）
-async function spendCredits(event) {
-  var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
-  var action = event.actionType || event.spendAction || '';  // 'ai_review' / 'new_submission' / 'new_review' / 'new_conference'
-  var points = event.points;     // 消耗积分数
-  var description = event.description; // 描述，如 'AI审稿 -20'
-  var relatedId = event.relatedId || ''; // 关联业务ID
-
-  if (!action || !points) {
-    return { success: false, error: '参数不完整' };
-  }
-
-  var costPoints = CREDITS_RULES[action];
-  if (costPoints === undefined) {
-    return { success: false, error: '未知消耗类型: ' + action };
-  }
-
-  // 使用实际传入的 points（以防未来有动态定价），如果不传则用规则默认值
-  var actualCost = points || costPoints;
-  var desc = description || (ACTION_LABELS[action] || action) + ' -' + actualCost;
-
-  // 获取当前余额
-  var config = await findRecord('user_config', { _openid: openid });
-  if (!config) {
-    return { success: false, insufficient: true, balance: 0, required: actualCost };
-  }
-
-  var currentBalance = config.credits || 0;
-
-  // 余额不足
-  if (currentBalance < actualCost) {
-    return {
-      success: false,
-      insufficient: true,
-      balance: currentBalance,
-      required: actualCost
-    };
-  }
-
-  // 扣费
-  var newBalance = currentBalance - actualCost;
-  var now = formatTime();
-
-  await db.collection('user_config').doc(config._id).update({
-    data: { credits: newBalance, updateTime: now }
-  });
-
-  // 写入流水
-  var flowData = {
-    data: {
-      _openid: openid,
-      type: 'spend',
-      action: action,
-      points: actualCost,
-      balance: newBalance,
-      description: desc,
-      createTime: now,
-      updateTime: now,
-      deleteTime: null
-    }
-  };
-  if (relatedId) {
-    flowData.data.relatedId = relatedId;
-  }
-  await db.collection('credits').add(flowData);
-
-  return {
-    success: true,
-    balance: newBalance,
-    cost: actualCost
-  };
-}
+// ==================== 工具函数 ====================
 
 // ==================== 入口 ====================
 
@@ -744,12 +447,6 @@ exports.main = async (event) => {
       case 'reviewStats':     return await reviewStats(event);
       case 'conferenceStats': return await conferenceStats(event);
       case 'fixCompleted':   return await fixCompleted();
-      // 积分系统
-      case 'initCredits':    return await initCredits(event);
-      case 'getCreditsInfo': return await getCreditsInfo();
-      case 'doSignin':       return await doSignin();
-      case 'getCreditsList': return await getCreditsList(event);
-      case 'spendCredits':   return await spendCredits(event);
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

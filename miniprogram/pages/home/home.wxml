@@ -101,8 +101,16 @@
     <view class="signin-modal" catchtap="">
       <view class="signin-modal-emoji">🌟</view>
       <view class="signin-modal-title">每日签到</view>
-      <view class="signin-modal-desc">坚持签到，积攒积分解锁更多功能<br/>今日份的坚持，终会化作成果 📈</view>
-      <view class="signin-modal-btn" catchtap="doSignin">签到领取积分</view>
+      <view class="signin-modal-points">
+        <text class="points-num">+10</text>
+        <text class="points-unit">积分</text>
+      </view>
+      <view class="signin-modal-streak" wx:if="{{continuousDays > 0}}">
+        已连续签到 {{continuousDays}} 天
+      </view>
+      <view class="signin-modal-desc" wx:if="{{continuousDays < 7}}">坚持签到，积攒积分解锁更多功能</view>
+      <view class="signin-modal-desc highlight" wx:if="{{continuousDays >= 7}}">连续签到满7天，最高可获 +40 积分！</view>
+      <view class="signin-modal-btn" catchtap="doSignin">立即签到</view>
       <view class="signin-modal-skip" catchtap="closeSigninModal">稍后再说</view>
     </view>
   </view>

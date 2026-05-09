@@ -214,24 +214,30 @@ Component({
       if (this.data.isEdit) {
         promise = db.collection('conferences').doc(this.data.editId).update({ data: data });
       } else {
-        // 新增会议消耗积分
-        promise = creditsUtil.spendCredits('new_conference', 5).then(function(spendResult) {
-          if (!spendResult.success) {
-            wx.hideLoading();
-            return Promise.reject('insufficient');
-          }
-          data.createTime = formatTime();
-          data.deleteTime = null;
-          return db.collection('conferences').add({ data: data });
+        // 新增会议：先保存，成功后再扣积分
+        data.createTime = formatTime();
+        data.deleteTime = null;
+        promise = db.collection('conferences').add({ data: data }).then(function(addRes) {
+          return creditsUtil.spendCredits('new_conference', 5).then(function(spendResult) {
+            if (!spendResult.success) {
+              return Promise.reject('insufficient');
+            }
+            return addRes;
+          });
         });
       }
       promise.then(function() {
         wx.hideLoading();
         wx.showToast({ title: '保存成功', icon: 'success' });
         that.triggerEvent('save');
-      }).catch(function() {
+      }).catch(function(e) {
         wx.hideLoading();
-        wx.showToast({ title: '保存失败', icon: 'error' });
+        if (e === 'insufficient') {
+          wx.showToast({ title: '积分不足', icon: 'error' });
+        } else {
+          wx.showToast({ title: '保存失败', icon: 'error' });
+          console.error(e);
+        }
       });
     },
 

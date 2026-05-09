@@ -9,6 +9,10 @@ Page({
     credits: 0,
     signedToday: false,
     continuousDays: 0,
+    avatar: '🎓',
+    nickname: '我的学术空间',
+    isWechatAvatar: false,
+    profileCompleted: false,
     menuItems: [
       { icon: '🔧', text: '工具管理', action: 'goToToolManager' },
       { icon: '💾', text: '数据备份', action: 'backupData' },
@@ -31,6 +35,7 @@ Page({
   onShow: function () {
     this.loadStats();
     this.loadCreditsInfo();
+    this.loadProfile();
   },
 
   loadCreditsInfo: function() {
@@ -44,6 +49,36 @@ Page({
         });
       }
     }).catch(function() {});
+  },
+
+  // 加载用户资料（头像和昵称）
+  loadProfile: function() {
+    var self = this;
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserProfile' },
+      success: function(res) {
+        if (res.result && res.result.success && res.result.profile) {
+          var profile = res.result.profile;
+          var avatar = profile.avatar || '🎓';
+          var isWechatAvatar = avatar.indexOf('http') === 0;
+          self.setData({
+            avatar: avatar,
+            nickname: profile.nickname || '我的学术空间',
+            isWechatAvatar: isWechatAvatar,
+            profileCompleted: profile.profileCompleted || false
+          });
+        }
+      },
+      fail: function(err) {
+        console.error('[profile] 加载资料失败', err);
+      }
+    });
+  },
+
+  // 跳转编辑资料页
+  goToEditProfile: function() {
+    wx.navigateTo({ url: '/pages/editProfile/editProfile' });
   },
 
   doSignin: function() {

@@ -8,13 +8,21 @@ Page({
     continuousDays: 0,
     signinDays: 0,
     signinLoading: false,
-    showRules: false,
     records: [],
     loading: true,
     loadingMore: false,
     hasMore: false,
     page: 1,
-    pageSize: 20
+    pageSize: 20,
+    // 统计相关
+    statsLoading: true,
+    monthEarn: 0,
+    monthSpend: 0,
+    monthNet: 0,
+    trendData: [],
+    maxTrendValue: 10,
+    // 规则弹窗
+    showRules: false
   },
 
   onLoad: function() {
@@ -37,10 +45,14 @@ Page({
       }
       that.loadCreditsInfo();
       that.loadRecords();
+      that.loadStats();
+      // 检查积分有效期
+      that.checkExpire();
     }).catch(function(e) {
       console.error('[积分] 初始化失败', e);
       that.loadCreditsInfo();
       that.loadRecords();
+      that.loadStats();
     });
   },
 
@@ -124,8 +136,9 @@ Page({
           continuousDays: res.continuousDays,
           signinDays: res.signinDays
         });
-        // 刷新流水
+        // 刷新流水和统计
         that.loadRecords();
+        that.loadStats();
       } else if (res.alreadySigned) {
         wx.showToast({ title: '今日已签到', icon: 'none' });
       }
@@ -137,8 +150,67 @@ Page({
     });
   },
 
-  toggleRules: function() {
-    this.setData({ showRules: !this.data.showRules });
+  // 显示积分规则弹窗
+  showRulesModal: function() {
+    this.setData({ showRules: true });
+  },
+
+  // 隐藏积分规则弹窗
+  hideRulesModal: function() {
+    this.setData({ showRules: false });
+  },
+
+  // 阻止事件冒泡
+  stopBubble: function() {},
+
+  loadStats: function() {
+    var that = this;
+    that.setData({ statsLoading: true });
+    creditsUtil.getCreditsStats().then(function(res) {
+      if (res.success) {
+        var trendData = res.trendData || [];
+        // 计算趋势图最大值
+        var maxValue = 10;
+        for (var i = 0; i < trendData.length; i++) {
+          var item = trendData[i];
+          var itemMax = Math.max(item.earn || 0, item.spend || 0);
+          if (itemMax > maxValue) maxValue = itemMax;
+        }
+        that.setData({
+          monthEarn: res.monthEarn || 0,
+          monthSpend: res.monthSpend || 0,
+          monthNet: res.monthNet || 0,
+          trendData: trendData,
+          maxTrendValue: maxValue,
+          statsLoading: false
+        });
+      } else {
+        that.setData({ statsLoading: false });
+      }
+    }).catch(function(e) {
+      console.error('[积分] 获取统计失败', e);
+      that.setData({ statsLoading: false });
+    });
+  },
+
+  // 检查并清理过期积分（每次进入页面时检查）
+  checkExpire: function() {
+    var that = this;
+    creditsUtil.cleanExpiredCredits().then(function(res) {
+      if (res.success && res.cleaned > 0) {
+        wx.showModal({
+          title: '📢 积分过期通知',
+          content: '您好，您有 ' + res.expiredAmount + ' 积分已到期清除。\n\n💡 温馨提示：注册赠送的100积分永久有效，继续签到获取更多积分吧！',
+          showCancel: false,
+          confirmText: '我知道了'
+        });
+        // 刷新余额显示
+        that.loadCreditsInfo();
+        that.loadRecords();
+      }
+    }).catch(function(e) {
+      console.error('[积分] 检查积分过期失败', e);
+    });
   },
 
   goToRecord: function() {

@@ -583,6 +583,40 @@ page { background: #F6F6F6; }
   margin-bottom: 36rpx;
 }
 
+.signin-modal-points {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+
+.points-num {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: #F59E0B;
+}
+
+.points-unit {
+  font-size: 28rpx;
+  color: #F59E0B;
+  margin-left: 8rpx;
+}
+
+.signin-modal-streak {
+  font-size: 24rpx;
+  color: #10B981;
+  background: #D1FAE5;
+  padding: 8rpx 24rpx;
+  border-radius: 20rpx;
+  margin-bottom: 24rpx;
+  display: inline-block;
+}
+
+.signin-modal-desc.highlight {
+  color: #10B981;
+  font-weight: 500;
+}
+
 .signin-modal-btn {
   display: inline-block;
   background: linear-gradient(135deg, #FBBF24, #F59E0B);
