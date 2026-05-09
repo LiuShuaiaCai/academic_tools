@@ -3,6 +3,22 @@
 Page({
   data: { coreTools: [], extTools: [], loading: true },
 
+  // icon 名称到 emoji 的映射
+  emojiMap: {
+    'paper-plane': '📄',
+    'glasses': '👓',
+    'calendar-alt': '📅',
+    'folder-open': '📁',
+    'quote-right': '📚',
+    'exclamation-triangle': '⚠️',
+    'trophy': '🏆',
+    'sticky-note': '📝'
+  },
+
+  getEmoji: function(icon) {
+    return this.emojiMap[icon] || '🔧';
+  },
+
   onLoad: function() { this.loadTools(); },
   onShow: function() { this.loadTools(); },
 
@@ -49,6 +65,7 @@ Page({
           name: t.name,
           desc: t.desc,
           icon: t.icon,
+          iconEmoji: t.iconEmoji || that.getEmoji(t.icon),
           color: t.color,
           category: t.category,
           order: t.order,

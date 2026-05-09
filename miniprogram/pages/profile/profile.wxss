@@ -7,9 +7,19 @@
   text-align: center;
 }
 
-.profile-avatar-wrapper {
+.avatar-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
   display: inline-block;
+  line-height: 1;
+}
+.avatar-btn::after { border: none; }
+
+.profile-avatar-wrapper {
   position: relative;
+  display: inline-block;
 }
 .profile-avatar { font-size: 100rpx; }
 .profile-avatar-img {
@@ -17,7 +27,33 @@
   height: 100rpx;
   border-radius: 50%;
 }
-.profile-name { font-size: 36rpx; font-weight: 700; color: #fff; margin-top: 12rpx; }
+.avatar-edit-icon {
+  position: absolute;
+  right: -8rpx;
+  bottom: 0;
+  width: 36rpx;
+  height: 36rpx;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rpx;
+}
+.profile-name {
+  margin-top: 12rpx;
+}
+.nickname-input {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  background: transparent;
+  border: none;
+}
+.nickname-input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
 
 .profile-role-tag {
   display: inline-block;

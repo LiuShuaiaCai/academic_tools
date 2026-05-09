@@ -2,11 +2,13 @@
 <view class="edit-profile-page">
   <!-- 头像区域 -->
   <view class="avatar-section">
-    <view class="avatar-wrapper" bindtap="chooseAvatar">
-      <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{isWechatAvatar}}"></image>
-      <text class="avatar-emoji" wx:else>{{avatarUrl}}</text>
-      <view class="avatar-edit-icon">📷</view>
-    </view>
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <view class="avatar-wrapper">
+        <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{isWechatAvatar}}"></image>
+        <text class="avatar-emoji" wx:else>{{avatarUrl}}</text>
+        <view class="avatar-edit-icon">📷</view>
+      </view>
+    </button>
     <view class="avatar-tip">点击更换头像</view>
   </view>
 
@@ -16,7 +18,7 @@
     
     <view class="form-item">
       <view class="form-label">昵称</view>
-      <input class="form-input" value="{{profile.nickname}}" placeholder="请输入昵称" bindinput="onInput" data-field="nickname"/>
+      <input class="form-input" type="nickname" value="{{profile.nickname}}" placeholder="点击获取微信昵称" bindinput="onInput" data-field="nickname"/>
     </view>
 
     <view class="form-item">

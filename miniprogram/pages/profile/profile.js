@@ -76,6 +76,57 @@ Page({
     });
   },
 
+  // 头像选择回调
+  onChooseAvatar: function(e) {
+    var avatarUrl = e.detail.avatarUrl;
+    if (avatarUrl) {
+      this.setData({
+        avatar: avatarUrl,
+        isWechatAvatar: true
+      });
+      this.saveAvatar(avatarUrl);
+    }
+  },
+
+  // 保存头像到云端
+  saveAvatar: function(avatarUrl) {
+    wx.cloud.callFunction({
+      name: 'creditsAPI',
+      data: {
+        action: 'updateProfile',
+        profile: { avatar: avatarUrl }
+      },
+      success: function(res) {
+        if (res.result && res.result.success) {
+          wx.showToast({ title: '头像已更新', icon: 'success' });
+        }
+      }
+    });
+  },
+
+  // 昵称输入
+  onNicknameInput: function(e) {
+    var nickname = e.detail.value;
+    this.setData({ nickname: nickname });
+    this.saveNickname(nickname);
+  },
+
+  // 保存昵称到云端
+  saveNickname: function(nickname) {
+    wx.cloud.callFunction({
+      name: 'creditsAPI',
+      data: {
+        action: 'updateProfile',
+        profile: { nickname: nickname }
+      },
+      success: function(res) {
+        if (res.result && res.result.success) {
+          console.log('昵称已更新');
+        }
+      }
+    });
+  },
+
   // 跳转编辑资料页
   goToEditProfile: function() {
     wx.navigateTo({ url: '/pages/editProfile/editProfile' });

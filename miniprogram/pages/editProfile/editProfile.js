@@ -82,41 +82,16 @@ Page({
     });
   },
 
-  // 选择头像
-  chooseAvatar: function() {
-    var self = this;
-    wx.showActionSheet({
-      itemList: ['使用微信头像', '选择学术emoji'],
-      success: function(res) {
-        if (res.tapIndex === 0) {
-          self.getWechatAvatar();
-        } else {
-          self.showEmojiPicker();
-        }
-      }
-    });
-  },
-
-  // 获取微信头像
-  getWechatAvatar: function() {
-    var self = this;
-    wx.getUserProfile({
-      desc: '用于完善个人资料',
-      success: function(res) {
-        if (res.userInfo && res.userInfo.avatarUrl) {
-          self.setData({
-            avatarUrl: res.userInfo.avatarUrl,
-            isWechatAvatar: true,
-            'profile.avatar': res.userInfo.avatarUrl,
-            'profile.nickname': res.userInfo.nickName || self.data.profile.nickname
-          });
-        }
-      },
-      fail: function(err) {
-        console.error('[editProfile] 获取微信头像失败', err);
-        wx.showToast({ title: '获取头像失败', icon: 'none' });
-      }
-    });
+  // 微信选择头像回调
+  onChooseAvatar: function(e) {
+    var avatarUrl = e.detail.avatarUrl;
+    if (avatarUrl) {
+      this.setData({
+        avatarUrl: avatarUrl,
+        isWechatAvatar: true,
+        'profile.avatar': avatarUrl
+      });
+    }
   },
 
   // 显示emoji选择器
