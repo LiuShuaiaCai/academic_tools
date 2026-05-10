@@ -1,0 +1,296 @@
+/* pages/citation/citation.wxss */
+.page {
+  padding: 20rpx;
+  background: #f6f6f6;
+  min-height: 100vh;
+}
+
+/* 搜索区域 */
+.search-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.search-type-switch {
+  display: flex;
+  margin-bottom: 20rpx;
+  background: #f3f4f6;
+  border-radius: 12rpx;
+  padding: 4rpx;
+}
+
+.type-btn {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  color: #666;
+  border-radius: 10rpx;
+}
+
+.type-btn.active {
+  background: #fff;
+  color: #2563eb;
+  font-weight: bold;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.1);
+}
+
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 80rpx;
+  font-size: 28rpx;
+}
+
+.search-btn {
+  background: #2563eb;
+  color: #fff;
+  padding: 12rpx 32rpx;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  white-space: nowrap;
+}
+
+.scan-btn {
+  text-align: center;
+  color: #2563eb;
+  font-size: 28rpx;
+  padding: 12rpx 0;
+}
+
+/* 错误信息 */
+.error-msg {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 16rpx 24rpx;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+}
+
+/* 加载中 */
+.loading {
+  text-align: center;
+  padding: 40rpx;
+  color: #6b7280;
+  font-size: 28rpx;
+}
+
+/* 结果区域 */
+.result-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 20rpx;
+}
+
+/* 文献卡片 */
+.ref-card {
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.ref-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 12rpx;
+  line-height: 1.5;
+}
+
+.ref-authors {
+  font-size: 26rpx;
+  color: #4b5563;
+  margin-bottom: 12rpx;
+}
+
+.ref-meta {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.ref-meta text {
+  margin-right: 16rpx;
+}
+
+/* 文献类型选择 */
+.type-select {
+  margin-bottom: 20rpx;
+}
+
+.type-picker {
+  background: #f3f4f6;
+  padding: 16rpx 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #2563eb;
+  text-align: center;
+}
+
+/* 编号输入 */
+.number-input {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding: 16rpx 24rpx;
+  background: #f3f4f6;
+  border-radius: 12rpx;
+}
+
+.number-label {
+  font-size: 28rpx;
+  color: #374151;
+  margin-right: 16rpx;
+}
+
+.number-input-field {
+  flex: 1;
+  height: 60rpx;
+  background: #fff;
+  border: 2rpx solid #d1d5db;
+  border-radius: 8rpx;
+  padding: 0 16rpx;
+  font-size: 28rpx;
+}
+
+/* 格式选择 */
+.style-select {
+  margin-bottom: 20rpx;
+}
+
+.style-picker {
+  background: #f3f4f6;
+  padding: 16rpx 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #2563eb;
+  text-align: center;
+}
+
+/* 引用块 */
+.citation-block {
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+  position: relative;
+}
+
+.citation-label {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-bottom: 12rpx;
+}
+
+.citation-content {
+  font-size: 28rpx;
+  color: #1f2937;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  background: #2563eb;
+  color: #fff;
+  padding: 8rpx 24rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+}
+
+/* 保存按钮 */
+.save-btn {
+  background: #10b981;
+  color: #fff;
+  text-align: center;
+  padding: 24rpx 0;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  margin-top: 20rpx;
+}
+
+/* 文献库 */
+.library-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.library-section .section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggle-icon {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #9ca3af;
+  padding: 40rpx 0;
+  font-size: 28rpx;
+}
+
+/* 文献库项目 */
+.library-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid #f3f4f6;
+}
+
+.library-item:last-child {
+  border-bottom: none;
+}
+
+.lib-item-content {
+  flex: 1;
+}
+
+.lib-item-title {
+  font-size: 28rpx;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.lib-item-meta {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.lib-item-delete {
+  padding: 16rpx;
+  color: #ef4444;
+  font-size: 32rpx;
+}

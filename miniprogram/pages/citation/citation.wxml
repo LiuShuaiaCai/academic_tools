@@ -1,0 +1,102 @@
+<!-- pages/citation/citation.wxml -->
+<view class="page">
+  <!-- 搜索区域 -->
+  <view class="search-section">
+    <view class="search-type-switch">
+      <view class="type-btn {{searchType === 'doi' ? 'active' : ''}}" bindtap="onSearchTypeChange" data-type="doi">DOI 查询</view>
+      <view class="type-btn {{searchType === 'title' ? 'active' : ''}}" bindtap="onSearchTypeChange" data-type="title">标题搜索</view>
+    </view>
+    
+    <view class="search-input-wrap">
+      <input class="search-input" 
+             placeholder="{{searchType === 'doi' ? '输入 DOI，如 10.1038/nature14539' : '输入文献标题'}}" 
+             value="{{searchValue}}" 
+             bindinput="onSearchInput"
+             bindconfirm="doSearch"/>
+      <view class="search-btn" bindtap="doSearch">查询</view>
+    </view>
+    
+    <view class="scan-btn" bindtap="scanDOI">📷 扫描</view>
+  </view>
+  
+  <!-- 错误信息 -->
+  <view class="error-msg" wx:if="{{searchError}}">{{searchError}}</view>
+  
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{searching}}">查询中...</view>
+  
+  <!-- 搜索结果 -->
+  <view class="result-section" wx:if="{{searchResult}}">
+    <view class="section-title">文献信息</view>
+    
+    <view class="ref-card">
+      <view class="ref-title">{{searchResult.title}}</view>
+      <view class="ref-authors">{{searchResult.authorsStr}}</view>
+      <view class="ref-meta">
+        <text wx:if="{{searchResult.containerTitle}}">📄 {{searchResult.containerTitle}}  </text>
+        <text wx:if="{{searchResult.year}}">📅 {{searchResult.year}}  </text>
+        <text wx:if="{{searchResult.doi}}">🔗 DOI: {{searchResult.doi}}</text>
+      </view>
+    </view>
+    
+    <!-- 文献类型选择 -->
+    <view class="type-select">
+      <picker mode="selector" range="{{typeOptions}}" range-key="label" value="{{selectedTypeIndex}}" bindchange="onTypeChange">
+        <view class="type-picker">文献类型: {{typeOptions[selectedTypeIndex].label}} ▼</view>
+      </picker>
+    </view>
+    
+    <!-- 格式选择 -->
+    <view class="style-select">
+      <picker mode="selector" range="{{styleOptions}}" range-key="label" value="{{selectedStyleIndex}}" bindchange="onStyleChange">
+        <view class="style-picker">{{styleOptions[selectedStyleIndex].label}} ▼</view>
+      </picker>
+    </view>
+    
+    <!-- 编号输入（GB/T 7714 和 IEEE） -->
+    <view class="number-input" wx:if="{{showNumberInput}}">
+      <text class="number-label">编号：</text>
+      <input class="number-input-field" type="number" value="{{number}}" bindinput="onNumberInput" />
+    </view>
+    
+    <!-- 文中引用 -->
+    <view class="citation-block" wx:if="{{citationResult}}">
+      <view class="citation-label">文中引用</view>
+      <view class="citation-content" bindtap="copyInText">{{citationResult}}</view>
+      <view class="copy-btn" bindtap="copyInText">复制</view>
+    </view>
+    
+    <!-- 参考文献条目 -->
+    <view class="citation-block" wx:if="{{bibliographyResult}}">
+      <view class="citation-label">参考文献条目</view>
+      <view class="citation-content" bindtap="copyBibliography">{{bibliographyResult}}</view>
+      <view class="copy-btn" bindtap="copyBibliography">复制</view>
+    </view>
+    
+    <!-- 保存到文献库 -->
+    <view class="save-btn" bindtap="saveToLibrary">💾 保存到文献库</view>
+  </view>
+  
+  <!-- 文献库 -->
+  <view class="library-section">
+    <view class="section-title" bindtap="toggleLibrary">
+      我的文献库 ({{library.length}})
+      <text class="toggle-icon">{{showLibrary ? '▲' : '▼'}}</text>
+    </view>
+    
+    <view wx:if="{{showLibrary}}">
+      <view wx:if="{{library.length === 0}}" class="empty-tip">文献库为空，查询后保存文献到这里</view>
+      
+      <view wx:for="{{library}}" wx:key="_id" class="library-item">
+        <view class="lib-item-content" bindtap="useFromLibrary" data-id="{{item._id}}">
+          <view class="lib-item-title">{{item.title}}</view>
+          <view class="lib-item-meta">
+            <text wx:if="{{item.year}}">{{item.year}}  </text>
+            <text wx:if="{{item.containerTitle}}">{{item.containerTitle}}</text>
+          </view>
+        </view>
+        <view class="lib-item-delete" catchtap="deleteFromLibrary" data-id="{{item._id}}">✕</view>
+      </view>
+    </view>
+  </view>
+</view>
