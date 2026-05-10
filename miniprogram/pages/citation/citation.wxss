@@ -101,75 +101,335 @@
   margin-bottom: 20rpx;
 }
 
-/* 文献卡片 */
-.ref-card {
+/* 标签导航 */
+.tab-nav {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 12rpx;
+  padding: 4rpx;
+  margin-bottom: 20rpx;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  color: #6b7280;
+  border-radius: 10rpx;
+}
+
+.tab-item.active {
+  background: #fff;
+  color: #2563eb;
+  font-weight: bold;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.1);
+}
+
+/* 标签内容 */
+.tab-content {
+  margin-bottom: 20rpx;
+  height: 560rpx;
+  overflow-y: auto;
+}
+
+/* 文献详情 */
+.detail-section {
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx solid #e5e7eb;
+  overflow: hidden;
+}
+
+.detail-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  width: 180rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #4b5563;
+  background: #f3f4f6;
+  padding: 20rpx 16rpx;
+  border-right: 1rpx solid #e5e7eb;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.detail-value {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+  color: #1f2937;
+  line-height: 1.6;
+  padding: 20rpx 16rpx;
+  word-break: break-all;
+  box-sizing: border-box;
+}
+
+.detail-abstract {
+  display: block;
+  text-align: justify;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.detail-tag {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+}
+
+/* 列表通用 */
+.list-loading {
+  text-align: center;
+  padding: 40rpx 0;
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.list-empty {
+  text-align: center;
+  padding: 40rpx 0;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+.list-section {
+  margin-top: 20rpx;
+}
+
+.list-section-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 16rpx;
+}
+
+/* 统计卡片 */
+.stat-section {
   background: #f9fafb;
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 20rpx;
 }
 
-.ref-title {
-  font-size: 30rpx;
+.stat-title {
+  font-size: 28rpx;
   font-weight: bold;
   color: #1f2937;
-  margin-bottom: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.pie-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.pie-chart {
+  width: 240rpx;
+  height: 240rpx;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+}
+
+.pie-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  max-height: 240rpx;
+  overflow-y: auto;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 24rpx;
+  padding: 4rpx 0;
+}
+
+.pie-legend-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 4rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.pie-legend-name {
+  color: #4b5563;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8rpx;
+}
+
+.pie-legend-count {
+  color: #1f2937;
+  font-weight: bold;
+  min-width: 36rpx;
+  text-align: right;
+}
+
+.pie-legend-percent {
+  color: #9ca3af;
+  font-size: 22rpx;
+  margin-left: 8rpx;
+  min-width: 48rpx;
+  text-align: right;
+}
+
+/* 文献列表 */
+.ref-list {
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 20rpx;
+}
+
+.ref-list-item {
+  padding: 16rpx 0;
+  border-bottom: 2rpx solid #e5e7eb;
+}
+
+.ref-list-item:last-child {
+  border-bottom: none;
+}
+
+.ref-list-title {
+  font-size: 28rpx;
+  color: #1f2937;
+  line-height: 1.5;
+  margin-bottom: 8rpx;
+}
+
+.ref-list-meta {
+  font-size: 24rpx;
+  color: #6b7280;
   line-height: 1.5;
 }
 
-.ref-authors {
-  font-size: 26rpx;
-  color: #4b5563;
-  margin-bottom: 12rpx;
+.ref-list-doi {
+  font-size: 24rpx;
+  color: #2563eb;
+  margin-top: 4rpx;
 }
 
-.ref-meta {
+/* 柱状图 */
+.chart-section {
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.chart-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 16rpx;
+}
+
+.chart-vert-wrap {
+  position: relative;
+  height: 340rpx;
+  padding-top: 20rpx;
+}
+
+.chart-vert-line {
+  position: absolute;
+  top: 40rpx;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: 60rpx;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.chart-vert-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 100%;
+  padding: 20rpx 20rpx 40rpx;
+  box-sizing: border-box;
+}
+
+.chart-vert-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0 8rpx;
+}
+
+.chart-vert-bar-wrap {
+  width: 100%;
+  max-width: 60rpx;
+  height: 220rpx;
+  background: #f3f4f6;
+  border-radius: 6rpx 6rpx 0 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-vert-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #2563eb;
+  border-radius: 6rpx 6rpx 0 0;
+  transition: height 0.5s ease;
+}
+
+.chart-vert-count {
+  font-size: 24rpx;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+  font-weight: bold;
+}
+
+.chart-vert-year {
   font-size: 24rpx;
   color: #6b7280;
+  margin-top: 8rpx;
 }
 
-.ref-meta text {
-  margin-right: 16rpx;
+/* ucharts 图表容器 */
+.uchart-box {
+  height: 400rpx;
 }
 
-/* 文献类型选择 */
-.type-select {
-  margin-bottom: 20rpx;
+.uchart-pie {
+  height: 520rpx;
 }
 
-.type-picker {
-  background: #f3f4f6;
-  padding: 16rpx 24rpx;
-  border-radius: 12rpx;
-  font-size: 28rpx;
-  color: #2563eb;
-  text-align: center;
-}
-
-/* 编号输入 */
-.number-input {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20rpx;
-  padding: 16rpx 24rpx;
-  background: #f3f4f6;
-  border-radius: 12rpx;
-}
-
-.number-label {
-  font-size: 28rpx;
-  color: #374151;
-  margin-right: 16rpx;
-}
-
-.number-input-field {
-  flex: 1;
-  height: 60rpx;
+/* 引用格式区域 */
+.citation-section {
   background: #fff;
-  border: 2rpx solid #d1d5db;
-  border-radius: 8rpx;
-  padding: 0 16rpx;
-  font-size: 28rpx;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 /* 格式选择 */
@@ -192,13 +452,18 @@
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 16rpx;
-  position: relative;
+}
+
+.citation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
 }
 
 .citation-label {
   font-size: 24rpx;
   color: #6b7280;
-  margin-bottom: 12rpx;
 }
 
 .citation-content {
@@ -209,9 +474,6 @@
 }
 
 .copy-btn {
-  position: absolute;
-  top: 20rpx;
-  right: 20rpx;
   background: #2563eb;
   color: #fff;
   padding: 8rpx 24rpx;

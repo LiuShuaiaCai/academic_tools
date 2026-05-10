@@ -6,87 +6,219 @@
       <view class="type-btn {{searchType === 'doi' ? 'active' : ''}}" bindtap="onSearchTypeChange" data-type="doi">DOI 查询</view>
       <view class="type-btn {{searchType === 'title' ? 'active' : ''}}" bindtap="onSearchTypeChange" data-type="title">标题搜索</view>
     </view>
-    
+
     <view class="search-input-wrap">
-      <input class="search-input" 
-             placeholder="{{searchType === 'doi' ? '输入 DOI，如 10.1038/nature14539' : '输入文献标题'}}" 
-             value="{{searchValue}}" 
+      <input class="search-input"
+             placeholder="{{searchType === 'doi' ? '输入 DOI，如 10.1038/nature14539' : '输入文献标题'}}"
+             value="{{searchValue}}"
              bindinput="onSearchInput"
              bindconfirm="doSearch"/>
       <view class="search-btn" bindtap="doSearch">查询</view>
     </view>
-    
+
     <view class="scan-btn" bindtap="scanDOI">📷 扫描</view>
   </view>
-  
+
   <!-- 错误信息 -->
   <view class="error-msg" wx:if="{{searchError}}">{{searchError}}</view>
-  
+
   <!-- 加载中 -->
   <view class="loading" wx:if="{{searching}}">查询中...</view>
-  
+
   <!-- 搜索结果 -->
   <view class="result-section" wx:if="{{searchResult}}">
     <view class="section-title">文献信息</view>
-    
-    <view class="ref-card">
-      <view class="ref-title">{{searchResult.title}}</view>
-      <view class="ref-authors">{{searchResult.authorsStr}}</view>
-      <view class="ref-meta">
-        <text wx:if="{{searchResult.containerTitle}}">📄 {{searchResult.containerTitle}}  </text>
-        <text wx:if="{{searchResult.year}}">📅 {{searchResult.year}}  </text>
-        <text wx:if="{{searchResult.doi}}">🔗 DOI: {{searchResult.doi}}</text>
+
+    <!-- 标签导航 -->
+    <view class="tab-nav">
+      <view class="tab-item {{activeTab === 'basic' ? 'active' : ''}}" bindtap="onTabChange" data-tab="basic">基本信息</view>
+      <view class="tab-item {{activeTab === 'references' ? 'active' : ''}}" bindtap="onTabChange" data-tab="references">引用文献({{searchResult.referenceCount || 0}})</view>
+      <view class="tab-item {{activeTab === 'cited' ? 'active' : ''}}" bindtap="onTabChange" data-tab="cited">被引次数({{searchResult.citedByCount || 0}})</view>
+    </view>
+
+    <!-- 基本信息 -->
+    <view class="tab-content" wx:if="{{activeTab === 'basic'}}">
+      <view class="detail-section">
+        <view class="detail-row" wx:if="{{searchResult.title}}">
+          <text class="detail-label">标题</text>
+          <text class="detail-value">{{searchResult.title}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.containerTitle}}">
+          <text class="detail-label">期刊</text>
+          <text class="detail-value">{{searchResult.containerTitle}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.year}}">
+          <text class="detail-label">发布时间</text>
+          <text class="detail-value">{{searchResult.year}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.doi}}">
+          <text class="detail-label">DOI</text>
+          <text class="detail-value">{{searchResult.doi}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.referenceCount !== undefined}}">
+          <text class="detail-label">引用文献</text>
+          <text class="detail-value">{{searchResult.referenceCount}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.citedByCount !== undefined}}">
+          <text class="detail-label">被引次数</text>
+          <text class="detail-value">{{searchResult.citedByCount}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.typeLabel}}">
+          <text class="detail-label">文献类型</text>
+          <text class="detail-value">{{searchResult.typeLabel}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.authorsStr}}">
+          <text class="detail-label">作者</text>
+          <text class="detail-value">{{searchResult.authorsStr}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.subjects && searchResult.subjects.length > 0}}">
+          <text class="detail-label">关键词</text>
+          <view class="detail-value">
+            <view class="detail-tags">
+              <text class="detail-tag" wx:for="{{searchResult.subjects}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.abstract}}">
+          <text class="detail-label">摘要</text>
+          <text class="detail-value detail-abstract">{{searchResult.abstract}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.publisher}}">
+          <text class="detail-label">出版社</text>
+          <text class="detail-value">{{searchResult.publisher}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.volume}}">
+          <text class="detail-label">卷号</text>
+          <text class="detail-value">{{searchResult.volume}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.issue}}">
+          <text class="detail-label">期号</text>
+          <text class="detail-value">{{searchResult.issue}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{searchResult.page}}">
+          <text class="detail-label">页码</text>
+          <text class="detail-value">{{searchResult.page}}</text>
+        </view>
       </view>
     </view>
-    
-    <!-- 文献类型选择 -->
-    <view class="type-select">
-      <picker mode="selector" range="{{typeOptions}}" range-key="label" value="{{selectedTypeIndex}}" bindchange="onTypeChange">
-        <view class="type-picker">文献类型: {{typeOptions[selectedTypeIndex].label}} ▼</view>
-      </picker>
+
+    <!-- 引用文献 -->
+    <view class="tab-content" wx:if="{{activeTab === 'references'}}">
+      <view class="list-loading" wx:if="{{loadingReferences}}">加载引用文献中...</view>
+      <view class="list-empty" wx:if="{{!loadingReferences && referencesList.length === 0}}">暂无引用文献数据</view>
+      <view class="ref-list" wx:if="{{!loadingReferences && referencesList.length > 0}}">
+        <view class="ref-list-item" wx:for="{{referencesList}}" wx:key="index">
+          <view class="ref-list-title">{{item.title}}</view>
+          <view class="ref-list-meta" wx:if="{{item.authors}}">
+            <text>{{item.authors}}</text>
+            <text wx:if="{{item.year}}"> | {{item.year}}</text>
+          </view>
+          <view class="ref-list-doi" wx:if="{{item.doi}}">DOI: {{item.doi}}</view>
+        </view>
+      </view>
     </view>
-    
+
+    <!-- 被引次数 -->
+    <view class="tab-content" wx:if="{{activeTab === 'cited'}}">
+      <view class="list-loading" wx:if="{{loadingCitingWorks}}">加载被引数据中...</view>
+      <view wx:if="{{!loadingCitingWorks}}">
+        <!-- 每年被引柱状图 -->
+        <view class="chart-section" wx:if="{{yearChartData.series}}">
+          <view class="chart-title">📊 每年被引次数</view>
+          <view class="uchart-box">
+            <qiun-wx-ucharts type="column" canvasId="yearChart" chartData="{{yearChartData}}" />
+          </view>
+        </view>
+        <view class="list-empty" wx:if="{{!yearChartData.series && citingWorksList.length === 0}}">暂无被引数据</view>
+
+        <!-- Topic 饼图 -->
+        <view class="stat-section" wx:if="{{topicChartData.series}}">
+          <view class="stat-title">🔬 引用文献主题分布</view>
+          <view class="uchart-box uchart-pie">
+            <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOpts}}" />
+          </view>
+        </view>
+
+        <!-- 类型饼图 -->
+        <view class="stat-section" wx:if="{{typeChartData.series}}">
+          <view class="stat-title">📑 引用文献类型分布</view>
+          <view class="uchart-box uchart-pie">
+            <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOpts}}" />
+          </view>
+        </view>
+
+        <!-- 机构饼图 -->
+        <view class="stat-section" wx:if="{{instChartData.series}}">
+          <view class="stat-title">🏫 引用机构分布</view>
+          <view class="uchart-box uchart-pie">
+            <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOpts}}" />
+          </view>
+        </view>
+
+        <!-- 被引文献列表 -->
+        <view class="list-section" wx:if="{{citingWorksList.length > 0}}">
+          <view class="list-section-title">引用该文献的文献（前{{citingWorksList.length}}条）</view>
+          <view class="ref-list">
+            <view class="ref-list-item" wx:for="{{citingWorksList}}" wx:key="doi">
+              <view class="ref-list-title">{{item.title}}</view>
+              <view class="ref-list-meta" wx:if="{{item.authorsStr}}">
+                <text>{{item.authorsStr}}</text>
+                <text wx:if="{{item.year}}"> | {{item.year}}</text>
+              </view>
+              <view class="ref-list-meta" wx:if="{{item.containerTitle}}">
+                <text>{{item.containerTitle}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+  </view>
+
+  <!-- 引用格式 -->
+  <view class="citation-section" wx:if="{{searchResult}}">
+    <view class="section-title">引用格式</view>
+
     <!-- 格式选择 -->
     <view class="style-select">
       <picker mode="selector" range="{{styleOptions}}" range-key="label" value="{{selectedStyleIndex}}" bindchange="onStyleChange">
         <view class="style-picker">{{styleOptions[selectedStyleIndex].label}} ▼</view>
       </picker>
     </view>
-    
-    <!-- 编号输入（GB/T 7714 和 IEEE） -->
-    <view class="number-input" wx:if="{{showNumberInput}}">
-      <text class="number-label">编号：</text>
-      <input class="number-input-field" type="number" value="{{number}}" bindinput="onNumberInput" />
-    </view>
-    
+
     <!-- 文中引用 -->
     <view class="citation-block" wx:if="{{citationResult}}">
-      <view class="citation-label">文中引用</view>
+      <view class="citation-header">
+        <view class="citation-label">文中引用</view>
+        <view class="copy-btn" bindtap="copyInText">复制</view>
+      </view>
       <view class="citation-content" bindtap="copyInText">{{citationResult}}</view>
-      <view class="copy-btn" bindtap="copyInText">复制</view>
     </view>
-    
+
     <!-- 参考文献条目 -->
     <view class="citation-block" wx:if="{{bibliographyResult}}">
-      <view class="citation-label">参考文献条目</view>
+      <view class="citation-header">
+        <view class="citation-label">参考文献条目</view>
+        <view class="copy-btn" bindtap="copyBibliography">复制</view>
+      </view>
       <view class="citation-content" bindtap="copyBibliography">{{bibliographyResult}}</view>
-      <view class="copy-btn" bindtap="copyBibliography">复制</view>
     </view>
-    
+
     <!-- 保存到文献库 -->
     <view class="save-btn" bindtap="saveToLibrary">💾 保存到文献库</view>
   </view>
-  
+
   <!-- 文献库 -->
   <view class="library-section">
     <view class="section-title" bindtap="toggleLibrary">
       我的文献库 ({{library.length}})
       <text class="toggle-icon">{{showLibrary ? '▲' : '▼'}}</text>
     </view>
-    
+
     <view wx:if="{{showLibrary}}">
       <view wx:if="{{library.length === 0}}" class="empty-tip">文献库为空，查询后保存文献到这里</view>
-      
+
       <view wx:for="{{library}}" wx:key="_id" class="library-item">
         <view class="lib-item-content" bindtap="useFromLibrary" data-id="{{item._id}}">
           <view class="lib-item-title">{{item.title}}</view>

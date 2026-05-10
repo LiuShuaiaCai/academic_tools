@@ -4,6 +4,35 @@ var formatter = require('../../utils/citation/formatter.js');
 
 var STORAGE_KEY = 'citation_library';
 
+var TYPE_LABEL_MAP = {
+  journal: '期刊文章',
+  book: '图书',
+  conference: '会议论文',
+  thesis: '学位论文',
+  web: '网页'
+};
+
+function buildPieData(items, topN) {
+  topN = topN || 10;
+  if (!items || items.length === 0) return {};
+  var sorted = items.slice().sort(function(a, b) { return b.count - a.count; });
+  var top = sorted.slice(0, topN);
+  var otherCount = 0;
+  for (var i = topN; i < sorted.length; i++) {
+    otherCount += sorted[i].count;
+  }
+  if (otherCount > 0) {
+    top.push({ name: '其他', count: otherCount });
+  }
+  return {
+    series: [{
+      data: top.map(function(item) {
+        return { name: item.name, value: item.count };
+      })
+    }]
+  };
+}
+
 Page({
   data: {
     // 搜索相关
@@ -12,18 +41,7 @@ Page({
     searching: false,
     searchResult: null,
     searchError: '',
-    
-    // 文献类型
-    typeOptions: [
-      { label: '期刊文章', value: 'journal' },
-      { label: '图书', value: 'book' },
-      { label: '会议论文', value: 'conference' },
-      { label: '学位论文', value: 'thesis' },
-      { label: '网页', value: 'web' }
-    ],
-    selectedTypeIndex: 0,
-    selectedType: 'journal',
-    
+
     // 引用格式
     styleOptions: [
       { label: 'APA 7th', value: 'apa' },
@@ -38,11 +56,48 @@ Page({
     selectedStyle: 'gbt7714',
     citationResult: '',
     bibliographyResult: '',
-    
-    // 编号（用于 GB/T 7714 和 IEEE）
-    showNumberInput: true,
-    number: 1,
-    
+
+    // 标签页
+    activeTab: 'basic', // basic / references / cited
+
+    // 引用统计
+    citationStats: [],
+
+    // 引用文献
+    referencesList: [],
+    loadingReferences: false,
+
+    // 被引文献
+    citingWorksList: [],
+    loadingCitingWorks: false,
+
+    // ucharts 图表数据
+    yearChartData: {},
+    topicChartData: {},
+    typeChartData: {},
+    instChartData: {},
+
+    // ucharts 配置
+    pieOpts: {
+      dataLabel: false,
+      legend: {
+        show: true,
+        position: 'bottom',
+        lineHeight: 22,
+        margin: 4
+      },
+      extra: {
+        pie: {
+          activeOpacity: 0.5,
+          activeRadius: 6,
+          offsetAngle: 0,
+          border: true,
+          borderWidth: 2,
+          borderColor: '#FFFFFF'
+        }
+      }
+    },
+
     // 文献库
     library: [],
     showLibrary: false
@@ -50,7 +105,6 @@ Page({
 
   onLoad: function() {
     this.loadLibrary();
-    this.updateNumberInputVisibility();
   },
 
   onShow: function() {
@@ -65,7 +119,14 @@ Page({
       searchResult: null,
       searchError: '',
       citationResult: '',
-      bibliographyResult: ''
+      bibliographyResult: '',
+      citationStats: [],
+      yearChartData: {},
+      topicChartData: {},
+      typeChartData: {},
+      instChartData: {},
+      referencesList: [],
+      citingWorksList: []
     });
   },
 
@@ -78,14 +139,28 @@ Page({
   doSearch: function() {
     var that = this;
     var value = this.data.searchValue.trim();
-    
+
     if (!value) {
       wx.showToast({ title: '请输入搜索内容', icon: 'none' });
       return;
     }
-    
-    that.setData({ searching: true, searchResult: null, searchError: '', citationResult: '', bibliographyResult: '' });
-    
+
+    that.setData({
+      searching: true,
+      searchResult: null,
+      searchError: '',
+      citationResult: '',
+      bibliographyResult: '',
+      activeTab: 'basic',
+      citationStats: [],
+      yearChartData: {},
+      topicChartData: {},
+      typeChartData: {},
+      instChartData: {},
+      referencesList: [],
+      citingWorksList: []
+    });
+
     var promise;
     if (that.data.searchType === 'doi') {
       // 清理 DOI 输入（可能包含 https://doi.org/ 前缀）
@@ -100,7 +175,7 @@ Page({
         }
       });
     }
-    
+
     promise.then(function(ref) {
       // 添加格式化的作者字符串
       var authorsStr = '';
@@ -110,7 +185,9 @@ Page({
         }).join(', ');
       }
       ref.authorsStr = authorsStr;
-      
+      // 添加中文类型标签
+      ref.typeLabel = TYPE_LABEL_MAP[ref.type] || ref.type;
+
       that.setData({
         searching: false,
         searchResult: ref
@@ -124,6 +201,87 @@ Page({
     });
   },
 
+  // 切换标签
+  onTabChange: function(e) {
+    var tab = e.currentTarget.dataset.tab;
+    this.setData({ activeTab: tab });
+
+    var ref = this.data.searchResult;
+    if (!ref || !ref.doi) return;
+
+    if (tab === 'references' && this.data.referencesList.length === 0) {
+      this.loadReferences(ref.doi);
+    } else if (tab === 'cited' && this.data.citingWorksList.length === 0) {
+      this.loadCitingWorks(ref.doi);
+    }
+  },
+
+  // 加载引用文献列表
+  loadReferences: function(doi) {
+    var that = this;
+    that.setData({ loadingReferences: true });
+    crossref.fetchReferences(doi).then(function(list) {
+      that.setData({
+        referencesList: list,
+        loadingReferences: false
+      });
+    }).catch(function() {
+      that.setData({ loadingReferences: false });
+    });
+  },
+
+  // 加载被引文献列表和统计
+  loadCitingWorks: function(doi) {
+    var that = this;
+    that.setData({ loadingCitingWorks: true });
+
+    var statsPromise = crossref.fetchCitationsByYear(doi);
+    var worksPromise = crossref.fetchCitingWorks(doi, 20);
+    var topicsPromise = crossref.fetchCitingTopics(doi);
+    var instPromise = crossref.fetchCitingInstitutions(doi);
+    var typesPromise = crossref.fetchCitingTypes(doi);
+
+    Promise.all([statsPromise, worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
+      var stats = results[0];
+      var works = results[1];
+      var topics = results[2];
+      var institutions = results[3];
+      var types = results[4];
+
+      // 用 OpenAlex 统计总和统一被引次数，保持数据一致
+      var totalCitedBy = 0;
+      for (var i = 0; i < stats.length; i++) {
+        totalCitedBy += stats[i].count;
+      }
+      var searchResult = that.data.searchResult;
+      if (searchResult) {
+        searchResult.citedByCount = totalCitedBy;
+      }
+
+      // 柱状图数据
+      var yearChartData = {};
+      if (stats.length > 0) {
+        yearChartData = {
+          categories: stats.map(function(s) { return s.year; }),
+          series: [{ name: '被引次数', data: stats.map(function(s) { return s.count; }) }]
+        };
+      }
+
+      that.setData({
+        citationStats: stats,
+        citingWorksList: works,
+        yearChartData: yearChartData,
+        topicChartData: buildPieData(topics, 10),
+        typeChartData: buildPieData(types, 10),
+        instChartData: buildPieData(institutions, 10),
+        loadingCitingWorks: false,
+        searchResult: searchResult
+      });
+    }).catch(function() {
+      that.setData({ loadingCitingWorks: false });
+    });
+  },
+
   // 选择引用格式
   onStyleChange: function(e) {
     var index = parseInt(e.detail.value);
@@ -132,54 +290,25 @@ Page({
       selectedStyleIndex: index,
       selectedStyle: this.data.styleOptions[index].value
     }, function() {
-      that.updateNumberInputVisibility();
       that.generateCitation();
     });
-  },
-  
-  // 选择文献类型
-  onTypeChange: function(e) {
-    var index = parseInt(e.detail.value);
-    var that = this;
-    this.setData({
-      selectedTypeIndex: index,
-      selectedType: this.data.typeOptions[index].value
-    }, function() {
-      that.generateCitation();
-    });
-  },
-  
-  // 编号输入
-  onNumberInput: function(e) {
-    var num = parseInt(e.detail.value) || 1;
-    var that = this;
-    this.setData({ number: num }, function() {
-      that.generateCitation();
-    });
-  },
-  
-  // 根据格式显示/隐藏编号输入
-  updateNumberInputVisibility: function() {
-    var style = this.data.selectedStyle;
-    var show = (style === 'gbt7714' || style === 'ieee');
-    this.setData({ showNumberInput: show });
   },
 
   // 生成引用
   generateCitation: function() {
     var ref = this.data.searchResult;
     if (!ref) return;
-    
+
     var style = this.data.selectedStyle;
-    var type = this.data.selectedType;
-    var number = this.data.number;
-    
+    // 文献类型从Crossref返回数据中自动获取
+    var type = ref.type || 'journal';
+
     // 生成文中引用
     var inText = formatter.generateInTextCitation(ref, style);
-    
-    // 生成参考文献条目（传递类型和编号）
-    var bib = formatter.generateBibliographyEntry(ref, style, type, number);
-    
+
+    // 生成参考文献条目（不传编号）
+    var bib = formatter.generateBibliographyEntry(ref, style, type);
+
     this.setData({
       citationResult: inText,
       bibliographyResult: bib
@@ -212,28 +341,28 @@ Page({
   saveToLibrary: function() {
     var ref = this.data.searchResult;
     if (!ref) return;
-    
+
     var library = this.data.library;
-    
+
     // 检查是否已存在
     var exists = library.some(function(item) {
       return item.doi === ref.doi;
     });
-    
+
     if (exists) {
       wx.showToast({ title: '文献已存在于库中', icon: 'none' });
       return;
     }
-    
+
     // 添加 ID 和时间戳
     ref._id = 'ref_' + Date.now();
     ref.addTime = new Date().toISOString();
-    
+
     library.unshift(ref);
-    
+
     this.setData({ library: library });
     this.saveLibrary();
-    
+
     wx.showToast({ title: '已保存到文献库', icon: 'success' });
   },
 
@@ -263,7 +392,7 @@ Page({
   deleteFromLibrary: function(e) {
     var that = this;
     var id = e.currentTarget.dataset.id;
-    
+
     wx.showModal({
       title: '确认删除',
       content: '确定要从文献库中删除这篇文献吗？',
@@ -291,7 +420,7 @@ Page({
     var ref = this.data.library.find(function(item) {
       return item._id === id;
     });
-    
+
     if (ref) {
       this.setData({
         searchResult: ref,
@@ -299,7 +428,15 @@ Page({
         searchValue: ref.doi || '',
         showLibrary: false,
         citationResult: '',
-        bibliographyResult: ''
+        bibliographyResult: '',
+        activeTab: 'basic',
+        citationStats: [],
+        yearChartData: {},
+        topicChartData: {},
+        typeChartData: {},
+        instChartData: {},
+        referencesList: [],
+        citingWorksList: []
       });
       this.generateCitation();
     }
@@ -309,5 +446,17 @@ Page({
   scanDOI: function() {
     wx.showToast({ title: '扫描功能开发中', icon: 'none' });
     // 实际实现可以使用 wx.scanCode
+  },
+
+  // 点击饼图/图例查看详情
+  showPieDetail: function(e) {
+    var name = e.currentTarget.dataset.name;
+    var count = e.currentTarget.dataset.count;
+    var percent = e.currentTarget.dataset.percent;
+    wx.showModal({
+      title: name,
+      content: '数量: ' + count + '\n占比: ' + percent + '%',
+      showCancel: false
+    });
   }
 });

@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "文献引用",
   "enablePullDownRefresh": false,
-  "usingComponents": {}
+  "usingComponents": {
+    "qiun-wx-ucharts": "/components/qiun-wx-ucharts/index"
+  }
 }
