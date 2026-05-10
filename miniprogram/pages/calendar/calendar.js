@@ -5,7 +5,16 @@ Page({
     currentYear: 0, currentMonth: 0, currentView: 'month',
     calendarDays: [], weekDays: [], monthEvents: [],
     selectedDate: '', selectedDateLabel: '', selectedEvents: [],
-    dayEvents: [], eventDates: {}
+    dayEvents: [], eventDates: {},
+    // 任务相关
+    tasks: [],
+    taskTypes: ['submission', 'review', 'conference', 'task'],
+    taskDotColors: {
+      submission: '#2563eb',
+      review: '#EF4444',
+      conference: '#10B981',
+      task: '#8B5CF6'
+    }
   },
 
   onLoad: function() {
@@ -40,17 +49,31 @@ Page({
     var endDate = new Date(currentYear, currentMonth, 1);
 
     Promise.all([
+      // 投稿
       db.collection('submissions').where({ deleteTime: null, nextDeadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; }),
+      // 审稿
       db.collection('reviews').where({ deleteTime: null, deadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; }),
-      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; })
+      // 会议
+      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; }),
+      // 任务 - 按月份筛选
+      db.collection('tasks').where({
+        deleteTime: null,
+        completed: false,
+        date: _.gte(startDate.toISOString().split('T')[0]).and(_.lt(endDate.toISOString().split('T')[0]))
+      }).get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
-      var subRes = results[0], revRes = results[1], confRes = results[2];
+      var subRes = results[0], revRes = results[1], confRes = results[2], taskRes = results[3];
       var eventDates = {};
       var monthEvents = [];
 
+      // 投稿
       subRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, journal: i.journal, type: 'submission', typeLabel: '投稿', date: i.nextDeadline, deadline: i.nextDeadline }); });
+      // 审稿
       revRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline }); });
+      // 会议
       confRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline }); });
+      // 任务
+      taskRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, type: 'task', typeLabel: '任务', date: i.date, time: i.time, priority: i.priority, category: i.category, reminderEnabled: i.reminderEnabled }); });
 
       monthEvents.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
       monthEvents.forEach(function(i) {
@@ -160,5 +183,39 @@ Page({
     var now = new Date();
     this.setData({ currentYear: now.getFullYear(), currentMonth: now.getMonth() + 1, selectedDate: this.formatDate(now) });
     this.loadMonthEvents();
+  },
+
+  // 跳转到每日任务页面
+  goToDailyTasks: function() {
+    var selectedDate = this.data.selectedDate;
+    wx.navigateTo({
+      url: '/pages/calendar/daily-tasks/daily-tasks?date=' + selectedDate
+    });
+  },
+
+  // 跳转到任务编辑器
+  goToTaskEditor: function() {
+    var selectedDate = this.data.selectedDate;
+    wx.navigateTo({
+      url: '/pages/calendar/task-editor/task-editor?date=' + selectedDate
+    });
+  },
+
+  // 获取日期标签
+  getDateLabel: function(dateStr) {
+    var today = this.formatDate(new Date());
+    if (dateStr === today) return '今天';
+    return dateStr;
+  },
+
+  // 获取事件类型标签
+  getEventTypeName: function(type) {
+    var names = {
+      submission: '投稿',
+      review: '审稿',
+      conference: '会议',
+      task: '任务'
+    };
+    return names[type] || type;
   }
 });

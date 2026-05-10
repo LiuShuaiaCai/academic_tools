@@ -4,6 +4,8 @@
     "pages/home/home",
     "pages/toolbox/toolbox",
     "pages/calendar/calendar",
+    "pages/calendar/daily-tasks/daily-tasks",
+    "pages/calendar/task-editor/task-editor",
     "pages/profile/profile",
     "pages/submissions/submissions",
     "pages/reviews/reviews",

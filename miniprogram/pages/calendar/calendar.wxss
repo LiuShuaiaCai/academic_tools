@@ -2,7 +2,7 @@
 page { background: #F6F6F6; }
 .calendar-page { padding-bottom: 120rpx; }
 
-.calendar-header {
+.cal-header {
   background: #fff;
   padding: 24rpx 32rpx;
   display: flex;
@@ -111,6 +111,7 @@ page { background: #F6F6F6; }
 .dot.submission { background: #2563eb; }
 .dot.review { background: #EF4444; }
 .dot.conference { background: #10B981; }
+.dot.task { background: #8B5CF6; }
 
 /* 图例 */
 .legend {
@@ -160,6 +161,11 @@ page { background: #F6F6F6; }
   justify-content: center;
   font-size: 28rpx;
   color: #fff;
+}
+
+.header-btn.add-task {
+  font-size: 40rpx;
+  font-weight: 700;
 }
 
 /* ========== 视图切换 ========== */
@@ -296,6 +302,7 @@ page { background: #F6F6F6; }
 .list-type.submission { background: #DBEAFE; color: #2563eb; }
 .list-type.review { background: #FEE2E2; color: #EF4444; }
 .list-type.conference { background: #D1FAE5; color: #10B981; }
+.list-type.task { background: #EDE9FE; color: #8B5CF6; }
 
 .list-empty {
   text-align: center;
@@ -304,7 +311,7 @@ page { background: #F6F6F6; }
   color: #9CA3AF;
 }
 
-/* ========== 选中日期的事件 ========== */
+/* ========== 事件区域 ========== */
 .events-section {
   background: #fff;
   border-radius: 16rpx;
@@ -313,35 +320,70 @@ page { background: #F6F6F6; }
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #111827;
-  margin-bottom: 16rpx;
+}
+
+.section-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.action-btn {
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.action-btn.primary {
+  background: #2563EB;
+  color: #fff;
+}
+
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
 .event-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16rpx;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #F3F4F6;
+  padding: 16rpx;
+  background: #F9FAFB;
+  border-radius: 12rpx;
+  border-left: 4rpx solid;
 }
 
-.event-item:last-child {
-  border-bottom: none;
-}
+.event-item.submission { border-color: #2563eb; }
+.event-item.review { border-color: #EF4444; }
+.event-item.conference { border-color: #10B981; }
+.event-item.task { border-color: #8B5CF6; }
 
 .event-dot {
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
+  margin-top: 8rpx;
   flex-shrink: 0;
 }
 
 .event-dot.submission { background: #2563eb; }
 .event-dot.review { background: #EF4444; }
 .event-dot.conference { background: #10B981; }
+.event-dot.task { background: #8B5CF6; }
 
 .event-content {
   flex: 1;
@@ -354,7 +396,70 @@ page { background: #F6F6F6; }
   margin-bottom: 4rpx;
 }
 
+.event-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
 .event-type {
   font-size: 22rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+  background: #F3F4F6;
   color: #6B7280;
+}
+
+.event-time {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+.event-priority {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+}
+
+.event-priority.high {
+  background: #FEE2E2;
+  color: #EF4444;
+}
+
+.event-priority.medium {
+  background: #FEF3C7;
+  color: #F59E0B;
+}
+
+.event-priority.low {
+  background: #D1FAE5;
+  color: #10B981;
+}
+
+/* 空状态 */
+.events-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 20rpx;
+}
+
+.events-empty .empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 16rpx;
+}
+
+.events-empty .empty-text {
+  font-size: 26rpx;
+  color: #9CA3AF;
+  margin-bottom: 20rpx;
+}
+
+.events-empty .empty-action {
+  padding: 12rpx 32rpx;
+  background: #2563EB;
+  color: #fff;
+  border-radius: 8rpx;
+  font-size: 26rpx;
 }

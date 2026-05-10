@@ -1,0 +1,165 @@
+<!-- pages/calendar/task-editor/task-editor.wxml -->
+<view class="task-editor-page">
+  <!-- 表单区域 -->
+  <scroll-view scroll-y class="form-scroll">
+    <!-- 任务标题 -->
+    <view class="form-section">
+      <view class="form-label">任务标题 *</view>
+      <input 
+        class="form-input" 
+        placeholder="请输入任务标题" 
+        value="{{title}}"
+        bindinput="onTitleInput"
+        maxlength="100"
+      />
+    </view>
+
+    <!-- 任务描述 -->
+    <view class="form-section">
+      <view class="form-label">任务描述</view>
+      <textarea 
+        class="form-textarea" 
+        placeholder="添加任务详细说明（可选）" 
+        value="{{description}}"
+        bindinput="onDescInput"
+        maxlength="500"
+      />
+    </view>
+
+    <!-- 日期和时间 -->
+    <view class="form-section">
+      <view class="form-label">日期和时间</view>
+      <view class="datetime-row">
+        <picker mode="date" value="{{date}}" bindchange="onDateChange">
+          <view class="date-picker">
+            <text class="icon">📅</text>
+            <text>{{date}}</text>
+          </view>
+        </picker>
+        
+        <view class="all-day-toggle" bindtap="onAllDayToggle">
+          <text>全天</text>
+          <view class="toggle {{isAllDay ? 'active' : ''}}">
+            <view class="toggle-dot"></view>
+          </view>
+        </view>
+      </view>
+      
+      <picker mode="time" value="{{time}}" bindchange="onTimeChange" wx:if="{{!isAllDay}}">
+        <view class="time-picker">
+          <text class="icon">🕐</text>
+          <text>{{time}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 优先级 -->
+    <view class="form-section">
+      <view class="form-label">优先级</view>
+      <view class="priority-selector">
+        <view 
+          class="priority-btn {{priority === 'low' ? 'active low' : ''}}"
+          bindtap="onPriorityChange"
+          data-priority="low"
+        >
+          <view class="priority-dot low"></view>
+          <text>低</text>
+        </view>
+        <view 
+          class="priority-btn {{priority === 'medium' ? 'active medium' : ''}}"
+          bindtap="onPriorityChange"
+          data-priority="medium"
+        >
+          <view class="priority-dot medium"></view>
+          <text>中</text>
+        </view>
+        <view 
+          class="priority-btn {{priority === 'high' ? 'active high' : ''}}"
+          bindtap="onPriorityChange"
+          data-priority="high"
+        >
+          <view class="priority-dot high"></view>
+          <text>高</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 分类 -->
+    <view class="form-section">
+      <view class="form-label">分类</view>
+      <picker mode="selector" range="{{categoryOptions}}" range-key="name" bindchange="onCategoryChange">
+        <view class="category-picker">
+          <text class="category-icon {{category}}">{{categoryIcon}}</text>
+          <text class="category-name">{{categoryName}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 提醒设置 -->
+    <view class="form-section">
+      <view class="form-label-row">
+        <text class="form-label">提醒设置</text>
+        <view class="toggle-switch {{reminderEnabled ? 'active' : ''}}" bindtap="onReminderToggle">
+          <view class="toggle-dot"></view>
+        </view>
+      </view>
+      
+      <view class="reminder-options" wx:if="{{reminderEnabled}}">
+        <checkbox-group bindchange="onReminderChange">
+          <label class="reminder-item">
+            <checkbox value="1440" checked="{{selectedReminders.includes(1440)}}"/>
+            <text>提前1天</text>
+          </label>
+          <label class="reminder-item">
+            <checkbox value="60" checked="{{selectedReminders.includes(60)}}"/>
+            <text>提前1小时</text>
+          </label>
+          <label class="reminder-item">
+            <checkbox value="30" checked="{{selectedReminders.includes(30)}}"/>
+            <text>提前30分钟</text>
+          </label>
+        </checkbox-group>
+      </view>
+    </view>
+
+    <!-- 重复设置 -->
+    <view class="form-section">
+      <view class="form-label">重复</view>
+      <picker mode="selector" range="{{repeatOptions}}" range-key="name" bindchange="onRepeatChange">
+        <view class="repeat-picker">
+          <text>{{repeatName}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+      
+      <picker mode="date" value="{{repeatEndDate}}" bindchange="onRepeatEndChange" wx:if="{{repeatType !== 'none'}}">
+        <view class="repeat-end-picker">
+          <text class="label">重复结束日期：</text>
+          <text class="value">{{repeatEndDate || '永不'}}</text>
+        </view>
+      </picker>
+    </view>
+  </scroll-view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <button class="delete-btn" bindtap="showDeleteConfirm" wx:if="{{taskId}}">删除</button>
+    <button class="save-btn" bindtap="saveTask" loading="{{loading}}">
+      {{taskId ? '保存修改' : '创建任务'}}
+    </button>
+  </view>
+
+  <!-- 删除确认弹窗 -->
+  <view class="delete-modal {{deleteConfirm ? 'show' : ''}}">
+    <view class="modal-mask" bindtap="cancelDelete"></view>
+    <view class="modal-content">
+      <view class="modal-title">确认删除</view>
+      <view class="modal-desc">确定要删除这个任务吗？此操作无法撤销。</view>
+      <view class="modal-actions">
+        <button class="modal-btn cancel" bindtap="cancelDelete">取消</button>
+        <button class="modal-btn confirm" bindtap="confirmDelete">删除</button>
+      </view>
+    </view>
+  </view>
+</view>

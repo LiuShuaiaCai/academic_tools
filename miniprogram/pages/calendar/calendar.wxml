@@ -4,7 +4,8 @@
   <view class="cal-header">
     <view class="cal-title">学术日历</view>
     <view class="header-actions">
-      <view class="header-btn" bindtap="goToToday">📅</view>
+      <view class="header-btn add-task" bindtap="goToTaskEditor">+</view>
+      <view class="header-btn" bindtap="goToToday">今</view>
     </view>
   </view>
 
@@ -57,7 +58,7 @@
     </view>
   </view>
 
-  <!-- 周视图 (简化：显示当前周) -->
+  <!-- 周视图 -->
   <view class="week-view" wx:if="{{currentView === 'week'}}">
     <view class="week-grid">
       <view
@@ -81,7 +82,7 @@
     <view class="list-item" wx:for="{{monthEvents}}" wx:key="index">
       <view class="list-date">{{item.dateLabel}}</view>
       <view class="list-content">
-        <view class="list-title">{{item.title}}</view>
+        <view class="list-title">{{item.title || item.name || item.paperTitle}}</view>
         <view class="list-type {{item.type}}">{{item.typeLabel}}</view>
       </view>
     </view>
@@ -93,17 +94,38 @@
     <view class="legend-item"><view class="legend-dot submission"></view>投稿</view>
     <view class="legend-item"><view class="legend-dot review"></view>审稿</view>
     <view class="legend-item"><view class="legend-dot conference"></view>会议</view>
+    <view class="legend-item"><view class="legend-dot task"></view>任务</view>
   </view>
 
   <!-- 选中日期的事件 -->
-  <view class="events-section" wx:if="{{selectedEvents.length > 0}}">
-    <view class="section-title">📅 {{selectedDateLabel}} 的事件</view>
-    <view class="event-item" wx:for="{{selectedEvents}}" wx:key="index">
-      <view class="event-dot {{item.type}}"></view>
-      <view class="event-content">
-        <view class="event-title">{{item.title}}</view>
-        <view class="event-type">{{item.typeLabel}}</view>
+  <view class="events-section">
+    <view class="section-header">
+      <view class="section-title">📅 {{selectedDateLabel}} 的事件</view>
+      <view class="section-actions">
+        <view class="action-btn primary" bindtap="goToDailyTasks">每日任务</view>
       </view>
+    </view>
+    
+    <view wx:if="{{selectedEvents.length > 0}}" class="event-list">
+      <view class="event-item {{item.type}}" wx:for="{{selectedEvents}}" wx:key="index">
+        <view class="event-dot {{item.type}}"></view>
+        <view class="event-content">
+          <view class="event-title">{{item.title || item.name || item.paperTitle || '未命名'}}</view>
+          <view class="event-meta">
+            <text class="event-type">{{item.typeLabel}}</text>
+            <text class="event-time" wx:if="{{item.time}}">{{item.time}}</text>
+            <text class="event-priority {{item.priority}}" wx:if="{{item.type === 'task' && item.priority}}">
+              {{item.priority === 'high' ? '紧急' : item.priority === 'medium' ? '普通' : '低优'}}
+            </text>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <view wx:if="{{selectedEvents.length === 0}}" class="events-empty">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">这天没有安排</text>
+      <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
     </view>
   </view>
 </view>
