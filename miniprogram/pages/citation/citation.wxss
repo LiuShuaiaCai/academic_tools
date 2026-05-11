@@ -802,3 +802,15 @@
   font-size: 28rpx;
   color: #374151;
 }
+
+/* OpenAlex 不可用提示 */
+.openalex-tip {
+  background: #fef3c7;
+  border: 1rpx solid #f59e0b;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+  font-size: 26rpx;
+  color: #92400e;
+  line-height: 1.5;
+}

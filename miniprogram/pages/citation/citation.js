@@ -12,14 +12,6 @@ var TYPE_LABEL_MAP = {
   web: '网页'
 };
 
-// 截断名称为指定字符数
-function truncateName(name, maxLen) {
-  maxLen = maxLen || 15;
-  if (!name) return '';
-  if (name.length <= maxLen) return name;
-  return name.substring(0, maxLen - 1) + '…';
-}
-
 function buildPieData(items, topN) {
   topN = topN || 10;
   if (!items || items.length === 0) return {};
@@ -86,6 +78,8 @@ Page({
     searchValue: '',
     searching: false,
     searchResult: null,
+    searchResultReady: false, // 搜索结果是否准备就绪（包含OpenAlex数据）
+    openAlexAvailable: true, // OpenAlex API 是否可用
     searchError: '',
 
     // 引用格式
@@ -205,6 +199,8 @@ Page({
       searchType: e.currentTarget.dataset.type,
       searchValue: '',
       searchResult: null,
+      searchResultReady: false,
+      openAlexAvailable: true,
       searchError: '',
       citationResult: '',
       bibliographyResult: '',
@@ -236,6 +232,7 @@ Page({
     that.setData({
       searching: true,
       searchResult: null,
+      searchResultReady: false,
       searchError: '',
       citationResult: '',
       bibliographyResult: '',
@@ -252,22 +249,38 @@ Page({
       instFullData: []
     });
 
-    var promise;
+    var doi;
     if (that.data.searchType === 'doi') {
       // 清理 DOI 输入（可能包含 https://doi.org/ 前缀）
-      var doi = value.replace(/https?:\/\/(dx\.)?doi\.org\//i, '');
-      promise = crossref.fetchByDOI(doi);
-    } else {
-      promise = crossref.searchByTitle(value, 1).then(function(results) {
-        if (results && results.length > 0) {
-          return results[0]; // 取第一个结果
-        } else {
-          throw new Error('未找到相关文献');
-        }
-      });
+      doi = value.replace(/https?:\/\/(dx\.)?doi\.org\//i, '');
     }
 
-    promise.then(function(ref) {
+    // 同时获取 Crossref 和 OpenAlex 数据，并行请求
+    var crossrefPromise = that.data.searchType === 'doi' 
+      ? crossref.fetchByDOI(doi)
+      : crossref.searchByTitle(value, 1).then(function(results) {
+          if (results && results.length > 0) {
+            return results[0]; // 取第一个结果
+          } else {
+            throw new Error('未找到相关文献');
+          }
+        });
+
+    var openAlexPromise = crossrefPromise.then(function(ref) {
+      // 拿到 DOI 后获取 OpenAlex 数据（国内可能访问失败）
+      var workDoi = ref.doi;
+      return crossref.fetchWorkMetaFromOpenAlex(workDoi).then(function(meta) {
+        return { ref: ref, meta: meta, available: true };
+      }).catch(function() {
+        // OpenAlex 获取失败，返回 null（会使用 Crossref 的 citedByCount）
+        return { ref: ref, meta: null, available: false };
+      });
+    });
+
+    openAlexPromise.then(function(result) {
+      var ref = result.ref;
+      var meta = result.meta;
+
       // 添加格式化的作者字符串
       var authorsStr = '';
       if (ref.authors && ref.authors.length > 0) {
@@ -279,29 +292,27 @@ Page({
       // 添加中文类型标签
       ref.typeLabel = TYPE_LABEL_MAP[ref.type] || ref.type;
 
+      // 优先使用 OpenAlex 的数据（更准确），失败则用 Crossref 的
+      if (meta && meta.openAlexId) {
+        ref.openAlexId = meta.openAlexId;
+        ref.citedByCount = meta.citedByCount;
+        ref.countsByYear = meta.countsByYear;
+      }
+      // else: 保持使用 Crossref 的 citedByCount（ref.citedByCount）
+
+      // 一次性设置所有数据，避免闪烁
       that.setData({
         searching: false,
-        searchResult: ref
+        searchResult: ref,
+        searchResultReady: true,
+        openAlexAvailable: result.available
       });
       that.generateCitation();
-
-      // 同时获取 OpenAlex 数据以保证 citedByCount 一致性，并缓存 openAlexId
-      crossref.fetchWorkMetaFromOpenAlex(ref.doi).then(function(meta) {
-        if (meta.openAlexId) {
-          var updatedRef = Object.assign({}, that.data.searchResult, {
-            openAlexId: meta.openAlexId,
-            citedByCount: meta.citedByCount,
-            countsByYear: meta.countsByYear
-          });
-          that.setData({ searchResult: updatedRef });
-        }
-      }).catch(function() {
-        // OpenAlex 获取失败不影响主流程
-      });
     }).catch(function(err) {
       that.setData({
         searching: false,
-        searchError: err.message || '查询失败'
+        searchError: err.message || '查询失败',
+        openAlexAvailable: false
       });
     });
   },
@@ -340,46 +351,21 @@ Page({
     var that = this;
     that.setData({ loadingCitingWorks: true });
 
-    // 优先使用缓存的 openAlexId，避免重复调用
+    // 使用缓存的 openAlexId，doSearch 时已获取
     var cachedOpenAlexId = that.data.searchResult && that.data.searchResult.openAlexId;
     var cachedCountsByYear = that.data.searchResult && that.data.searchResult.countsByYear;
 
-    if (cachedOpenAlexId && cachedCountsByYear) {
-      // 使用缓存数据，并行获取其他统计
-      var worksPromise = crossref.fetchCitingWorks(doi, 20, cachedOpenAlexId);
-      var topicsPromise = crossref.fetchCitingTopics(doi, cachedOpenAlexId);
-      var instPromise = crossref.fetchCitingInstitutions(doi, cachedOpenAlexId);
-      var typesPromise = crossref.fetchCitingTypes(doi, cachedOpenAlexId);
+    // 并行获取被引文献列表和分布统计
+    var worksPromise = crossref.fetchCitingWorks(doi, 20, cachedOpenAlexId);
+    var topicsPromise = crossref.fetchCitingTopics(doi, cachedOpenAlexId);
+    var instPromise = crossref.fetchCitingInstitutions(doi, cachedOpenAlexId);
+    var typesPromise = crossref.fetchCitingTypes(doi, cachedOpenAlexId);
 
-      Promise.all([worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
-        that._updateCitingData(results, cachedCountsByYear);
-      }).catch(function() {
-        that.setData({ loadingCitingWorks: false });
-      });
-    } else {
-      // 没有缓存，先获取 OpenAlex 元数据
-      crossref.fetchWorkMetaFromOpenAlex(doi).then(function(meta) {
-        // 更新 searchResult 中的缓存
-        var updatedRef = Object.assign({}, that.data.searchResult, {
-          openAlexId: meta.openAlexId,
-          citedByCount: meta.citedByCount,
-          countsByYear: meta.countsByYear
-        });
-        that.setData({ searchResult: updatedRef });
-
-        // 并行获取其他数据
-        var worksPromise = crossref.fetchCitingWorks(doi, 20, meta.openAlexId);
-        var topicsPromise = crossref.fetchCitingTopics(doi, meta.openAlexId);
-        var instPromise = crossref.fetchCitingInstitutions(doi, meta.openAlexId);
-        var typesPromise = crossref.fetchCitingTypes(doi, meta.openAlexId);
-
-        return Promise.all([worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
-          that._updateCitingData(results, meta.countsByYear);
-        });
-      }).catch(function() {
-        that.setData({ loadingCitingWorks: false });
-      });
-    }
+    Promise.all([worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
+      that._updateCitingData(results, cachedCountsByYear || []);
+    }).catch(function() {
+      that.setData({ loadingCitingWorks: false });
+    });
   },
 
   // 更新被引数据（抽取为独立方法避免重复代码）
@@ -551,8 +537,21 @@ Page({
     });
 
     if (ref) {
+      // 添加中文类型标签（如果还没有）
+      if (!ref.typeLabel) {
+        ref.typeLabel = TYPE_LABEL_MAP[ref.type] || ref.type;
+      }
+      // 添加格式化的作者字符串（如果还没有）
+      if (!ref.authorsStr && ref.authors && ref.authors.length > 0) {
+        ref.authorsStr = ref.authors.map(function(a) {
+          return a.family + ' ' + a.given;
+        }).join(', ');
+      }
+
       this.setData({
         searchResult: ref,
+        searchResultReady: true,
+        openAlexAvailable: !!ref.openAlexId, // 根据是否有 openAlexId 判断
         searchType: 'doi',
         searchValue: ref.doi || '',
         showLibrary: false,

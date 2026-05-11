@@ -50,7 +50,7 @@
   <view class="loading" wx:if="{{searching}}">查询中...</view>
 
   <!-- 搜索结果 -->
-  <view class="result-section" wx:if="{{searchResult}}">
+  <view class="result-section" wx:if="{{searchResultReady}}">
     <view class="section-title">文献信息</view>
 
     <!-- 标签导航 -->
@@ -146,6 +146,10 @@
     <view class="tab-content" wx:if="{{activeTab === 'cited'}}">
       <view class="list-loading" wx:if="{{loadingCitingWorks}}">加载被引数据中...</view>
       <view wx:if="{{!loadingCitingWorks}}">
+        <!-- OpenAlex 不可用提示 -->
+        <view class="openalex-tip" wx:if="{{!openAlexAvailable}}">
+          <text>⚠️ 详细被引数据暂不可用（网络原因），被引次数来自 Crossref，可能与实际有差异</text>
+        </view>
         <!-- 每年被引柱状图 -->
         <view class="chart-section" wx:if="{{yearChartData.series}}">
           <view class="chart-title">📊 每年被引次数</view>
