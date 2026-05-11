@@ -12,6 +12,14 @@ var TYPE_LABEL_MAP = {
   web: '网页'
 };
 
+// 截断名称为指定字符数
+function truncateName(name, maxLen) {
+  maxLen = maxLen || 15;
+  if (!name) return '';
+  if (name.length <= maxLen) return name;
+  return name.substring(0, maxLen - 1) + '…';
+}
+
 function buildPieData(items, topN) {
   topN = topN || 10;
   if (!items || items.length === 0) return {};
@@ -24,13 +32,51 @@ function buildPieData(items, topN) {
   if (otherCount > 0) {
     top.push({ name: '其他', count: otherCount });
   }
+  // 计算总数用于百分比
+  var total = 0;
+  for (var j = 0; j < top.length; j++) {
+    total += top[j].count;
+  }
+  // ucharts饼图格式: series: [{ name: '分类名', data: 数值 }, ...]
+  // 数据标签显示：名称(数量/百分比%)
   return {
-    series: [{
-      data: top.map(function(item) {
-        return { name: item.name, value: item.count };
-      })
-    }]
+    series: top.map(function(item) {
+      var name = item.name.length > 15 ? item.name.substring(0, 12) + '…' : item.name;
+      var percent = total > 0 ? (item.count / total * 100).toFixed(2) : '0.00';
+      // 数据标签格式：名称(数量/百分比%)
+      var label = name + '(' + item.count + '/' + percent + '%)';
+      return { name: name, data: item.count, label: label };
+    }),
+    formatter: function(val, index, series) {
+      return series[index].label || val;
+    }
   };
+}
+
+// 计算总数
+function calcTotal(items) {
+  if (!items || items.length === 0) return 0;
+  var total = 0;
+  for (var i = 0; i < items.length; i++) {
+    total += items[i].count || 0;
+  }
+  return total;
+}
+
+// 添加百分比到数据项
+function addPercent(items, total) {
+  if (!items || !total) return [];
+  return items.map(function(item) {
+    var percent = total > 0 ? (item.count / total * 100).toFixed(2) : '0.00';
+    // 名称截断为15个字符（用于饼图下方显示）
+    var shortName = item.name.length > 15 ? item.name.substring(0, 12) + '…' : item.name;
+    return {
+      name: item.name,      // 完整名称（用于弹窗）
+      shortName: shortName, // 短名称（用于饼图下方）
+      count: item.count,
+      percent: percent
+    };
+  });
 }
 
 Page({
@@ -77,14 +123,27 @@ Page({
     typeChartData: {},
     instChartData: {},
 
-    // ucharts 配置
+    // 饼图完整数据（用于展开显示）
+    topicFullData: [],
+    typeFullData: [],
+    instFullData: [],
+    topicTotal: 0,
+    typeTotal: 0,
+    instTotal: 0,
+
+    // 饼图展开状态
+    topicExpanded: false,
+    typeExpanded: false,
+    instExpanded: false,
+
+    // ucharts 配置（带右侧图例）
     pieOpts: {
-      dataLabel: false,
+      dataLabel: true,
       legend: {
         show: true,
-        position: 'bottom',
-        lineHeight: 22,
-        margin: 4
+        position: 'right',
+        lineHeight: 18,
+        margin: 8
       },
       extra: {
         pie: {
@@ -93,14 +152,43 @@ Page({
           offsetAngle: 0,
           border: true,
           borderWidth: 2,
-          borderColor: '#FFFFFF'
+          borderColor: '#FFFFFF',
+          labelWidth: 15,
+          labelShow: true
+        }
+      }
+    },
+    // ucharts 配置（无图例）
+    pieOptsNoLegend: {
+      dataLabel: true,
+      legend: {
+        show: false
+      },
+      extra: {
+        pie: {
+          activeOpacity: 0.5,
+          activeRadius: 6,
+          offsetAngle: 0,
+          border: true,
+          borderWidth: 2,
+          borderColor: '#FFFFFF',
+          labelWidth: 12,
+          labelShow: true
         }
       }
     },
 
+    // 饼图标题配置
+    pieChartTitle: '',
+
     // 文献库
     library: [],
-    showLibrary: false
+    showLibrary: false,
+
+    // 表格弹窗
+    showTableModal: false,
+    tableModalTitle: '',
+    tableModalData: []
   },
 
   onLoad: function() {
@@ -158,7 +246,10 @@ Page({
       typeChartData: {},
       instChartData: {},
       referencesList: [],
-      citingWorksList: []
+      citingWorksList: [],
+      topicFullData: [],
+      typeFullData: [],
+      instFullData: []
     });
 
     var promise;
@@ -193,6 +284,20 @@ Page({
         searchResult: ref
       });
       that.generateCitation();
+
+      // 同时获取 OpenAlex 数据以保证 citedByCount 一致性，并缓存 openAlexId
+      crossref.fetchWorkMetaFromOpenAlex(ref.doi).then(function(meta) {
+        if (meta.openAlexId) {
+          var updatedRef = Object.assign({}, that.data.searchResult, {
+            openAlexId: meta.openAlexId,
+            citedByCount: meta.citedByCount,
+            countsByYear: meta.countsByYear
+          });
+          that.setData({ searchResult: updatedRef });
+        }
+      }).catch(function() {
+        // OpenAlex 获取失败不影响主流程
+      });
     }).catch(function(err) {
       that.setData({
         searching: false,
@@ -235,50 +340,74 @@ Page({
     var that = this;
     that.setData({ loadingCitingWorks: true });
 
-    var statsPromise = crossref.fetchCitationsByYear(doi);
-    var worksPromise = crossref.fetchCitingWorks(doi, 20);
-    var topicsPromise = crossref.fetchCitingTopics(doi);
-    var instPromise = crossref.fetchCitingInstitutions(doi);
-    var typesPromise = crossref.fetchCitingTypes(doi);
+    // 优先使用缓存的 openAlexId，避免重复调用
+    var cachedOpenAlexId = that.data.searchResult && that.data.searchResult.openAlexId;
+    var cachedCountsByYear = that.data.searchResult && that.data.searchResult.countsByYear;
 
-    Promise.all([statsPromise, worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
-      var stats = results[0];
-      var works = results[1];
-      var topics = results[2];
-      var institutions = results[3];
-      var types = results[4];
+    if (cachedOpenAlexId && cachedCountsByYear) {
+      // 使用缓存数据，并行获取其他统计
+      var worksPromise = crossref.fetchCitingWorks(doi, 20, cachedOpenAlexId);
+      var topicsPromise = crossref.fetchCitingTopics(doi, cachedOpenAlexId);
+      var instPromise = crossref.fetchCitingInstitutions(doi, cachedOpenAlexId);
+      var typesPromise = crossref.fetchCitingTypes(doi, cachedOpenAlexId);
 
-      // 用 OpenAlex 统计总和统一被引次数，保持数据一致
-      var totalCitedBy = 0;
-      for (var i = 0; i < stats.length; i++) {
-        totalCitedBy += stats[i].count;
-      }
-      var searchResult = that.data.searchResult;
-      if (searchResult) {
-        searchResult.citedByCount = totalCitedBy;
-      }
-
-      // 柱状图数据
-      var yearChartData = {};
-      if (stats.length > 0) {
-        yearChartData = {
-          categories: stats.map(function(s) { return s.year; }),
-          series: [{ name: '被引次数', data: stats.map(function(s) { return s.count; }) }]
-        };
-      }
-
-      that.setData({
-        citationStats: stats,
-        citingWorksList: works,
-        yearChartData: yearChartData,
-        topicChartData: buildPieData(topics, 10),
-        typeChartData: buildPieData(types, 10),
-        instChartData: buildPieData(institutions, 10),
-        loadingCitingWorks: false,
-        searchResult: searchResult
+      Promise.all([worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
+        that._updateCitingData(results, cachedCountsByYear);
+      }).catch(function() {
+        that.setData({ loadingCitingWorks: false });
       });
-    }).catch(function() {
-      that.setData({ loadingCitingWorks: false });
+    } else {
+      // 没有缓存，先获取 OpenAlex 元数据
+      crossref.fetchWorkMetaFromOpenAlex(doi).then(function(meta) {
+        // 更新 searchResult 中的缓存
+        var updatedRef = Object.assign({}, that.data.searchResult, {
+          openAlexId: meta.openAlexId,
+          citedByCount: meta.citedByCount,
+          countsByYear: meta.countsByYear
+        });
+        that.setData({ searchResult: updatedRef });
+
+        // 并行获取其他数据
+        var worksPromise = crossref.fetchCitingWorks(doi, 20, meta.openAlexId);
+        var topicsPromise = crossref.fetchCitingTopics(doi, meta.openAlexId);
+        var instPromise = crossref.fetchCitingInstitutions(doi, meta.openAlexId);
+        var typesPromise = crossref.fetchCitingTypes(doi, meta.openAlexId);
+
+        return Promise.all([worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
+          that._updateCitingData(results, meta.countsByYear);
+        });
+      }).catch(function() {
+        that.setData({ loadingCitingWorks: false });
+      });
+    }
+  },
+
+  // 更新被引数据（抽取为独立方法避免重复代码）
+  _updateCitingData: function(results, countsByYear) {
+    var works = results[0];
+    var topics = results[1];
+    var institutions = results[2];
+    var types = results[3];
+
+    var yearChartData = {};
+    if (countsByYear && countsByYear.length > 0) {
+      yearChartData = {
+        categories: countsByYear.map(function(s) { return s.year; }),
+        series: [{ name: '被引次数', data: countsByYear.map(function(s) { return s.count; }) }]
+      };
+    }
+
+    this.setData({
+      citationStats: countsByYear || [],
+      citingWorksList: works,
+      yearChartData: yearChartData,
+      topicChartData: buildPieData(topics, 3),
+      typeChartData: buildPieData(types, 5),
+      instChartData: buildPieData(institutions, 3),
+      topicFullData: addPercent(topics, calcTotal(topics)),
+      typeFullData: addPercent(types, calcTotal(types)),
+      instFullData: addPercent(institutions, calcTotal(institutions)),
+      loadingCitingWorks: false
     });
   },
 
@@ -457,6 +586,66 @@ Page({
       title: name,
       content: '数量: ' + count + '\n占比: ' + percent + '%',
       showCancel: false
+    });
+  },
+
+  // 展开/收起饼图详情
+  togglePieExpanded: function(e) {
+    var type = e.currentTarget.dataset.type;
+    var key = type + 'Expanded';
+    this.setData({
+      [key]: !this.data[key]
+    });
+  },
+
+  // 显示完整名称
+  showFullName: function(e) {
+    var name = e.currentTarget.dataset.name;
+    var count = e.currentTarget.dataset.count;
+    wx.showModal({
+      title: '完整名称',
+      content: name + '\n\n数量: ' + count,
+      showCancel: false
+    });
+  },
+
+  // 显示全部主题分类
+  showTopicAll: function() {
+    var list = this.data.topicFullData;
+    if (!list || list.length === 0) return;
+    this.setData({
+      showTableModal: true,
+      tableModalTitle: '全部主题分类',
+      tableModalData: list
+    });
+  },
+
+  // 显示全部类型
+  showTypeAll: function() {
+    var list = this.data.typeFullData;
+    if (!list || list.length === 0) return;
+    this.setData({
+      showTableModal: true,
+      tableModalTitle: '全部文献类型',
+      tableModalData: list
+    });
+  },
+
+  // 显示全部机构
+  showInstAll: function() {
+    var list = this.data.instFullData;
+    if (!list || list.length === 0) return;
+    this.setData({
+      showTableModal: true,
+      tableModalTitle: '全部机构',
+      tableModalData: list
+    });
+  },
+
+  // 关闭表格弹窗
+  closeTableModal: function() {
+    this.setData({
+      showTableModal: false
     });
   }
 });

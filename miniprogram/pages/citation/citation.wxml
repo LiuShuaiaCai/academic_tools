@@ -1,5 +1,29 @@
 <!-- pages/citation/citation.wxml -->
 <view class="page">
+  <!-- 表格弹窗 -->
+  <view class="table-modal" wx:if="{{showTableModal}}" bindtap="closeTableModal">
+    <view class="table-content" catchtap="">
+      <view class="table-header">
+        <text class="table-title">{{tableModalTitle}}</text>
+        <text class="table-close" bindtap="closeTableModal">✕</text>
+      </view>
+      <scroll-view class="table-body" scroll-y>
+        <!-- 表头 -->
+        <view class="table-row table-head">
+          <text class="table-cell col-name">名称</text>
+          <text class="table-cell col-count">数量</text>
+          <text class="table-cell col-percent">占比</text>
+        </view>
+        <!-- 数据行 -->
+        <view class="table-row" wx:for="{{tableModalData}}" wx:key="index">
+          <text class="table-cell col-name">{{item.name}}</text>
+          <text class="table-cell col-count">{{item.count}}</text>
+          <text class="table-cell col-percent">{{item.percent}}%</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
   <!-- 搜索区域 -->
   <view class="search-section">
     <view class="search-type-switch">
@@ -134,24 +158,42 @@
         <!-- Topic 饼图 -->
         <view class="stat-section" wx:if="{{topicChartData.series}}">
           <view class="stat-title">🔬 引用文献主题分布</view>
-          <view class="uchart-box uchart-pie">
-            <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOpts}}" />
+          <view class="pie-chart-wrap">
+            <view class="pie-canvas">
+              <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOptsNoLegend}}" />
+            </view>
+          </view>
+          <view class="pie-summary">
+            <text class="pie-summary-total" bindtap="showTopicAll">总数：共 {{topicFullData.length}} 条</text>
+            <text class="pie-summary-main">主要分类：{{topicFullData.length > 0 ? topicFullData[0].shortName : ''}}</text>
           </view>
         </view>
 
         <!-- 类型饼图 -->
         <view class="stat-section" wx:if="{{typeChartData.series}}">
           <view class="stat-title">📑 引用文献类型分布</view>
-          <view class="uchart-box uchart-pie">
-            <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOpts}}" />
+          <view class="pie-chart-wrap">
+            <view class="pie-canvas">
+              <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOptsNoLegend}}" />
+            </view>
+          </view>
+          <view class="pie-summary">
+            <text class="pie-summary-total" bindtap="showTypeAll">总数：共 {{typeFullData.length}} 条</text>
+            <text class="pie-summary-main">主要分类：{{typeFullData.length > 0 ? typeFullData[0].shortName : ''}}</text>
           </view>
         </view>
 
         <!-- 机构饼图 -->
         <view class="stat-section" wx:if="{{instChartData.series}}">
           <view class="stat-title">🏫 引用机构分布</view>
-          <view class="uchart-box uchart-pie">
-            <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOpts}}" />
+          <view class="pie-chart-wrap">
+            <view class="pie-canvas">
+              <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOptsNoLegend}}" />
+            </view>
+          </view>
+          <view class="pie-summary">
+            <text class="pie-summary-total" bindtap="showInstAll">总数：共 {{instFullData.length}} 条</text>
+            <text class="pie-summary-main">主要分类：{{instFullData.length > 0 ? instFullData[0].shortName : ''}}</text>
           </view>
         </view>
 
