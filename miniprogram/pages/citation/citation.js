@@ -29,19 +29,18 @@ function buildPieData(items, topN) {
   for (var j = 0; j < top.length; j++) {
     total += top[j].count;
   }
-  // ucharts饼图格式: series: [{ name: '分类名', data: 数值 }, ...]
-  // 数据标签显示：名称(数量/百分比%)
+  // ucharts饼图格式: series: [{ data: [{ name, value, labelText }] }]
+  // 数据标签显示：名称(百分比%)
   return {
-    series: top.map(function(item) {
-      var name = item.name.length > 15 ? item.name.substring(0, 12) + '…' : item.name;
-      var percent = total > 0 ? (item.count / total * 100).toFixed(2) : '0.00';
-      // 数据标签格式：名称(数量/百分比%)
-      var label = name + '(' + item.count + '/' + percent + '%)';
-      return { name: name, data: item.count, label: label };
-    }),
-    formatter: function(val, index, series) {
-      return series[index].label || val;
-    }
+    series: [{
+      data: top.map(function(item) {
+        var name = item.name;
+        var percent = total > 0 ? (item.count / total * 100).toFixed(1) : '0.0';
+        // 数据标签格式：名称(百分比%)
+        var labelText = name + '(' + percent + '%)';
+        return { name: name, value: item.count, labelText: labelText };
+      })
+    }]
   };
 }
 
@@ -164,6 +163,7 @@ Page({
       legend: {
         show: false
       },
+      enableTooltip: true,
       extra: {
         pie: {
           activeOpacity: 0.5,
@@ -172,7 +172,7 @@ Page({
           border: true,
           borderWidth: 2,
           borderColor: '#FFFFFF',
-          labelWidth: 12,
+          labelWidth: 20,
           labelShow: true
         }
       }
