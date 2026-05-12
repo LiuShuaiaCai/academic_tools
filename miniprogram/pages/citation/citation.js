@@ -682,10 +682,130 @@ Page({
     }
   },
 
-  // 扫描 DOI 二维码/条形码（占位功能）
+  // 扫描/拍照识别 DOI
   scanDOI: function() {
-    wx.showToast({ title: '扫描功能开发中', icon: 'none' });
-    // 实际实现可以使用 wx.scanCode
+    var that = this;
+    wx.showActionSheet({
+      itemList: ['扫描二维码/条码', '拍照识别', '从相册选择'],
+      success: function(res) {
+        switch (res.tapIndex) {
+          case 0:
+            that._scanCode();
+            break;
+          case 1:
+            that._chooseImage('camera');
+            break;
+          case 2:
+            that._chooseImage('album');
+            break;
+        }
+      }
+    });
+  },
+
+  // 扫描二维码/条码
+  _scanCode: function() {
+    var that = this;
+    wx.scanCode({
+      scanType: ['qrCode', 'barCode'],
+      success: function(res) {
+        var result = res.result || '';
+        var doiMatch = result.match(/10\.\d{4,}\/[^\s]+/);
+        if (doiMatch) {
+          that.setData({ searchType: 'doi', searchValue: doiMatch[0] });
+          that.doSearch();
+        } else {
+          wx.showModal({
+            title: '未识别到 DOI',
+            content: '扫描内容：' + result.substring(0, 100) + '\n\n请手动输入 DOI',
+            showCancel: false
+          });
+        }
+      }
+    });
+  },
+
+  // 拍照或从相册选择
+  _chooseImage: function(sourceType) {
+    var that = this;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: [sourceType],
+      success: function(res) {
+        var tempFilePath = res.tempFiles[0].tempFilePath;
+        that._ocrImage(tempFilePath);
+      }
+    });
+  },
+
+  // AI 识别图片中的 DOI/标题
+  _ocrImage: function(filePath) {
+    var that = this;
+    wx.showLoading({ title: '识别中...', mask: true });
+
+    // 上传图片到云存储
+    var cloudPath = 'ocr/' + Date.now() + '.jpg';
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: filePath,
+      success: function(uploadRes) {
+        // 调用 AI 服务识别
+        wx.cloud.callFunction({
+          name: 'aiService',
+          data: {
+            action: 'ocrImage',
+            fileID: uploadRes.fileID
+          },
+          success: function(res) {
+            wx.hideLoading();
+            var result = res.result || {};
+            if (!result.success) {
+              wx.showToast({ title: result.error || '识别失败', icon: 'none' });
+              return;
+            }
+
+            var doi = result.doi;
+            var title = result.title;
+
+            if (doi) {
+              // 识别到 DOI，用 DOI 搜索
+              that.setData({ searchType: 'doi', searchValue: doi });
+              that.doSearch();
+            } else if (title) {
+              // 没有 DOI 但有标题，用标题搜索
+              wx.showModal({
+                title: '识别到标题',
+                content: title + '\n\n是否用标题搜索？',
+                success: function(r) {
+                  if (r.confirm) {
+                    that.setData({ searchType: 'title', searchValue: title });
+                    that.doSearch();
+                  }
+                }
+              });
+            } else {
+              // 什么都没识别到
+              wx.showModal({
+                title: '未识别到',
+                content: '未能从图片中识别到 DOI 或标题，请手动输入',
+                showCancel: false
+              });
+            }
+          },
+          fail: function(err) {
+            wx.hideLoading();
+            console.error('AI识别调用失败', err);
+            wx.showToast({ title: '识别失败，请重试', icon: 'none' });
+          }
+        });
+      },
+      fail: function(err) {
+        wx.hideLoading();
+        console.error('上传失败', err);
+        wx.showToast({ title: '上传失败', icon: 'none' });
+      }
+    });
   },
 
   // 点击饼图/图例查看详情

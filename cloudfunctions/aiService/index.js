@@ -162,6 +162,67 @@ async function getProviders() {
   return { success: true, providers: list, default: DEFAULT_MODEL };
 }
 
+// ==================== 图片 OCR（DOI/标题识别）====================
+
+async function ocrImage(event) {
+  var fileID = event.fileID;
+  if (!fileID) return { success: false, error: '缺少 fileID 参数' };
+
+  // 获取图片临时链接
+  var urlRes = await cloud.getTempFileURL({ fileList: [fileID] });
+  var imgURL = urlRes.fileList[0] && urlRes.fileList[0].tempFileURL;
+  if (!imgURL) return { success: false, error: '无法获取图片链接' };
+
+  // 使用混元多模态模型识别图片
+  var model = cloud.AI.createModel('hunyuan-exp');
+
+  try {
+    var result = await model.generateText({
+      model: 'hunyuan-vision',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: '这是一张学术论文的图片。请识别其中的 DOI 和论文标题。以JSON格式返回：{"doi":"识别到的DOI或空字符串","title":"识别到的标题或空字符串"}。如果都没有识别到，两个都返回空字符串。' },
+            { type: 'image_url', image_url: { url: imgURL } }
+          ]
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 512
+    });
+
+    var content = '';
+    if (result && result.choices && result.choices[0] && result.choices[0].message) {
+      content = result.choices[0].message.content || result.choices[0].message;
+    } else if (result && result.content) {
+      content = result.content;
+    }
+
+    // 尝试从返回内容中解析JSON
+    var jsonMatch = content.match(/\{[\s\S]*?\}/);
+    var parsed = { doi: '', title: '' };
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error('JSON解析失败', e);
+      }
+    }
+
+    return {
+      success: true,
+      doi: parsed.doi || '',
+      title: parsed.title || '',
+      raw: content
+    };
+
+  } catch (err) {
+    console.error('[ocrImage] AI识别失败', err);
+    return { success: false, error: 'AI识别失败：' + err.message };
+  }
+}
+
 // ==================== 入口 ====================
 
 exports.main = async (event) => {
@@ -170,6 +231,7 @@ exports.main = async (event) => {
       case 'extractText':  return await extractText(event);
       case 'aiReview':    return await aiReview(event);
       case 'getProviders': return await getProviders();
+      case 'ocrImage':    return await ocrImage(event);
       default: return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {
