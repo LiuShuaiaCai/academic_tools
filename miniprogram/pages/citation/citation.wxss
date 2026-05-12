@@ -132,6 +132,9 @@
   height: 560rpx;
   overflow-x: hidden;
   overflow-y: auto;
+  position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* 文献详情 */
@@ -230,6 +233,10 @@
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 20rpx;
+  position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  isolation: isolate;
 }
 
 .stat-title {
@@ -384,6 +391,10 @@
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 20rpx;
+  position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  isolation: isolate;
 }
 
 .chart-title {
@@ -463,26 +474,30 @@
 /* ucharts 图表容器 */
 .uchart-box {
   height: 400rpx;
+  width: 100%;
   position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* 确保 ucharts 的 canvas 被正确包含，不浮动 */
 .uchart-box canvas,
 .uchart-box > view {
   position: relative !important;
-  z-index: 1 !important;
 }
 
 .uchart-pie {
   height: 500rpx;
+  width: 100%;
   position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* 确保饼图 canvas 也在正确层级 */
 .uchart-pie canvas,
 .uchart-pie > view {
   position: relative !important;
-  z-index: 1 !important;
 }
 
 /* 饼图容器：饼图 + 图例左右布局 */
@@ -491,6 +506,8 @@
   align-items: flex-start;
   position: relative;
   z-index: 1;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* 确保图表组件内的 canvas 被正确限制 */

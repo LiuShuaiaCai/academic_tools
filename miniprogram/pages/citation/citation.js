@@ -81,6 +81,7 @@ Page({
     searchResultReady: false, // 搜索结果是否准备就绪（包含OpenAlex数据）
     openAlexAvailable: true, // OpenAlex API 是否可用
     searchError: '',
+    useCanvas2d: false, // 是否使用 canvas2d 模式（真机用 canvas2d，模拟器用 inScrollView）
 
     // 引用格式
     styleOptions: [
@@ -186,6 +187,11 @@ Page({
   },
 
   onLoad: function() {
+    // 检测平台：真机(ios/android)使用 canvas2d，模拟器(windows/mac)使用 inScrollView
+    var systemInfo = wx.getSystemInfoSync();
+    var platform = systemInfo.platform;
+    var useCanvas2d = (platform === 'ios' || platform === 'android');
+    this.setData({ useCanvas2d: useCanvas2d });
     this.loadLibrary();
   },
 

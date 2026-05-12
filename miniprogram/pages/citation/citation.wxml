@@ -146,7 +146,7 @@
         <view class="chart-section" wx:if="{{yearChartData.series}}">
           <view class="chart-title">📊 每年被引次数</view>
           <view class="uchart-box">
-            <qiun-wx-ucharts type="column" canvasId="yearChart" chartData="{{yearChartData}}" canvas2d="{{true}}" />
+            <qiun-wx-ucharts type="column" canvasId="yearChart" chartData="{{yearChartData}}" canvas2d="{{useCanvas2d}}" inScrollView="{{!useCanvas2d}}" />
           </view>
         </view>
         <view class="list-empty" wx:if="{{!yearChartData.series && citingWorksList.length === 0}}">暂无被引数据</view>
@@ -156,7 +156,7 @@
           <view class="stat-title">🔬 引用文献主题分布</view>
           <view class="pie-chart-wrap">
             <view class="pie-canvas">
-              <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{true}}" />
+              <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{useCanvas2d}}" inScrollView="{{!useCanvas2d}}" />
             </view>
           </view>
           <view class="pie-summary">
@@ -170,7 +170,7 @@
           <view class="stat-title">📑 引用文献类型分布</view>
           <view class="pie-chart-wrap">
             <view class="pie-canvas">
-              <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{true}}" />
+              <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{useCanvas2d}}" inScrollView="{{!useCanvas2d}}" />
             </view>
           </view>
           <view class="pie-summary">
@@ -184,7 +184,7 @@
           <view class="stat-title">🏫 引用机构分布</view>
           <view class="pie-chart-wrap">
             <view class="pie-canvas">
-              <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{true}}" />
+              <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{useCanvas2d}}" inScrollView="{{!useCanvas2d}}" />
             </view>
           </view>
           <view class="pie-summary">
