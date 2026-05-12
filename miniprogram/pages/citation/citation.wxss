@@ -130,6 +130,7 @@
 .tab-content {
   margin-bottom: 20rpx;
   height: 560rpx;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -360,18 +361,21 @@
   color: #1f2937;
   line-height: 1.5;
   margin-bottom: 8rpx;
+  word-break: break-all;
 }
 
 .ref-list-meta {
   font-size: 24rpx;
   color: #6b7280;
   line-height: 1.5;
+  word-break: break-all;
 }
 
 .ref-list-doi {
   font-size: 24rpx;
   color: #2563eb;
   margin-top: 4rpx;
+  word-break: break-all;
 }
 
 /* 柱状图 */
