@@ -79,14 +79,6 @@
           <text class="detail-label">DOI</text>
           <text class="detail-value">{{searchResult.doi}}</text>
         </view>
-        <view class="detail-row" wx:if="{{searchResult.referenceCount !== undefined}}">
-          <text class="detail-label">引用文献</text>
-          <text class="detail-value">{{searchResult.referenceCount}}</text>
-        </view>
-        <view class="detail-row" wx:if="{{searchResult.citedByCount !== undefined}}">
-          <text class="detail-label">被引次数</text>
-          <text class="detail-value">{{searchResult.citedByCount}}</text>
-        </view>
         <view class="detail-row" wx:if="{{searchResult.typeLabel}}">
           <text class="detail-label">文献类型</text>
           <text class="detail-value">{{searchResult.typeLabel}}</text>
@@ -154,7 +146,7 @@
         <view class="chart-section" wx:if="{{yearChartData.series}}">
           <view class="chart-title">📊 每年被引次数</view>
           <view class="uchart-box">
-            <qiun-wx-ucharts type="column" canvasId="yearChart" chartData="{{yearChartData}}" />
+            <qiun-wx-ucharts type="column" canvasId="yearChart" chartData="{{yearChartData}}" canvas2d="{{true}}" />
           </view>
         </view>
         <view class="list-empty" wx:if="{{!yearChartData.series && citingWorksList.length === 0}}">暂无被引数据</view>
@@ -164,7 +156,7 @@
           <view class="stat-title">🔬 引用文献主题分布</view>
           <view class="pie-chart-wrap">
             <view class="pie-canvas">
-              <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOptsNoLegend}}" />
+              <qiun-wx-ucharts type="pie" canvasId="topicChart" chartData="{{topicChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{true}}" />
             </view>
           </view>
           <view class="pie-summary">
@@ -178,7 +170,7 @@
           <view class="stat-title">📑 引用文献类型分布</view>
           <view class="pie-chart-wrap">
             <view class="pie-canvas">
-              <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOptsNoLegend}}" />
+              <qiun-wx-ucharts type="pie" canvasId="typeChart" chartData="{{typeChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{true}}" />
             </view>
           </view>
           <view class="pie-summary">
@@ -192,7 +184,7 @@
           <view class="stat-title">🏫 引用机构分布</view>
           <view class="pie-chart-wrap">
             <view class="pie-canvas">
-              <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOptsNoLegend}}" />
+              <qiun-wx-ucharts type="pie" canvasId="instChart" chartData="{{instChartData}}" opts="{{pieOptsNoLegend}}" canvas2d="{{true}}" />
             </view>
           </view>
           <view class="pie-summary">

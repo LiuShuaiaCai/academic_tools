@@ -459,16 +459,40 @@
 /* ucharts 图表容器 */
 .uchart-box {
   height: 400rpx;
+  position: relative;
+}
+
+/* 确保 ucharts 的 canvas 被正确包含，不浮动 */
+.uchart-box canvas,
+.uchart-box > view {
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 .uchart-pie {
   height: 500rpx;
+  position: relative;
+}
+
+/* 确保饼图 canvas 也在正确层级 */
+.uchart-pie canvas,
+.uchart-pie > view {
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 /* 饼图容器：饼图 + 图例左右布局 */
 .pie-chart-wrap {
   display: flex;
   align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+/* 确保图表组件内的 canvas 被正确限制 */
+.pie-chart-wrap canvas,
+.pie-chart-wrap > view {
+  position: relative !important;
 }
 
 .pie-canvas {
