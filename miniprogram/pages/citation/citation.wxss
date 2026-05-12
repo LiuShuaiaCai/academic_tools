@@ -355,12 +355,27 @@
 }
 
 .ref-list-item {
+  display: flex;
+  align-items: flex-start;
   padding: 16rpx 0;
   border-bottom: 2rpx solid #e5e7eb;
 }
 
 .ref-list-item:last-child {
   border-bottom: none;
+}
+
+.ref-list-index {
+  width: 60rpx;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #9ca3af;
+  text-align: center;
+  padding-top: 4rpx;
+}
+
+.ref-list-content {
+  flex: 1;
 }
 
 .ref-list-title {

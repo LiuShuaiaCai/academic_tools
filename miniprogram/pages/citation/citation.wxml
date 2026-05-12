@@ -171,12 +171,15 @@
       <view class="list-empty" wx:if="{{!loadingReferences && referencesList.length === 0}}">暂无引用文献数据</view>
       <view class="ref-list" wx:if="{{!loadingReferences && referencesList.length > 0}}">
         <view class="ref-list-item" wx:for="{{referencesList}}" wx:key="index">
-          <view class="ref-list-title">{{item.title}}</view>
-          <view class="ref-list-meta" wx:if="{{item.authors}}">
-            <text>{{item.authors}}</text>
-            <text wx:if="{{item.year}}"> | {{item.year}}</text>
+          <view class="ref-list-index">{{index + 1}}</view>
+          <view class="ref-list-content">
+            <view class="ref-list-title">{{item.title}}</view>
+            <view class="ref-list-meta" wx:if="{{item.authors}}">
+              <text>{{item.authors}}</text>
+              <text wx:if="{{item.year}}"> | {{item.year}}</text>
+            </view>
+            <view class="ref-list-doi" wx:if="{{item.doi}}">DOI: {{item.doi}}</view>
           </view>
-          <view class="ref-list-doi" wx:if="{{item.doi}}">DOI: {{item.doi}}</view>
         </view>
       </view>
     </view>
