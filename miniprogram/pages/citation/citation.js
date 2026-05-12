@@ -2,8 +2,6 @@
 var crossref = require('../../utils/citation/crossref.js');
 var formatter = require('../../utils/citation/formatter.js');
 
-var STORAGE_KEY = 'citation_library';
-
 var TYPE_LABEL_MAP = {
   journal: '期刊文章',
   book: '图书',
@@ -184,6 +182,12 @@ Page({
     // 文献库
     library: [],
     showLibrary: false,
+
+    // 自定义 Toast
+    customToast: {
+      show: false,
+      title: ''
+    },
 
     // 表格弹窗
     showTableModal: false,
@@ -535,42 +539,58 @@ Page({
     });
 
     if (exists) {
-      wx.showToast({ title: '文献已存在于库中', icon: 'none' });
+      this.showCustomToast('文献已存在于库中');
       return;
     }
 
-    // 添加 ID 和时间戳
-    ref._id = 'ref_' + Date.now();
-    ref.addTime = new Date().toISOString();
+    // 检查数量限制（每人最多保存20个）
+    if (library.length >= 20) {
+      this.showCustomToast('每人最多保存20个文献');
+      return;
+    }
 
-    library.unshift(ref);
+    // 添加时间戳，过滤掉 _openid 字段（云数据库自动管理）
+    var record = Object.assign({}, ref, {
+      addTime: new Date().toISOString()
+    });
+    delete record._openid;
 
-    this.setData({ library: library });
-    this.saveLibrary();
+    var that = this;
+    wx.showLoading({ title: '保存中...' });
 
-    wx.showToast({ title: '已保存到文献库', icon: 'success' });
+    const db = wx.cloud.database();
+    db.collection('citation_library').add({
+      data: record,
+      success: function(res) {
+        wx.hideLoading();
+        record._id = res._id;
+        library.unshift(record);
+        that.setData({ library: library });
+        wx.showToast({ title: '已保存到文献库', icon: 'success' });
+      },
+      fail: function(err) {
+        wx.hideLoading();
+        console.error('保存失败', err);
+        wx.showToast({ title: '保存失败，请重试', icon: 'none' });
+      }
+    });
   },
 
   // 加载文献库
   loadLibrary: function() {
     var that = this;
-    wx.getStorage({
-      key: STORAGE_KEY,
-      success: function(res) {
-        that.setData({ library: res.data || [] });
-      },
-      fail: function() {
-        that.setData({ library: [] });
-      }
-    });
-  },
-
-  // 保存文献库
-  saveLibrary: function() {
-    wx.setStorage({
-      key: STORAGE_KEY,
-      data: this.data.library
-    });
+    const db = wx.cloud.database();
+    db.collection('citation_library')
+      .orderBy('addTime', 'desc')
+      .get({
+        success: function(res) {
+          that.setData({ library: res.data || [] });
+        },
+        fail: function(err) {
+          console.error('加载文献库失败', err);
+          that.setData({ library: [] });
+        }
+      });
   },
 
   // 删除文献
@@ -583,15 +603,37 @@ Page({
       content: '确定要从文献库中删除这篇文献吗？',
       success: function(res) {
         if (res.confirm) {
-          var library = that.data.library.filter(function(item) {
-            return item._id !== id;
+          const db = wx.cloud.database();
+          db.collection('citation_library').doc(id).remove({
+            success: function() {
+              var library = that.data.library.filter(function(item) {
+                return item._id !== id;
+              });
+              that.setData({ library: library });
+              wx.showToast({ title: '已删除', icon: 'success' });
+            },
+            fail: function(err) {
+              console.error('删除失败', err);
+              wx.showToast({ title: '删除失败', icon: 'none' });
+            }
           });
-          that.setData({ library: library });
-          that.saveLibrary();
-          wx.showToast({ title: '已删除', icon: 'success' });
         }
       }
     });
+  },
+
+  // 显示自定义 Toast
+  showCustomToast: function(title, duration) {
+    var that = this;
+    duration = duration || 2000;
+    this.setData({
+      customToast: { show: true, title: title }
+    });
+    setTimeout(function() {
+      that.setData({
+        customToast: { show: false, title: '' }
+      });
+    }, duration);
   },
 
   // 切换文献库显示

@@ -1,5 +1,10 @@
 <!-- pages/citation/citation.wxml -->
 <view class="page">
+  <!-- 自定义 Toast -->
+  <view class="custom-toast" wx:if="{{customToast.show}}">
+    <text>{{customToast.title}}</text>
+  </view>
+
   <!-- 被引文献弹窗 -->
   <view class="citing-modal" wx:if="{{showCitingModal}}" bindtap="closeCitingModal">
     <view class="citing-modal-content" catchtap="">
