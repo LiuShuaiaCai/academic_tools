@@ -860,3 +860,191 @@
   color: #92400e;
   line-height: 1.5;
 }
+
+/* 被引文献滚动区域（保留兼容） */
+.citing-works-scroll {
+  height: 600rpx;
+}
+
+/* 加载更多提示 */
+.load-more-tip {
+  text-align: center;
+  padding: 30rpx 0;
+  font-size: 28rpx;
+}
+
+.load-more-tip text {
+  background: #2563eb;
+  color: #fff;
+  padding: 16rpx 48rpx;
+  border-radius: 32rpx;
+  display: inline-block;
+  box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.3);
+}
+
+/* 没有更多数据提示 */
+.no-more-tip {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+/* 被引文献列表 - 带序号 */
+.citing-works-scroll .ref-list-item,
+.citing-modal-scroll .ref-list-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 16rpx 0;
+  border-bottom: 2rpx solid #e5e7eb;
+}
+
+.citing-works-scroll .ref-list-item:last-child,
+.citing-modal-scroll .ref-list-item:last-child {
+  border-bottom: none;
+}
+
+.citing-works-scroll .ref-list-index,
+.citing-modal-scroll .ref-list-index {
+  width: 60rpx;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #9ca3af;
+  text-align: center;
+  padding-top: 4rpx;
+}
+
+.citing-works-scroll .ref-list-content,
+.citing-modal-scroll .ref-list-content {
+  flex: 1;
+}
+
+/* 被引文献弹窗 */
+.citing-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.citing-modal-content {
+  width: 95%;
+  height: 80vh;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.citing-modal-header {
+  display: flex;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 2rpx solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.citing-modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.citing-modal-count {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-left: 16rpx;
+  flex: 1;
+}
+
+.citing-modal-close {
+  font-size: 40rpx;
+  color: #9ca3af;
+  padding: 0 16rpx;
+}
+
+.citing-modal-scroll {
+  height: 65vh;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+/* 弹窗底部固定区域 */
+.modal-footer {
+  padding: 20rpx;
+  border-top: 1rpx solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+/* 加载更多按钮 */
+.load-more-btn {
+  text-align: center;
+  background: #2563eb;
+  color: #fff;
+  padding: 24rpx 32rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.3);
+}
+
+/* 弹窗内加载状态 */
+.modal-loading {
+  text-align: center;
+  padding: 60rpx 0;
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+/* 弹窗内空状态 */
+.modal-empty {
+  text-align: center;
+  padding: 60rpx 0;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+/* 被引文献入口按钮 */
+.citing-entry {
+  display: flex;
+  align-items: center;
+  background: #f0f9ff;
+  border: 2rpx solid #2563eb;
+  border-radius: 16rpx;
+  padding: 28rpx 24rpx;
+}
+
+.citing-entry-icon {
+  font-size: 40rpx;
+  margin-right: 20rpx;
+}
+
+.citing-entry-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.citing-entry-title {
+  font-size: 30rpx;
+  color: #2563eb;
+  font-weight: bold;
+}
+
+.citing-entry-count {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-top: 8rpx;
+}
+
+.citing-entry-arrow {
+  font-size: 48rpx;
+  color: #2563eb;
+  font-weight: bold;
+}

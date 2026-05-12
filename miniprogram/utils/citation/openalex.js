@@ -139,23 +139,27 @@ function fetchCitingTypes(openAlexId) {
 /**
  * 获取被引文献列表
  * @param {string} openAlexId - OpenAlex ID
- * @param {number} rows - 返回数量，默认20
- * @returns {Promise<Array>} 被引文献列表
+ * @param {number} rows - 每页数量，默认20
+ * @param {number} page - 页码，默认1（首次加载）或后续页码
+ * @returns {Promise<object>} { list: Array, nextPage: number|null, total: number }
  */
-function fetchCitingWorks(openAlexId, rows) {
+function fetchCitingWorks(openAlexId, rows, page) {
   rows = rows || 20;
+  page = page || 1;
   return new Promise(function(resolve) {
     if (!openAlexId) {
-      resolve([]);
+      resolve({ list: [], nextPage: null, total: 0 });
       return;
     }
+    var requestData = {
+      filter: 'cites:' + openAlexId,
+      'per-page': rows,
+      page: page
+    };
     wx.request({
       url: 'https://api.openalex.org/works',
       method: 'GET',
-      data: {
-        filter: 'cites:' + openAlexId,
-        'per-page': rows
-      },
+      data: requestData,
       success: function(res) {
         if (res.statusCode === 200 && res.data && res.data.results) {
           var items = res.data.results;
@@ -179,12 +183,19 @@ function fetchCitingWorks(openAlexId, rows) {
               containerTitle: (item.primary_location && item.primary_location.source && item.primary_location.source.display_name) || ''
             });
           }
-          resolve(results);
+          // 获取分页信息
+          var meta = res.data.meta || {};
+          var total = meta.count || 0;
+          var currentPage = page;
+          var totalPages = Math.ceil(total / rows);
+          // 是否有下一页
+          var nextPage = currentPage < totalPages ? currentPage + 1 : null;
+          resolve({ list: results, nextPage: nextPage, total: total });
         } else {
-          resolve([]);
+          resolve({ list: [], nextPage: null, total: 0 });
         }
       },
-      fail: function() { resolve([]); }
+      fail: function() { resolve({ list: [], nextPage: null, total: 0 }); }
     });
   });
 }

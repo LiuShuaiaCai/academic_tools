@@ -111,6 +111,11 @@ Page({
     // 被引文献
     citingWorksList: [],
     loadingCitingWorks: false,
+    citingWorksHasMore: false, // 是否有更多数据可加载
+    citingWorksLoadingMore: false, // 是否正在加载更多
+    citingWorksNextPage: null, // 下一页页码
+    citingWorksTotal: 0, // 总数
+    showCitingModal: false, // 是否显示被引文献弹窗
 
     // ucharts 图表数据
     yearChartData: {},
@@ -334,7 +339,7 @@ Page({
     if (tab === 'references' && this.data.referencesList.length === 0) {
       this.loadReferences(ref.doi);
     } else if (tab === 'cited' && this.data.citingWorksList.length === 0) {
-      this.loadCitingWorks(ref.doi);
+      this.loadCitingWorks(ref.doi, 1); // 首次加载传 page=1
     }
   },
 
@@ -353,30 +358,76 @@ Page({
   },
 
   // 加载被引文献列表和统计
-  loadCitingWorks: function(doi) {
+  loadCitingWorks: function(doi, page) {
     var that = this;
-    that.setData({ loadingCitingWorks: true });
+    var isFirstLoad = (page === 1);
+
+    if (isFirstLoad) {
+      that.setData({ loadingCitingWorks: true });
+    }
 
     // 使用缓存的 openAlexId，doSearch 时已获取
     var cachedOpenAlexId = that.data.searchResult && that.data.searchResult.openAlexId;
     var cachedCountsByYear = that.data.searchResult && that.data.searchResult.countsByYear;
 
     // 并行获取被引文献列表和分布统计
-    var worksPromise = crossref.fetchCitingWorks(doi, 20, cachedOpenAlexId);
+    var worksPromise = crossref.fetchCitingWorks(doi, 20, cachedOpenAlexId, page);
     var topicsPromise = crossref.fetchCitingTopics(doi, cachedOpenAlexId);
     var instPromise = crossref.fetchCitingInstitutions(doi, cachedOpenAlexId);
     var typesPromise = crossref.fetchCitingTypes(doi, cachedOpenAlexId);
 
     Promise.all([worksPromise, topicsPromise, instPromise, typesPromise]).then(function(results) {
-      that._updateCitingData(results, cachedCountsByYear || []);
+      that._updateCitingData(results, cachedCountsByYear || [], isFirstLoad);
     }).catch(function() {
-      that.setData({ loadingCitingWorks: false });
+      that.setData({ loadingCitingWorks: false, citingWorksLoadingMore: false });
+    });
+  },
+
+  // 加载更多被引文献（点击加载）
+  loadMoreCitingWorks: function() {
+    var that = this;
+    var loadingMore = that.data.citingWorksLoadingMore;
+
+    if (loadingMore) {
+      return; // 正在加载中
+    }
+
+    var remaining = that.data.citingWorksTotal - that.data.citingWorksList.length;
+    if (remaining <= 0) {
+      return; // 已全部加载
+    }
+
+    that.setData({ citingWorksLoadingMore: true });
+
+    var doi = that.data.searchResult && that.data.searchResult.doi;
+    if (!doi) {
+      that.setData({ citingWorksLoadingMore: false });
+      return;
+    }
+
+    var cachedOpenAlexId = that.data.searchResult && that.data.searchResult.openAlexId;
+    var nextPage = that.data.citingWorksNextPage;
+    
+    // 使用 page 分页
+    crossref.fetchCitingWorks(doi, 20, cachedOpenAlexId, nextPage).then(function(result) {
+      var currentList = that.data.citingWorksList;
+      var newList = currentList.concat(result.list);
+      
+      that.setData({
+        citingWorksList: newList,
+        citingWorksNextPage: result.nextPage,
+        citingWorksHasMore: result.nextPage !== null,
+        citingWorksLoadingMore: false
+      });
+    }).catch(function(err) {
+      console.error('[loadMore] error:', err);
+      that.setData({ citingWorksLoadingMore: false });
     });
   },
 
   // 更新被引数据（抽取为独立方法避免重复代码）
-  _updateCitingData: function(results, countsByYear) {
-    var works = results[0];
+  _updateCitingData: function(results, countsByYear, isFirstLoad) {
+    var worksData = results[0]; // { list, nextPage, total }
     var topics = results[1];
     var institutions = results[2];
     var types = results[3];
@@ -389,9 +440,22 @@ Page({
       };
     }
 
+    // 处理首次加载和后续加载
+    var citingWorksList;
+    if (isFirstLoad) {
+      citingWorksList = worksData.list || [];
+    } else {
+      citingWorksList = this.data.citingWorksList.concat(worksData.list || []);
+    }
+
+    var total = worksData.total || 0;
+
     this.setData({
       citationStats: countsByYear || [],
-      citingWorksList: works,
+      citingWorksList: citingWorksList,
+      citingWorksNextPage: worksData.nextPage,
+      citingWorksHasMore: worksData.nextPage !== null,
+      citingWorksTotal: total,
       yearChartData: yearChartData,
       topicChartData: buildPieData(topics, 3),
       typeChartData: buildPieData(types, 5),
@@ -652,5 +716,24 @@ Page({
     this.setData({
       showTableModal: false
     });
+  },
+
+  // 打开被引文献弹窗
+  openCitingModal: function() {
+    var ref = this.data.searchResult;
+    if (!ref || !ref.doi) return;
+
+    this.setData({ showCitingModal: true });
+
+    // 如果还没有加载数据，先加载并显示加载状态
+    if (this.data.citingWorksList.length === 0) {
+      this.setData({ loadingCitingWorks: true });
+      this.loadCitingWorks(ref.doi, 1);
+    }
+  },
+
+  // 关闭被引文献弹窗
+  closeCitingModal: function() {
+    this.setData({ showCitingModal: false });
   }
 });

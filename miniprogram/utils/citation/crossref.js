@@ -238,16 +238,17 @@ function fetchReferences(doi) {
 /**
  * 获取被引文献列表（通过 OpenAlex）
  * @param {string} doi - 文献 DOI
- * @param {number} rows - 返回数量，默认20
+ * @param {number} rows - 每页数量，默认20
  * @param {string} openAlexId - 可选，已知的 OpenAlex ID
- * @returns {Promise<Array>} 被引文献列表
+ * @param {string} cursor - 分页游标，首次传 null
+ * @returns {Promise<object>} { list: Array, nextCursor: string|null, total: number }
  */
-function fetchCitingWorks(doi, rows, openAlexId) {
+function fetchCitingWorks(doi, rows, openAlexId, cursor) {
   if (openAlexId) {
-    return fetchCitingWorksOA(openAlexId, rows);
+    return fetchCitingWorksOA(openAlexId, rows, cursor);
   } else {
     return fetchWorkMetaFromOpenAlex(doi).then(function(meta) {
-      return fetchCitingWorksOA(meta.openAlexId, rows);
+      return fetchCitingWorksOA(meta.openAlexId, rows, cursor);
     });
   }
 }
