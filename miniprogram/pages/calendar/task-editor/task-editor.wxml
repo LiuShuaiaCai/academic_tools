@@ -98,14 +98,8 @@
 
     <!-- 提醒设置 -->
     <view class="form-section">
-      <view class="form-label-row">
-        <text class="form-label">提醒设置</text>
-        <view class="toggle-switch {{reminderEnabled ? 'active' : ''}}" bindtap="onReminderToggle">
-          <view class="toggle-dot"></view>
-        </view>
-      </view>
-      
-      <view class="reminder-options" wx:if="{{reminderEnabled}}">
+      <view class="form-label">提醒设置</view>
+      <view class="reminder-options">
         <checkbox-group bindchange="onReminderChange">
           <label class="reminder-item">
             <checkbox value="1440" checked="{{selectedReminders.includes(1440)}}"/>
@@ -121,6 +115,7 @@
           </label>
         </checkbox-group>
       </view>
+      <view class="reminder-hint">提醒通知受全局消息设置控制</view>
     </view>
 
     <!-- 重复设置 -->
@@ -162,4 +157,6 @@
       </view>
     </view>
   </view>
+
+  <reminder-quota-tip show="{{showQuotaTip}}" bind:cancel="onQuotaTipCancel" bind:confirm="onQuotaTipConfirm" />
 </view>

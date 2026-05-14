@@ -5,6 +5,7 @@ var parseDate = dbInit.parseDate;
 var config = require('../../../utils/submissions-config');
 var formatUtil = require('../../../utils/submissions-format');
 var creditsUtil = require('../../../utils/credits');
+var reminderCheck = require('../../../utils/reminder-check');
 
 Component({
   properties: {
@@ -30,7 +31,8 @@ Component({
     priorityOptions: config.PRIORITY_OPTIONS,
     typeOptions: config.TYPE_OPTIONS,
     tlEventOptions: config.TL_EVENT_OPTIONS,
-    relatedWorkOptions:[]
+    relatedWorkOptions:[],
+    showQuotaTip: false
   },
 
   lifetimes: {
@@ -336,6 +338,9 @@ Component({
       promise.then(function(){
         wx.hideLoading();
         wx.showToast({ title:'保存成功', icon:'success' });
+        reminderCheck.checkAndShowTip(that).catch(function(err){
+          console.error('[submission] 额度检查失败', err);
+        });
         that.triggerEvent('save');
       }).catch(function(e){
         wx.hideLoading();
@@ -350,6 +355,14 @@ Component({
 
     closeForm: function() {
       this.triggerEvent('cancel');
+    },
+
+    onQuotaTipCancel: function() {
+      this.setData({ showQuotaTip: false });
+    },
+    onQuotaTipConfirm: function() {
+      this.setData({ showQuotaTip: false });
+      wx.navigateTo({ url: '/pages/settings/settings' });
     },
 
     doNothing: function() {}

@@ -1,0 +1,63 @@
+.quota-tip-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.quota-tip-box {
+  width: 560rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 48rpx 40rpx 40rpx;
+  text-align: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.quota-tip-icon {
+  margin-bottom: 24rpx;
+}
+
+.quota-tip-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+.quota-tip-desc {
+  font-size: 28rpx;
+  color: #6B7280;
+  line-height: 1.6;
+  margin-bottom: 40rpx;
+}
+
+.quota-tip-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.quota-tip-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  text-align: center;
+}
+
+.quota-tip-btn.cancel {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.quota-tip-btn.confirm {
+  background: #2563eb;
+  color: #fff;
+}

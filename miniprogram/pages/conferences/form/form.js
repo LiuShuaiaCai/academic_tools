@@ -4,6 +4,7 @@ var formatTime = dbInit.formatTime;
 var parseDate = dbInit.parseDate;
 var formatUtil = require('../../../utils/conferences-format');
 var creditsUtil = require('../../../utils/credits');
+var reminderCheck = require('../../../utils/reminder-check');
 
 Component({
   properties: {
@@ -39,7 +40,8 @@ Component({
       { value: 'registration',  label: '报名', color: '#10B981' },
       { value: 'start',         label: '会议开始', color: '#3B82F6' },
       { value: 'end',           label: '会议结束', color: '#8B5CF6' }
-    ]
+    ],
+    showQuotaTip: false
   },
 
   lifetimes: {
@@ -229,6 +231,9 @@ Component({
       promise.then(function() {
         wx.hideLoading();
         wx.showToast({ title: '保存成功', icon: 'success' });
+        reminderCheck.checkAndShowTip(that).catch(function(err){
+          console.error('[conference] 额度检查失败', err);
+        });
         that.triggerEvent('save');
       }).catch(function(e) {
         wx.hideLoading();
@@ -243,6 +248,14 @@ Component({
 
     closeForm: function() {
       this.triggerEvent('cancel');
+    },
+
+    onQuotaTipCancel: function() {
+      this.setData({ showQuotaTip: false });
+    },
+    onQuotaTipConfirm: function() {
+      this.setData({ showQuotaTip: false });
+      wx.navigateTo({ url: '/pages/settings/settings' });
     },
 
     doNothing: function() {}

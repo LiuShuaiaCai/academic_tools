@@ -7,6 +7,7 @@ var formatUtil = require('../../../utils/reviews-format');
 var templateData = require('../../../utils/review-templates-data');
 var aiReviewUtil = require('../../../utils/review-ai');
 var creditsUtil = require('../../../utils/credits');
+var reminderCheck = require('../../../utils/reminder-check');
 
 Component({
   properties: {
@@ -53,7 +54,8 @@ Component({
     // ======== 稿件上传相关 ========
     manuscriptUploading: false,
     manuscriptUploadPercent: 0,
-    aiReviewLoading: false
+    aiReviewLoading: false,
+    showQuotaTip: false
   },
 
   lifetimes: {
@@ -727,6 +729,9 @@ Component({
       promise.then(function() {
         wx.hideLoading();
         wx.showToast({ title: '保存成功', icon: 'success' });
+        reminderCheck.checkAndShowTip(that).catch(function(err){
+          console.error('[review] 额度检查失败', err);
+        });
         that.triggerEvent('save');
       }).catch(function(e) {
         wx.hideLoading();
@@ -741,6 +746,14 @@ Component({
 
     closeForm: function() {
       this.triggerEvent('cancel');
+    },
+
+    onQuotaTipCancel: function() {
+      this.setData({ showQuotaTip: false });
+    },
+    onQuotaTipConfirm: function() {
+      this.setData({ showQuotaTip: false });
+      wx.navigateTo({ url: '/pages/settings/settings' });
     },
 
     /* ======== 审稿决定弹窗 ======== */

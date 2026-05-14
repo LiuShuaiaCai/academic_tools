@@ -1,0 +1,13 @@
+<view class="quota-tip-mask" wx:if="{{show}}" catchtap="onMaskTap">
+  <view class="quota-tip-box" catchtap="onBoxTap">
+    <view class="quota-tip-icon">
+      <text class="iconfont icon-notification" style="font-size:64rpx;color:#2563eb;"></text>
+    </view>
+    <view class="quota-tip-title">提醒额度不足</view>
+    <view class="quota-tip-desc">您的消息提醒额度剩余较少（少于5次），建议前往设置补充，以免错过重要截止提醒。</view>
+    <view class="quota-tip-actions">
+      <view class="quota-tip-btn cancel" catchtap="onCancel">暂不需要</view>
+      <view class="quota-tip-btn confirm" catchtap="onConfirm">去设置</view>
+    </view>
+  </view>
+</view>

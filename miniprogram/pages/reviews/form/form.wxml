@@ -232,6 +232,8 @@
   </view>
 </view>
 
+<reminder-quota-tip show="{{showQuotaTip}}" bind:cancel="onQuotaTipCancel" bind:confirm="onQuotaTipConfirm" />
+
 <!-- 审稿决定弹窗 -->
 <view class="form-overlay {{showDecisionModal ? 'active' : ''}}">
   <view class="form-sheet decision-sheet" catchtap="doNothing">

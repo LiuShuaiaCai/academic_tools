@@ -209,3 +209,5 @@
     </view>
   </view>
 </view>
+
+<reminder-quota-tip show="{{showQuotaTip}}" bind:cancel="onQuotaTipCancel" bind:confirm="onQuotaTipConfirm" />

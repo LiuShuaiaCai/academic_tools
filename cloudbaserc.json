@@ -13,6 +13,23 @@
           "config": "0 0 3 * * * *"
         }
       ]
+    },
+    {
+      "name": "taskReminder",
+      "timeout": 60,
+      "memorySize": 256,
+      "triggers": [
+        {
+          "name": "hourlyTaskReminder",
+          "type": "timer",
+          "config": "0 0 8-23 * * * *"
+        },
+        {
+          "name": "dailySummaryReminder",
+          "type": "timer",
+          "config": "0 0 7 * * * *"
+        }
+      ]
     }
   ]
 }

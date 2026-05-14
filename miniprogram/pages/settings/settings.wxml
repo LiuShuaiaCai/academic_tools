@@ -29,4 +29,21 @@
       </view>
     </view>
   </view>
+
+  <!-- 提醒额度 -->
+  <view class="quota-section" wx:if="{{settings[0].value}}">
+    <view class="quota-header">
+      <view class="quota-title">订阅消息额度</view>
+      <view class="quota-desc">每次授权可补充 1 次发送额度</view>
+    </view>
+    <view class="quota-card">
+      <view class="quota-info">
+        <view class="quota-value">{{reminderQuota}}</view>
+        <view class="quota-unit">次</view>
+      </view>
+      <view class="quota-btn {{loadingQuota ? 'loading' : ''}}" bindtap="requestSubscribeAuth">
+        {{loadingQuota ? '请求中...' : '补充额度'}}
+      </view>
+    </view>
+  </view>
 </view>

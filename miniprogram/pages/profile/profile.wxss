@@ -129,6 +129,10 @@
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
 }
 
+.menu-group + .menu-group {
+  margin-top: 16rpx;
+}
+
 .menu-item {
   display: flex;
   align-items: center;

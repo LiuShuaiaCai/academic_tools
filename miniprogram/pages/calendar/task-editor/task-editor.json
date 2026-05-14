@@ -2,5 +2,7 @@
   "navigationBarTitleText": "新建任务",
   "navigationBarBackgroundColor": "#2563eb",
   "navigationBarTextStyle": "white",
-  "usingComponents": {}
+  "usingComponents": {
+    "reminder-quota-tip": "/components/reminder-quota-tip/reminder-quota-tip"
+  }
 }

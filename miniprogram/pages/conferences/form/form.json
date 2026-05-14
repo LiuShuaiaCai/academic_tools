@@ -1,4 +1,6 @@
 {
   "component": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "reminder-quota-tip": "/components/reminder-quota-tip/reminder-quota-tip"
+  }
 }

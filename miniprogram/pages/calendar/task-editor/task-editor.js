@@ -2,6 +2,7 @@
 // 自定义任务编辑器页面
 
 const app = getApp();
+var reminderCheck = require('../../utils/reminder-check');
 
 Page({
   data: {
@@ -12,14 +13,14 @@ Page({
     time: '09:00',        // 提醒时间
     priority: 'medium',   // low, medium, high
     category: 'custom',   // custom, study, research, meeting, other
-    reminderEnabled: true,
     reminderMinutes: [1440], // 提前1天提醒
     selectedReminders: [1440],
     isAllDay: false,
     repeatType: 'none',   // none, daily, weekly, monthly
     repeatEndDate: '',
     loading: false,
-    deleteConfirm: false
+    deleteConfirm: false,
+    showQuotaTip: false
   },
 
   onLoad: function(options) {
@@ -53,7 +54,6 @@ Page({
         time: task.time || '09:00',
         priority: task.priority || 'medium',
         category: task.category || 'custom',
-        reminderEnabled: task.reminderEnabled !== false,
         selectedReminders: task.reminderMinutes || [30],
         isAllDay: task.isAllDay || false,
         repeatType: task.repeatType || 'none',
@@ -102,11 +102,6 @@ Page({
     this.setData({ isAllDay: !this.data.isAllDay });
   },
 
-  // 提醒开关
-  onReminderToggle: function() {
-    this.setData({ reminderEnabled: !this.data.reminderEnabled });
-  },
-
   // 提醒时间选择
   onReminderChange: function(e) {
     const minutes = [30, 60, 1440]; // 30分钟、1小时、1天
@@ -140,7 +135,7 @@ Page({
       time: this.data.isAllDay ? '' : this.data.time,
       priority: this.data.priority,
       category: this.data.category,
-      reminderEnabled: this.data.reminderEnabled,
+      reminderEnabled: true,
       reminderMinutes: this.data.selectedReminders,
       isAllDay: this.data.isAllDay,
       repeatType: this.data.repeatType,
@@ -154,11 +149,6 @@ Page({
     const db = wx.cloud.database();
     const that = this;
 
-    // 请求订阅消息权限
-    if (this.data.reminderEnabled) {
-      this.requestSubscribeAuth();
-    }
-
     let savePromise;
     if (this.data.taskId) {
       // 更新
@@ -171,6 +161,7 @@ Page({
     savePromise.then(res => {
       that.setData({ loading: false });
       wx.showToast({ title: '保存成功', icon: 'success' });
+      reminderCheck.checkAndShowTip(that).catch(err => console.error('[task-editor] 额度检查失败', err));
       setTimeout(() => {
         wx.navigateBack();
       }, 1500);
@@ -178,22 +169,6 @@ Page({
       that.setData({ loading: false });
       console.error('保存失败', e);
       wx.showToast({ title: '保存失败', icon: 'none' });
-    });
-  },
-
-  // 请求订阅消息权限
-  requestSubscribeAuth: function() {
-    // 需要在微信公众平台配置订阅消息模板
-    wx.requestSubscribeMessage({
-      tmplIds: [
-        'YOUR_REMINDER_TEMPLATE_ID', // 替换为实际的模板ID
-      ],
-      success: (res) => {
-        console.log('订阅消息权限', res);
-      },
-      fail: (err) => {
-        console.error('订阅消息权限失败', err);
-      }
     });
   },
 
@@ -220,6 +195,14 @@ Page({
       .catch(e => {
         wx.showToast({ title: '删除失败', icon: 'none' });
       });
+  },
+
+  onQuotaTipCancel: function() {
+    this.setData({ showQuotaTip: false });
+  },
+  onQuotaTipConfirm: function() {
+    this.setData({ showQuotaTip: false });
+    wx.navigateTo({ url: '/pages/settings/settings' });
   },
 
   // 完成并继续添加
