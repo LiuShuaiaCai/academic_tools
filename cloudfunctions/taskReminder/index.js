@@ -56,19 +56,28 @@ async function decreaseQuota(openid) {
   }
 }
 
-// 发送单条订阅消息
+// 发送单条订阅消息（优雅处理用户拒收 43101）
 async function sendReminder(openid, page, thing1, time2, thing3, character_string4) {
-  return cloud.openapi.subscribeMessage.send({
-    touser: openid,
-    templateId: TEMPLATE_ID,
-    page: page,
-    data: {
-      thing1: { value: thing1 },
-      time2: { value: time2 },
-      thing3: { value: thing3 },
-      character_string4: { value: character_string4 }
+  try {
+    return await cloud.openapi.subscribeMessage.send({
+      touser: openid,
+      templateId: TEMPLATE_ID,
+      page: page,
+      data: {
+        thing1: { value: thing1 },
+        time2: { value: time2 },
+        thing3: { value: thing3 },
+        character_string4: { value: character_string4 }
+      }
+    });
+  } catch (err) {
+    // 用户拒绝订阅消息或表单ID过期，视为可跳过的错误
+    if (err && (err.errCode === 43101 || err.errCode === 41028 || err.errCode === 41029)) {
+      console.warn(`[taskReminder] 用户 ${openid} 订阅消息被拒或失效: ${err.errCode}`);
+      throw { _skipQuota: true, ...err };
     }
-  });
+    throw err;
+  }
 }
 
 // 按 openid 对记录分组
@@ -87,6 +96,7 @@ function groupByOpenid(items, typeKey) {
 async function sendSummary(userMap, buildSummaryFn) {
   const results = [];
   let sentCount = 0;
+  let skippedCount = 0;
 
   for (const [openid, items] of Object.entries(userMap)) {
     try {
@@ -96,12 +106,17 @@ async function sendSummary(userMap, buildSummaryFn) {
       sentCount++;
       await decreaseQuota(openid).catch(e => console.error('扣额度失败', e));
     } catch (err) {
-      console.error(`汇总消息发送失败 [openid:${openid}]`, err);
-      results.push({ openid, count: items.length, status: 'failed', error: err.message || err.errMsg || '未知错误' });
+      if (err && err._skipQuota) {
+        results.push({ openid, count: items.length, status: 'skipped', reason: '用户未授权或授权已过期' });
+        skippedCount++;
+      } else {
+        console.error(`汇总消息发送失败 [openid:${openid}]`, err);
+        results.push({ openid, count: items.length, status: 'failed', error: err.message || err.errMsg || '未知错误' });
+      }
     }
   }
 
-  return { sentCount, results };
+  return { sentCount, skippedCount, results };
 }
 
 // ============ 模式一：每小时自定义任务汇总 ============

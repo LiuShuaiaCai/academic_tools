@@ -181,11 +181,7 @@ page {
   margin-right: 12rpx;
 }
 
-.category-icon.study::before { content: '📚'; }
-.category-icon.research::before { content: '🔬'; }
-.category-icon.meeting::before { content: '👥'; }
-.category-icon.custom::before { content: '📝'; }
-.category-icon.other::before { content: '📋'; }
+/* 分类图标由 wxml 中的 {{categoryIcon}} 动态渲染 */
 
 .category-name {
   font-size: 28rpx;

@@ -39,7 +39,7 @@
         
         <view class="all-day-toggle" bindtap="onAllDayToggle">
           <text>全天</text>
-          <view class="toggle {{isAllDay ? 'active' : ''}}">
+          <view class="toggle-switch {{isAllDay ? 'active' : ''}}">
             <view class="toggle-dot"></view>
           </view>
         </view>

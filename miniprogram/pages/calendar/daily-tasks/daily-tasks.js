@@ -61,7 +61,10 @@ Page({
   },
 
   onShow: function() {
-    this.loadDailyTasks();
+    // 从其他页面返回时刷新（如任务编辑器）
+    if (!this.data.loading && !this.data.showAddSheet) {
+      this.loadDailyTasks();
+    }
   },
 
   onPullDownRefresh: function() {
@@ -240,7 +243,7 @@ Page({
     this.hideAddTask();
   },
 
-  // 删除任务
+  // 删除任务（软删除）
   deleteTask: function(e) {
     const taskId = e.currentTarget.dataset.id;
     wx.showModal({
@@ -248,7 +251,12 @@ Page({
       content: '确定要删除这个任务吗？',
       success: (res) => {
         if (res.confirm) {
-          wx.cloud.database().collection('tasks').doc(taskId).remove()
+          wx.cloud.database().collection('tasks').doc(taskId).update({
+            data: {
+              deleteTime: new Date(),
+              updateTime: new Date()
+            }
+          })
             .then(() => {
               wx.showToast({ title: '已删除', icon: 'success' });
               this.loadDailyTasks();
@@ -261,23 +269,34 @@ Page({
     });
   },
 
-  // 全部标记完成
+  // 全部标记完成（分批处理，每批最多20个）
   markAllComplete: function() {
     const pendingIds = this.data.pendingTasks.map(t => t._id);
     if (pendingIds.length === 0) return;
 
-    const batch = wx.cloud.database().batch();
-    pendingIds.forEach(id => {
-      batch.update(wx.cloud.database().collection('tasks').doc(id), {
-        data: {
-          completed: true,
-          completedTime: new Date(),
-          updateTime: new Date()
-        }
-      });
-    });
+    const db = wx.cloud.database();
+    const BATCH_SIZE = 20;
 
-    batch.commit().then(() => {
+    const runBatch = (ids) => {
+      const batch = db.batch();
+      ids.forEach(id => {
+        batch.update(db.collection('tasks').doc(id), {
+          data: {
+            completed: true,
+            completedTime: new Date(),
+            updateTime: new Date()
+          }
+        });
+      });
+      return batch.commit();
+    };
+
+    const batches = [];
+    for (let i = 0; i < pendingIds.length; i += BATCH_SIZE) {
+      batches.push(runBatch(pendingIds.slice(i, i + BATCH_SIZE)));
+    }
+
+    Promise.all(batches).then(() => {
       this.loadDailyTasks();
       wx.showToast({ title: '已全部完成', icon: 'success' });
     }).catch(() => {
@@ -285,7 +304,7 @@ Page({
     });
   },
 
-  // 清除已完成
+  // 清除已完成（软删除，分批处理，每批最多20个）
   clearCompleted: function() {
     const completedIds = this.data.completedTasks.map(t => t._id);
     if (completedIds.length === 0) return;
@@ -295,12 +314,28 @@ Page({
       content: `确定要清除 ${completedIds.length} 个已完成任务吗？`,
       success: (res) => {
         if (res.confirm) {
-          const batch = wx.cloud.database().batch();
-          completedIds.forEach(id => {
-            batch.remove(wx.cloud.database().collection('tasks').doc(id));
-          });
+          const db = wx.cloud.database();
+          const BATCH_SIZE = 20;
 
-          batch.commit().then(() => {
+          const runBatch = (ids) => {
+            const batch = db.batch();
+            ids.forEach(id => {
+              batch.update(db.collection('tasks').doc(id), {
+                data: {
+                  deleteTime: new Date(),
+                  updateTime: new Date()
+                }
+              });
+            });
+            return batch.commit();
+          };
+
+          const batches = [];
+          for (let i = 0; i < completedIds.length; i += BATCH_SIZE) {
+            batches.push(runBatch(completedIds.slice(i, i + BATCH_SIZE)));
+          }
+
+          Promise.all(batches).then(() => {
             this.loadDailyTasks();
             wx.showToast({ title: '已清除', icon: 'success' });
           }).catch(() => {

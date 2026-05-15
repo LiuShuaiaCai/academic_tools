@@ -6,6 +6,8 @@ Page({
     calendarDays: [], weekDays: [], monthEvents: [],
     selectedDate: '', selectedDateLabel: '', selectedEvents: [],
     dayEvents: [], eventDates: {},
+    listEvents: [], // 列表视图专用数据，避免覆盖 monthEvents
+    weekRangeLabel: '', // 周视图日期范围标签
     // 任务相关
     tasks: [],
     taskTypes: ['submission', 'review', 'conference', 'task'],
@@ -27,8 +29,52 @@ Page({
     this.loadMonthEvents();
   },
 
+  onShow: function() {
+    this.loadMonthEvents();
+  },
+
   formatDate: function(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  },
+
+  // 展开重复任务到指定月份
+  expandRepeatingTasks: function(task, year, month) {
+    var results = [];
+    var repeatType = task.repeatType;
+    if (!repeatType || repeatType === 'none') return [task];
+
+    var startDate = new Date(task.date);
+    var repeatEnd = task.repeatEndDate ? new Date(task.repeatEndDate) : null;
+    var monthStart = new Date(year, month - 1, 1);
+    var monthEnd = new Date(year, month, 0);
+
+    // 如果重复已结束，不展开
+    if (repeatEnd && repeatEnd < monthStart) return [];
+
+    var effectiveStart = startDate > monthStart ? startDate : monthStart;
+    var effectiveEnd = repeatEnd && repeatEnd < monthEnd ? repeatEnd : monthEnd;
+
+    var cursor = new Date(effectiveStart);
+    var origDay = startDate.getDate();
+
+    while (cursor <= effectiveEnd) {
+      var match = false;
+      if (repeatType === 'daily') {
+        match = true;
+      } else if (repeatType === 'weekly') {
+        match = cursor.getDay() === startDate.getDay();
+      } else if (repeatType === 'monthly') {
+        match = cursor.getDate() === origDay;
+      }
+
+      if (match) {
+        var dateStr = this.formatDate(cursor);
+        results.push(Object.assign({}, task, { date: dateStr, _isRepeatInstance: true }));
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return results;
   },
 
   switchView: function(e) {
@@ -39,27 +85,43 @@ Page({
     else this.buildCalendar();
   },
 
+  // 同步选中日期对应的年月
+  syncYearMonthFromDate: function(dateStr) {
+    var d = new Date(dateStr);
+    var y = d.getFullYear();
+    var m = d.getMonth() + 1;
+    if (y !== this.data.currentYear || m !== this.data.currentMonth) {
+      this.setData({ currentYear: y, currentMonth: m });
+      this.loadMonthEvents();
+      return true;
+    }
+    return false;
+  },
+
   loadMonthEvents: function() {
     var that = this;
     var currentYear = this.data.currentYear;
     var currentMonth = this.data.currentMonth;
     var db = wx.cloud.database();
     var _ = db.command;
-    var startDate = new Date(currentYear, currentMonth - 1, 1);
-    var endDate = new Date(currentYear, currentMonth, 1);
+
+    // 统一使用本地日期字符串比较，避免时区问题
+    var startDateStr = currentYear + '-' + String(currentMonth).padStart(2, '0') + '-01';
+    var nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+    var nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+    var endDateStr = nextYear + '-' + String(nextMonth).padStart(2, '0') + '-01';
 
     Promise.all([
       // 投稿
-      db.collection('submissions').where({ deleteTime: null, nextDeadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('submissions').where({ deleteTime: null, nextDeadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 审稿
-      db.collection('reviews').where({ deleteTime: null, deadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('reviews').where({ deleteTime: null, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 会议
-      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(startDate).and(_.lt(endDate)) }).get().catch(function() { return { data: [] }; }),
-      // 任务 - 按月份筛选
+      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      // 任务 - 按月份字符串筛选（包含已完成，在日历上展示所有事件）
       db.collection('tasks').where({
         deleteTime: null,
-        completed: false,
-        date: _.gte(startDate.toISOString().split('T')[0]).and(_.lt(endDate.toISOString().split('T')[0]))
+        date: _.gte(startDateStr).and(_.lt(endDateStr))
       }).get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
       var subRes = results[0], revRes = results[1], confRes = results[2], taskRes = results[3];
@@ -72,22 +134,46 @@ Page({
       revRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline }); });
       // 会议
       confRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline }); });
-      // 任务
-      taskRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, type: 'task', typeLabel: '任务', date: i.date, time: i.time, priority: i.priority, category: i.category, reminderEnabled: i.reminderEnabled }); });
+      // 任务（展开重复任务）
+      taskRes.data.forEach(function(i) {
+        var expanded = that.expandRepeatingTasks(i, currentYear, currentMonth);
+        expanded.forEach(function(inst) {
+          monthEvents.push({
+            _id: inst._id,
+            title: inst.title,
+            type: 'task',
+            typeLabel: '任务',
+            date: inst.date,
+            time: inst.time,
+            priority: inst.priority,
+            category: inst.category,
+            reminderEnabled: inst.reminderEnabled,
+            completed: inst.completed,
+            _isRepeatInstance: inst._isRepeatInstance || false
+          });
+        });
+      });
 
       monthEvents.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
       monthEvents.forEach(function(i) {
         var d = that.formatDate(new Date(i.date));
         if (!eventDates[d]) eventDates[d] = [];
-        eventDates[d].push(i.type);
+        if (eventDates[d].indexOf(i.type) === -1) {
+          eventDates[d].push(i.type);
+        }
       });
 
       that.setData({ eventDates: eventDates, monthEvents: monthEvents });
-      that.buildCalendar();
+      var view = that.data.currentView;
+      if (view === 'list') that.buildListview();
+      else if (view === 'week') that.buildWeekView();
+      else that.buildCalendar();
       that.loadSelectedEvents();
     }).catch(function(e) {
       console.error('[日历] 加载失败', e);
-      that.buildCalendar();
+      var view = that.data.currentView;
+      if (view === 'week') that.buildWeekView();
+      else if (view !== 'list') that.buildCalendar();
     });
   },
 
@@ -114,21 +200,57 @@ Page({
     var that = this;
     var selectedDate = this.data.selectedDate;
     var eventDates = this.data.eventDates;
+    var monthEvents = this.data.monthEvents;
     var baseDate = selectedDate ? new Date(selectedDate) : new Date();
     var dayOfWeek = baseDate.getDay();
     var weekStart = new Date(baseDate);
     weekStart.setDate(baseDate.getDate() - dayOfWeek);
+    var weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
     var weekDays = [];
     var dayNames = ['日', '一', '二', '三', '四', '五', '六'];
     var today = that.formatDate(new Date());
+
+    // 计算每天的事件总数
+    var dateEventCount = {};
+    monthEvents.forEach(function(e) {
+      var d = that.formatDate(new Date(e.date));
+      dateEventCount[d] = (dateEventCount[d] || 0) + 1;
+    });
 
     for (var i = 0; i < 7; i++) {
       var d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
       var dateStr = that.formatDate(d);
-      weekDays.push({ day: d.getDate(), dayName: dayNames[i], dateStr: dateStr, isToday: dateStr === today, isSelected: dateStr === selectedDate, events: eventDates[dateStr] || [] });
+      weekDays.push({
+        day: d.getDate(),
+        dayName: dayNames[i],
+        dateStr: dateStr,
+        isToday: dateStr === today,
+        isSelected: dateStr === selectedDate,
+        events: eventDates[dateStr] || [],
+        eventCount: dateEventCount[dateStr] || 0
+      });
     }
-    this.setData({ weekDays: weekDays });
+
+    var weekLabel = that.buildWeekRangeLabel(weekStart, weekEnd);
+    this.setData({ weekDays: weekDays, weekRangeLabel: weekLabel });
+  },
+
+  buildWeekRangeLabel: function(start, end) {
+    var sy = start.getFullYear();
+    var sm = start.getMonth() + 1;
+    var sd = start.getDate();
+    var ey = end.getFullYear();
+    var em = end.getMonth() + 1;
+    var ed = end.getDate();
+    if (sy === ey) {
+      if (sm === em) {
+        return sm + '月' + sd + '日 - ' + ed + '日';
+      }
+      return sm + '月' + sd + '日 - ' + em + '月' + ed + '日';
+    }
+    return sy + '年' + sm + '月' + sd + '日 - ' + ey + '年' + em + '月' + ed + '日';
   },
 
   buildListview: function() {
@@ -137,13 +259,12 @@ Page({
     var formatted = monthEvents.map(function(item) {
       return Object.assign({}, item, { dateLabel: that.formatDate(new Date(item.date)) });
     });
-    this.setData({ monthEvents: formatted });
+    this.setData({ listEvents: formatted });
   },
 
   loadSelectedEvents: function() {
     var that = this;
     var selectedDate = this.data.selectedDate;
-    var eventDates = this.data.eventDates;
     if (!selectedDate) { this.setData({ selectedEvents: [], selectedDateLabel: '' }); return; }
     var monthEvents = this.data.monthEvents;
     var selectedEvents = monthEvents.filter(function(e) {
@@ -155,34 +276,85 @@ Page({
   },
 
   prevMonth: function() {
-    var currentYear = this.data.currentYear;
-    var currentMonth = this.data.currentMonth;
-    if (currentMonth === 1) { currentYear--; currentMonth = 12; } else currentMonth--;
-    this.setData({ currentYear: currentYear, currentMonth: currentMonth });
-    this.loadMonthEvents();
+    if (this.data.currentView === 'week') {
+      // 周视图：切换到上一周
+      var d = new Date(this.data.selectedDate);
+      d.setDate(d.getDate() - 7);
+      var dateStr = this.formatDate(d);
+      var y = d.getFullYear();
+      var m = d.getMonth() + 1;
+      if (y !== this.data.currentYear || m !== this.data.currentMonth) {
+        this.setData({ currentYear: y, currentMonth: m, selectedDate: dateStr });
+        this.loadMonthEvents();
+      } else {
+        this.setData({ selectedDate: dateStr });
+        this.buildWeekView();
+      }
+      this.loadSelectedEvents();
+    } else {
+      // 月视图：切换到上一月
+      var currentYear = this.data.currentYear;
+      var currentMonth = this.data.currentMonth;
+      if (currentMonth === 1) { currentYear--; currentMonth = 12; } else currentMonth--;
+      this.setData({ currentYear: currentYear, currentMonth: currentMonth });
+      this.loadMonthEvents();
+    }
   },
 
   nextMonth: function() {
-    var currentYear = this.data.currentYear;
-    var currentMonth = this.data.currentMonth;
-    if (currentMonth === 12) { currentYear++; currentMonth = 1; } else currentMonth++;
-    this.setData({ currentYear: currentYear, currentMonth: currentMonth });
-    this.loadMonthEvents();
+    if (this.data.currentView === 'week') {
+      // 周视图：切换到下一周
+      var d = new Date(this.data.selectedDate);
+      d.setDate(d.getDate() + 7);
+      var dateStr = this.formatDate(d);
+      var y = d.getFullYear();
+      var m = d.getMonth() + 1;
+      if (y !== this.data.currentYear || m !== this.data.currentMonth) {
+        this.setData({ currentYear: y, currentMonth: m, selectedDate: dateStr });
+        this.loadMonthEvents();
+      } else {
+        this.setData({ selectedDate: dateStr });
+        this.buildWeekView();
+      }
+      this.loadSelectedEvents();
+    } else {
+      // 月视图：切换到下一月
+      var currentYear = this.data.currentYear;
+      var currentMonth = this.data.currentMonth;
+      if (currentMonth === 12) { currentYear++; currentMonth = 1; } else currentMonth++;
+      this.setData({ currentYear: currentYear, currentMonth: currentMonth });
+      this.loadMonthEvents();
+    }
   },
 
   selectDate: function(e) {
     var dateStr = e.currentTarget.dataset.date;
     if (!dateStr) return;
+    var view = this.data.currentView;
+    var changed = this.syncYearMonthFromDate(dateStr);
     this.setData({ selectedDate: dateStr });
-    this.buildCalendar();
-    this.buildWeekView();
+    if (!changed) {
+      if (view === 'month') this.buildCalendar();
+      else if (view === 'week') this.buildWeekView();
+    }
     this.loadSelectedEvents();
   },
 
   goToToday: function() {
     var now = new Date();
-    this.setData({ currentYear: now.getFullYear(), currentMonth: now.getMonth() + 1, selectedDate: this.formatDate(now) });
-    this.loadMonthEvents();
+    var dateStr = this.formatDate(now);
+    var y = now.getFullYear();
+    var m = now.getMonth() + 1;
+    var view = this.data.currentView;
+    if (y !== this.data.currentYear || m !== this.data.currentMonth) {
+      this.setData({ currentYear: y, currentMonth: m, selectedDate: dateStr });
+      this.loadMonthEvents();
+    } else {
+      this.setData({ selectedDate: dateStr });
+      if (view === 'week') this.buildWeekView();
+      else this.buildCalendar();
+    }
+    this.loadSelectedEvents();
   },
 
   // 跳转到每日任务页面
