@@ -126,6 +126,7 @@ Page({
     ]).then(function(results) {
       var subRes = results[0], revRes = results[1], confRes = results[2], taskRes = results[3];
       var eventDates = {};
+      var eventCounts = {};
       var monthEvents = [];
 
       // 投稿
@@ -157,13 +158,14 @@ Page({
       monthEvents.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
       monthEvents.forEach(function(i) {
         var d = that.formatDate(new Date(i.date));
+        eventCounts[d] = (eventCounts[d] || 0) + 1;
         if (!eventDates[d]) eventDates[d] = [];
         if (eventDates[d].indexOf(i.type) === -1) {
           eventDates[d].push(i.type);
         }
       });
 
-      that.setData({ eventDates: eventDates, monthEvents: monthEvents });
+      that.setData({ eventDates: eventDates, eventCounts: eventCounts, monthEvents: monthEvents });
       var view = that.data.currentView;
       if (view === 'list') that.buildListview();
       else if (view === 'week') that.buildWeekView();
@@ -189,9 +191,10 @@ Page({
     var i;
 
     for (i = 0; i < firstDay; i++) days.push({ empty: true });
+    var eventCounts = this.data.eventCounts;
     for (i = 1; i <= daysInMonth; i++) {
       var dateStr = currentYear + '-' + String(currentMonth).padStart(2, '0') + '-' + String(i).padStart(2, '0');
-      days.push({ day: i, dateStr: dateStr, isToday: dateStr === today, isSelected: dateStr === selectedDate, events: eventDates[dateStr] || [] });
+      days.push({ day: i, dateStr: dateStr, isToday: dateStr === today, isSelected: dateStr === selectedDate, events: eventDates[dateStr] || [], eventCount: eventCounts[dateStr] || 0 });
     }
     this.setData({ calendarDays: days });
   },

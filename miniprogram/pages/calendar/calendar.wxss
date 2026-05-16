@@ -69,30 +69,24 @@ page { background: #F6F6F6; }
 .day-num {
   font-size: 28rpx;
   color: #374151;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
 }
 
 .day-cell.today .day-num {
-  width: 56rpx;
-  height: 56rpx;
   background: #EF4444;
   color: #fff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
 }
 
 .day-cell.selected .day-num {
-  width: 56rpx;
-  height: 56rpx;
-  background: #DBEAFE;
-  color: #2563eb;
+  background: #2563eb;
+  color: #fff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
 }
 
 .day-cell.today.selected .day-num {
@@ -117,6 +111,20 @@ page { background: #F6F6F6; }
 .dot.review { background: #EF4444; }
 .dot.conference { background: #10B981; }
 .dot.task { background: #8B5CF6; }
+
+/* 月视图事件指示点：单事件红点，多事件扁平 */
+.event-indicator {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #EF4444;
+}
+
+.event-indicator.multi {
+  width: 20rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+}
 
 /* 图例 */
 .legend {
