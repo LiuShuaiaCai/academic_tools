@@ -57,11 +57,15 @@ page { background: #F6F6F6; }
 }
 
 .day-cell {
-  min-height: 100rpx;
+  min-height: 88rpx;
   padding: 12rpx 8rpx;
   border-bottom: 1rpx solid #F3F4F6;
   border-right: 1rpx solid #F3F4F6;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .day-cell.empty { }
@@ -127,8 +131,10 @@ page { background: #F6F6F6; }
 .event-dots {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 4rpx;
   margin-top: 4rpx;
+  height: 10rpx;
 }
 
 .dot {
@@ -263,31 +269,25 @@ page { background: #F6F6F6; }
 
 /* ========== 周视图 ========== */
 .week-view {
-  padding: 20rpx 24rpx;
+  background: #fff;
+  margin-bottom: 16rpx;
 }
 
 .week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 12rpx;
 }
 
 .week-day-cell {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 16rpx 8rpx;
+  min-height: 88rpx;
+  padding: 12rpx 8rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+  border-right: 1rpx solid #F3F4F6;
   text-align: center;
-  min-height: 100rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.week-day-cell.selected {
-  box-shadow: 0 0 0 2rpx #2563eb, 0 4rpx 12rpx rgba(37, 99, 235, 0.15);
-  transform: translateY(-2rpx);
 }
 
 

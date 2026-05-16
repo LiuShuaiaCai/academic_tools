@@ -52,8 +52,8 @@
     >
       <block wx:if="{{!item.empty}}">
         <view class="day-num">{{item.day}}</view>
-        <view class="event-dots" wx:if="{{item.eventCount > 0}}">
-          <view class="event-indicator {{item.eventCount > 1 ? 'multi' : ''}}"></view>
+        <view class="event-dots">
+          <view class="event-indicator {{item.eventCount > 1 ? 'multi' : ''}}" wx:if="{{item.eventCount > 0}}"></view>
         </view>
       </block>
     </view>
@@ -70,8 +70,8 @@
         data-date="{{item.dateStr}}"
       >
         <view class="week-day-num">{{item.day}}</view>
-        <view class="event-dots" wx:if="{{item.eventCount > 0}}">
-          <view class="event-indicator {{item.eventCount > 1 ? 'multi' : ''}}"></view>
+        <view class="event-dots">
+          <view class="event-indicator {{item.eventCount > 1 ? 'multi' : ''}}" wx:if="{{item.eventCount > 0}}"></view>
         </view>
       </view>
     </view>
