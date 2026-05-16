@@ -72,9 +72,9 @@ page { background: #F6F6F6; }
 }
 
 .day-cell.today .day-num {
-  width: 48rpx;
-  height: 48rpx;
-  background: #2563eb;
+  width: 56rpx;
+  height: 56rpx;
+  background: #EF4444;
   color: #fff;
   border-radius: 50%;
   display: flex;
@@ -84,8 +84,8 @@ page { background: #F6F6F6; }
 }
 
 .day-cell.selected .day-num {
-  width: 48rpx;
-  height: 48rpx;
+  width: 56rpx;
+  height: 56rpx;
   background: #DBEAFE;
   color: #2563eb;
   border-radius: 50%;
@@ -93,6 +93,11 @@ page { background: #F6F6F6; }
   align-items: center;
   justify-content: center;
   margin: 0 auto;
+}
+
+.day-cell.today.selected .day-num {
+  background: #EF4444;
+  color: #fff;
 }
 
 .event-dots {
