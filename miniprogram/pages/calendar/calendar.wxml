@@ -79,14 +79,38 @@
 
   <!-- 列表视图 -->
   <view class="list-view" wx:if="{{currentView === 'list'}}">
-    <view class="list-item" wx:for="{{listEvents}}" wx:key="index">
-      <view class="list-date">{{item.dateLabel}}</view>
-      <view class="list-content">
-        <view class="list-title">{{item.title || item.name || item.paperTitle}}</view>
-        <view class="list-type {{item.type}}">{{item.typeLabel}}</view>
+    <block wx:for="{{listGroups}}" wx:key="dateStr" wx:for-item="group">
+      <view class="list-group">
+        <view class="list-group-header">
+          <text class="list-group-label">{{group.dateLabel}}</text>
+          <text class="list-group-sub">{{group.dateSub}}</text>
+        </view>
+        <view class="list-group-events">
+          <view class="list-item {{item.type}} {{item.completed ? 'completed' : ''}}" wx:for="{{group.events}}" wx:key="index">
+            <view class="list-type-bar {{item.type}}"></view>
+            <view class="list-content">
+              <view class="list-title-row">
+                <view class="list-title">{{item.title || item.name || item.paperTitle}}</view>
+                <view class="list-checkbox" wx:if="{{item.type === 'task'}}" data-id="{{item._id}}" catchtap="toggleTaskComplete">
+                  <view class="checkbox-inner {{item.completed ? 'checked' : ''}}"></view>
+                </view>
+              </view>
+              <view class="list-meta">
+                <text class="list-time" wx:if="{{item.time}}">{{item.time}}</text>
+                <text class="list-priority {{item.priority}}" wx:if="{{item.type === 'task' && item.priority}}">
+                  {{item.priority === 'high' ? '紧急' : item.priority === 'medium' ? '普通' : '低优'}}
+                </text>
+              </view>
+            </view>
+          </view>
+        </view>
       </view>
+    </block>
+    <view wx:if="{{listGroups.length === 0}}" class="list-empty">
+      <view class="empty-icon">📅</view>
+      <view class="empty-text">暂无事件</view>
+      <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
     </view>
-    <view wx:if="{{listEvents.length === 0}}" class="list-empty">暂无本月事件</view>
   </view>
 
   <!-- 图例 -->

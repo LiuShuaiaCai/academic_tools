@@ -259,10 +259,92 @@ Page({
   buildListview: function() {
     var that = this;
     var monthEvents = this.data.monthEvents;
-    var formatted = monthEvents.map(function(item) {
-      return Object.assign({}, item, { dateLabel: that.formatDate(new Date(item.date)) });
+
+    // 按日期分组
+    var groups = {};
+    monthEvents.forEach(function(item) {
+      var d = that.formatDate(new Date(item.date));
+      if (!groups[d]) groups[d] = [];
+      groups[d].push(item);
     });
-    this.setData({ listEvents: formatted });
+
+    var sortedDates = Object.keys(groups).sort();
+    var today = that.formatDate(new Date());
+    var tomorrow = that.formatDate(new Date(Date.now() + 86400000));
+    var dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+    var listGroups = sortedDates.map(function(dateStr) {
+      var date = new Date(dateStr);
+      var label = '';
+      if (dateStr === today) {
+        label = '今天';
+      } else if (dateStr === tomorrow) {
+        label = '明天';
+      } else {
+        label = dayNames[date.getDay()];
+      }
+      return {
+        dateStr: dateStr,
+        dateLabel: label,
+        dateSub: (date.getMonth() + 1) + '月' + date.getDate() + '日',
+        events: groups[dateStr]
+      };
+    });
+
+    this.setData({ listGroups: listGroups });
+  },
+
+  toggleTaskComplete: function(e) {
+    var id = e.currentTarget.dataset.id;
+    var that = this;
+
+    // 找到对应任务
+    var task = null;
+    this.data.monthEvents.forEach(function(item) {
+      if (item._id === id && item.type === 'task') {
+        task = item;
+      }
+    });
+    if (!task) return;
+
+    var newCompleted = !task.completed;
+
+    // 持久化到数据库
+    wx.cloud.database().collection('tasks').doc(id).update({
+      data: {
+        completed: newCompleted,
+        completedTime: newCompleted ? new Date() : null,
+        updateTime: new Date()
+      }
+    }).then(function() {
+      // 同步更新所有相关数据
+      var monthEvents = that.data.monthEvents;
+      monthEvents.forEach(function(item) {
+        if (item._id === id && item.type === 'task') {
+          item.completed = newCompleted;
+        }
+      });
+
+      var listGroups = that.data.listGroups;
+      listGroups.forEach(function(group) {
+        group.events.forEach(function(item) {
+          if (item._id === id && item.type === 'task') {
+            item.completed = newCompleted;
+          }
+        });
+      });
+
+      var selectedEvents = that.data.selectedEvents;
+      selectedEvents.forEach(function(item) {
+        if (item._id === id && item.type === 'task') {
+          item.completed = newCompleted;
+        }
+      });
+
+      that.setData({ monthEvents: monthEvents, listGroups: listGroups, selectedEvents: selectedEvents });
+    }).catch(function() {
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    });
   },
 
   loadSelectedEvents: function() {
