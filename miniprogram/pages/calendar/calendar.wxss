@@ -67,8 +67,9 @@ page { background: #F6F6F6; }
 .day-cell.empty { }
 
 .day-num {
-  font-size: 28rpx;
-  color: #374151;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
   width: 56rpx;
   height: 56rpx;
   display: flex;
@@ -90,6 +91,35 @@ page { background: #F6F6F6; }
 }
 
 .day-cell.today.selected .day-num {
+  background: #EF4444;
+  color: #fff;
+}
+
+.week-day-num {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.week-day-cell.today .week-day-num {
+  background: #EF4444;
+  color: #fff;
+  border-radius: 50%;
+}
+
+.week-day-cell.selected .week-day-num {
+  background: #2563eb;
+  color: #fff;
+  border-radius: 50%;
+}
+
+.week-day-cell.today.selected .week-day-num {
   background: #EF4444;
   color: #fff;
 }
@@ -233,47 +263,39 @@ page { background: #F6F6F6; }
 
 /* ========== 周视图 ========== */
 .week-view {
-  padding: 16rpx;
+  padding: 20rpx 24rpx;
 }
 
 .week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8rpx;
+  gap: 12rpx;
 }
 
 .week-day-cell {
   background: #fff;
-  border-radius: 12rpx;
-  padding: 8rpx;
+  border-radius: 16rpx;
+  padding: 16rpx 8rpx;
   text-align: center;
-  min-height: 90rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  min-height: 100rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
-.week-day-cell.today {
-  background: #2563eb;
-  color: #fff;
+.week-day-cell.selected {
+  box-shadow: 0 0 0 2rpx #2563eb, 0 4rpx 12rpx rgba(37, 99, 235, 0.15);
+  transform: translateY(-2rpx);
 }
 
-.week-day-cell.selected {
-  border: 2rpx solid #2563eb;
-}
+
 
 .week-day-name {
   font-size: 20rpx;
   color: #9CA3AF;
   margin-bottom: 8rpx;
-}
-
-.week-day-num {
-  font-size: 32rpx;
-  font-weight: 600;
-  margin-bottom: 4rpx;
 }
 
 /* ========== 列表视图 ========== */

@@ -70,8 +70,8 @@
         data-date="{{item.dateStr}}"
       >
         <view class="week-day-num">{{item.day}}</view>
-        <view class="event-dots" wx:if="{{item.events.length > 0}}">
-          <view class="dot {{dot}}" wx:for="{{item.events}}" wx:for-item="dot" wx:key="*this"></view>
+        <view class="event-dots" wx:if="{{item.eventCount > 0}}">
+          <view class="event-indicator {{item.eventCount > 1 ? 'multi' : ''}}"></view>
         </view>
       </view>
     </view>
