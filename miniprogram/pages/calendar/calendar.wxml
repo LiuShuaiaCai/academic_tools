@@ -86,21 +86,29 @@
           <text class="list-group-sub">{{group.dateSub}}</text>
         </view>
         <view class="list-group-events">
-          <view class="list-item {{item.type}} {{item.completed ? 'completed' : ''}}" wx:for="{{group.events}}" wx:key="index">
-            <view class="list-type-bar {{item.type}}"></view>
-            <view class="list-content">
-              <view class="list-title-row">
-                <view class="list-title">{{item.title || item.name || item.paperTitle}}</view>
-                <view class="list-checkbox" wx:if="{{item.type === 'task'}}" data-id="{{item._id}}" catchtap="toggleTaskComplete">
-                  <view class="checkbox-inner {{item.completed ? 'checked' : ''}}"></view>
-                </view>
+          <view
+            class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}} {{item.urgent ? 'urgent' : ''}} {{item.completed ? 'completed' : ''}}"
+            wx:for="{{group.events}}"
+            wx:key="index"
+            bindtap="goToItem"
+            data-page="{{item.pagePath}}"
+            data-id="{{item._id}}"
+            data-title="{{item.title || item.name || item.paperTitle || ''}}"
+            data-type="{{item.type}}"
+          >
+            <view class="upcoming-icon">{{item.iconEmoji}}</view>
+            <view class="upcoming-info">
+              <view class="upcoming-title">
+                <text class="type-label">{{item.typeLabel}}</text>
+                <text>{{item.title || item.name || item.paperTitle || '未命名'}}</text>
               </view>
-              <view class="list-meta">
-                <text class="list-time" wx:if="{{item.time}}">{{item.time}}</text>
-                <text class="list-priority {{item.priority}}" wx:if="{{item.type === 'task' && item.priority}}">
-                  {{item.priority === 'high' ? '紧急' : item.priority === 'medium' ? '普通' : '低优'}}
-                </text>
+              <view class="upcoming-meta">
+                <text class="date">{{item.deadlineLabel}}</text>
+                <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
               </view>
+            </view>
+            <view class="list-checkbox" wx:if="{{item.type === 'task'}}" data-id="{{item._id}}" catchtap="toggleTaskComplete">
+              <view class="checkbox-inner {{item.completed ? 'checked' : ''}}"></view>
             </view>
           </view>
         </view>
@@ -113,43 +121,160 @@
     </view>
   </view>
 
-  <!-- 图例 -->
-  <view class="legend" wx:if="{{currentView !== 'list'}}">
-    <view class="legend-item"><view class="legend-dot submission"></view>投稿</view>
-    <view class="legend-item"><view class="legend-dot review"></view>审稿</view>
-    <view class="legend-item"><view class="legend-dot conference"></view>会议</view>
-    <view class="legend-item"><view class="legend-dot task"></view>任务</view>
-  </view>
-
-  <!-- 选中日期的事件 -->
-  <view class="events-section">
+  <!-- 选中日期的事件（月视图/周视图显示） -->
+  <view class="events-section" wx:if="{{currentView !== 'list'}}">
     <view class="section-header">
       <view class="section-title">📅 {{selectedDateLabel}} 的事件</view>
       <view class="section-actions">
         <view class="action-btn primary" bindtap="goToDailyTasks">每日任务</view>
       </view>
     </view>
-    
+
     <view wx:if="{{selectedEvents.length > 0}}" class="event-list">
-      <view class="event-item {{item.type}}" wx:for="{{selectedEvents}}" wx:key="index">
-        <view class="event-dot {{item.type}}"></view>
-        <view class="event-content">
-          <view class="event-title">{{item.title || item.name || item.paperTitle || '未命名'}}</view>
-          <view class="event-meta">
-            <text class="event-type">{{item.typeLabel}}</text>
-            <text class="event-time" wx:if="{{item.time}}">{{item.time}}</text>
-            <text class="event-priority {{item.priority}}" wx:if="{{item.type === 'task' && item.priority}}">
-              {{item.priority === 'high' ? '紧急' : item.priority === 'medium' ? '普通' : '低优'}}
-            </text>
+      <view
+        class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}} {{item.urgent ? 'urgent' : ''}}"
+        wx:for="{{selectedEvents}}"
+        wx:key="index"
+        bindtap="goToItem"
+        data-page="{{item.pagePath}}"
+        data-id="{{item._id}}"
+        data-title="{{item.title || item.name || item.paperTitle || ''}}"
+        data-type="{{item.type}}"
+      >
+        <view class="upcoming-icon">{{item.iconEmoji}}</view>
+        <view class="upcoming-info">
+          <view class="upcoming-title">
+            <text class="type-label">{{item.typeLabel}}</text>
+            <text>{{item.title || item.name || item.paperTitle || '未命名'}}</text>
+          </view>
+          <view class="upcoming-meta">
+            <text class="date">{{item.deadlineLabel}}</text>
+            <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
           </view>
         </view>
       </view>
     </view>
-    
+
     <view wx:if="{{selectedEvents.length === 0}}" class="events-empty">
       <text class="empty-icon">📭</text>
       <text class="empty-text">这天没有安排</text>
       <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
     </view>
   </view>
+
+  <!-- 列表视图的筛选栏 -->
+  <view class="filter-bar" wx:if="{{currentView === 'list'}}">
+    <view class="filter-group">
+      <view class="filter-tag {{filterTypeStates.submission ? 'active type-blue' : ''}}" bindtap="toggleFilterType" data-type="submission"><view class="filter-dot"></view>投稿</view>
+      <view class="filter-tag {{filterTypeStates.review ? 'active type-red' : ''}}" bindtap="toggleFilterType" data-type="review"><view class="filter-dot"></view>审稿</view>
+      <view class="filter-tag {{filterTypeStates.conference ? 'active type-green' : ''}}" bindtap="toggleFilterType" data-type="conference"><view class="filter-dot"></view>会议</view>
+      <view class="filter-tag {{filterTypeStates.task ? 'active type-purple' : ''}}" bindtap="toggleFilterType" data-type="task"><view class="filter-dot"></view>任务</view>
+    </view>
+    <view class="filter-status">
+      <view class="{{filterCompleted === 'all' ? 'active' : ''}}" bindtap="setFilterCompleted" data-status="all">全部</view>
+      <view class="{{filterCompleted === 'undone' ? 'active' : ''}}" bindtap="setFilterCompleted" data-status="undone">未完成</view>
+      <view class="{{filterCompleted === 'done' ? 'active' : ''}}" bindtap="setFilterCompleted" data-status="done">已完成</view>
+    </view>
+  </view>
+
+  <!-- 列表视图 -->
+  <view class="list-view" wx:if="{{currentView === 'list'}}">
+    <block wx:for="{{listGroups}}" wx:key="dateStr" wx:for-item="group">
+      <view class="list-group">
+        <view class="list-group-header">
+          <text class="list-group-label">{{group.dateLabel}}</text>
+          <text class="list-group-sub">{{group.dateSub}}</text>
+        </view>
+        <view class="list-group-events">
+          <view
+            class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}} {{item.urgent ? 'urgent' : ''}} {{item.completed ? 'completed' : ''}}"
+            wx:for="{{group.events}}"
+            wx:key="index"
+            bindtap="goToItem"
+            data-page="{{item.pagePath}}"
+            data-id="{{item._id}}"
+            data-title="{{item.title || item.name || item.paperTitle || ''}}"
+            data-type="{{item.type}}"
+          >
+            <view class="upcoming-icon">{{item.iconEmoji}}</view>
+            <view class="upcoming-info">
+              <view class="upcoming-title">
+                <text class="type-label">{{item.typeLabel}}</text>
+                <text>{{item.title || item.name || item.paperTitle || '未命名'}}</text>
+              </view>
+              <view class="upcoming-meta">
+                <text class="date">{{item.deadlineLabel}}</text>
+                <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
+              </view>
+            </view>
+            <view class="list-checkbox" wx:if="{{item.type === 'task'}}" data-id="{{item._id}}" catchtap="toggleTaskComplete">
+              <view class="checkbox-inner {{item.completed ? 'checked' : ''}}"></view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+    <view wx:if="{{listGroups.length === 0}}" class="list-empty">
+      <view class="empty-icon">📅</view>
+      <view class="empty-text">暂无事件</view>
+      <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
+    </view>
+  </view>
+
+  <!-- 月视图/周视图的筛选栏 -->
+  <view class="filter-bar" wx:if="{{currentView !== 'list'}}">
+    <view class="filter-group">
+      <view class="filter-tag {{filterTypeStates.submission ? 'active type-blue' : ''}}" bindtap="toggleFilterType" data-type="submission"><view class="filter-dot"></view>投稿</view>
+      <view class="filter-tag {{filterTypeStates.review ? 'active type-red' : ''}}" bindtap="toggleFilterType" data-type="review"><view class="filter-dot"></view>审稿</view>
+      <view class="filter-tag {{filterTypeStates.conference ? 'active type-green' : ''}}" bindtap="toggleFilterType" data-type="conference"><view class="filter-dot"></view>会议</view>
+      <view class="filter-tag {{filterTypeStates.task ? 'active type-purple' : ''}}" bindtap="toggleFilterType" data-type="task"><view class="filter-dot"></view>任务</view>
+    </view>
+    <view class="filter-status">
+      <view class="{{filterCompleted === 'all' ? 'active' : ''}}" bindtap="setFilterCompleted" data-status="all">全部</view>
+      <view class="{{filterCompleted === 'undone' ? 'active' : ''}}" bindtap="setFilterCompleted" data-status="undone">未完成</view>
+      <view class="{{filterCompleted === 'done' ? 'active' : ''}}" bindtap="setFilterCompleted" data-status="done">已完成</view>
+    </view>
+  </view>
+
+  <!-- 选中日期的事件（月视图/周视图显示） -->
+  <view class="events-section" wx:if="{{currentView !== 'list'}}">
+    <view class="section-header">
+      <view class="section-title">📅 {{selectedDateLabel}} 的事件</view>
+      <view class="section-actions">
+        <view class="action-btn primary" bindtap="goToDailyTasks">每日任务</view>
+      </view>
+    </view>
+
+    <view wx:if="{{selectedEvents.length > 0}}" class="event-list">
+      <view
+        class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}} {{item.urgent ? 'urgent' : ''}}"
+        wx:for="{{selectedEvents}}"
+        wx:key="index"
+        bindtap="goToItem"
+        data-page="{{item.pagePath}}"
+        data-id="{{item._id}}"
+        data-title="{{item.title || item.name || item.paperTitle || ''}}"
+        data-type="{{item.type}}"
+      >
+        <view class="upcoming-icon">{{item.iconEmoji}}</view>
+        <view class="upcoming-info">
+          <view class="upcoming-title">
+            <text class="type-label">{{item.typeLabel}}</text>
+            <text>{{item.title || item.name || item.paperTitle || '未命名'}}</text>
+          </view>
+          <view class="upcoming-meta">
+            <text class="date">{{item.deadlineLabel}}</text>
+            <text class="countdown {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{selectedEvents.length === 0}}" class="events-empty">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">这天没有安排</text>
+      <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
+    </view>
+  </view>
+
 </view>

@@ -16,7 +16,12 @@ Page({
       review: '#EF4444',
       conference: '#10B981',
       task: '#8B5CF6'
-    }
+    },
+    // 筛选
+    filterTypes: ['submission', 'review', 'conference', 'task'],
+    filterTypeStates: { submission: true, review: true, conference: true, task: true },
+    filterCompleted: 'all',
+    filteredEvents: []
   },
 
   onLoad: function() {
@@ -35,6 +40,91 @@ Page({
 
   formatDate: function(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  },
+
+  formatDeadlineLabel: function(d) {
+    if (!d) return '';
+    var date = new Date(String(d).replace(' ', 'T'));
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  },
+
+  formatEvent: function(e) {
+    var typeMeta = {
+      submission: { iconEmoji: '📄', pagePath: '/pages/submissions/submissions' },
+      review: { iconEmoji: '📝', pagePath: '/pages/reviews/reviews' },
+      conference: { iconEmoji: '🎤', pagePath: '/pages/conferences/conferences' },
+      task: { iconEmoji: '📋', pagePath: '/pages/calendar/task-editor/task-editor' }
+    };
+    var meta = typeMeta[e.type] || { iconEmoji: '📋', pagePath: '' };
+    var deadline = e.deadline || e.date;
+    var dIso = deadline ? String(deadline).replace(' ', 'T') : '';
+    var daysLeft = dIso ? Math.ceil((new Date(dIso) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
+
+    return Object.assign({}, e, {
+      iconEmoji: meta.iconEmoji,
+      pagePath: meta.pagePath,
+      deadlineLabel: this.formatDeadlineLabel(deadline),
+      countdownLabel: daysLeft <= 0 ? '已超期' : daysLeft + '天',
+      urgent: daysLeft <= 7
+    });
+  },
+
+  toggleFilterType: function(e) {
+    var type = e.currentTarget.dataset.type;
+    var filterTypes = this.data.filterTypes.slice();
+    var idx = filterTypes.indexOf(type);
+    if (idx === -1) {
+      filterTypes.push(type);
+    } else {
+      filterTypes.splice(idx, 1);
+    }
+    var states = {};
+    ['submission', 'review', 'conference', 'task'].forEach(function(t) {
+      states[t] = filterTypes.indexOf(t) !== -1;
+    });
+    this.setData({ filterTypes: filterTypes, filterTypeStates: states });
+    this.applyFilters();
+  },
+
+  setFilterCompleted: function(e) {
+    var status = e.currentTarget.dataset.status;
+    this.setData({ filterCompleted: status });
+    this.applyFilters();
+  },
+
+  applyFilters: function() {
+    var that = this;
+    var monthEvents = this.data.monthEvents;
+    var filterTypes = this.data.filterTypes;
+    var filterCompleted = this.data.filterCompleted;
+
+    var filteredEvents = monthEvents.filter(function(e) {
+      if (filterTypes.indexOf(e.type) === -1) return false;
+      if (e.type === 'task' && filterCompleted !== 'all') {
+        if (filterCompleted === 'done' && !e.completed) return false;
+        if (filterCompleted === 'undone' && e.completed) return false;
+      }
+      return true;
+    });
+
+    var eventDates = {};
+    var eventCounts = {};
+    filteredEvents.forEach(function(i) {
+      var d = that.formatDate(new Date(i.date));
+      eventCounts[d] = (eventCounts[d] || 0) + 1;
+      if (!eventDates[d]) eventDates[d] = [];
+      if (eventDates[d].indexOf(i.type) === -1) {
+        eventDates[d].push(i.type);
+      }
+    });
+
+    this.setData({ filteredEvents: filteredEvents, eventDates: eventDates, eventCounts: eventCounts });
+
+    var view = this.data.currentView;
+    if (view === 'list') this.buildListview();
+    else if (view === 'week') this.buildWeekView();
+    else this.buildCalendar();
+    this.loadSelectedEvents();
   },
 
   // 展开重复任务到指定月份
@@ -156,6 +246,7 @@ Page({
       });
 
       monthEvents.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+      monthEvents = monthEvents.map(function(e) { return that.formatEvent(e); });
       monthEvents.forEach(function(i) {
         var d = that.formatDate(new Date(i.date));
         eventCounts[d] = (eventCounts[d] || 0) + 1;
@@ -165,12 +256,8 @@ Page({
         }
       });
 
-      that.setData({ eventDates: eventDates, eventCounts: eventCounts, monthEvents: monthEvents });
-      var view = that.data.currentView;
-      if (view === 'list') that.buildListview();
-      else if (view === 'week') that.buildWeekView();
-      else that.buildCalendar();
-      that.loadSelectedEvents();
+      that.setData({ monthEvents: monthEvents });
+      that.applyFilters();
     }).catch(function(e) {
       console.error('[日历] 加载失败', e);
       var view = that.data.currentView;
@@ -216,7 +303,8 @@ Page({
 
     // 计算每天的事件总数
     var dateEventCount = {};
-    monthEvents.forEach(function(e) {
+    var filteredEvents = this.data.filteredEvents;
+    filteredEvents.forEach(function(e) {
       var d = that.formatDate(new Date(e.date));
       dateEventCount[d] = (dateEventCount[d] || 0) + 1;
     });
@@ -258,11 +346,11 @@ Page({
 
   buildListview: function() {
     var that = this;
-    var monthEvents = this.data.monthEvents;
+    var filteredEvents = this.data.filteredEvents;
 
     // 按日期分组
     var groups = {};
-    monthEvents.forEach(function(item) {
+    filteredEvents.forEach(function(item) {
       var d = that.formatDate(new Date(item.date));
       if (!groups[d]) groups[d] = [];
       groups[d].push(item);
@@ -298,7 +386,6 @@ Page({
     var id = e.currentTarget.dataset.id;
     var that = this;
 
-    // 找到对应任务
     var task = null;
     this.data.monthEvents.forEach(function(item) {
       if (item._id === id && item.type === 'task') {
@@ -309,7 +396,6 @@ Page({
 
     var newCompleted = !task.completed;
 
-    // 持久化到数据库
     wx.cloud.database().collection('tasks').doc(id).update({
       data: {
         completed: newCompleted,
@@ -317,31 +403,14 @@ Page({
         updateTime: new Date()
       }
     }).then(function() {
-      // 同步更新所有相关数据
       var monthEvents = that.data.monthEvents;
       monthEvents.forEach(function(item) {
         if (item._id === id && item.type === 'task') {
           item.completed = newCompleted;
         }
       });
-
-      var listGroups = that.data.listGroups;
-      listGroups.forEach(function(group) {
-        group.events.forEach(function(item) {
-          if (item._id === id && item.type === 'task') {
-            item.completed = newCompleted;
-          }
-        });
-      });
-
-      var selectedEvents = that.data.selectedEvents;
-      selectedEvents.forEach(function(item) {
-        if (item._id === id && item.type === 'task') {
-          item.completed = newCompleted;
-        }
-      });
-
-      that.setData({ monthEvents: monthEvents, listGroups: listGroups, selectedEvents: selectedEvents });
+      that.setData({ monthEvents: monthEvents });
+      that.applyFilters();
     }).catch(function() {
       wx.showToast({ title: '操作失败', icon: 'none' });
     });
@@ -351,13 +420,27 @@ Page({
     var that = this;
     var selectedDate = this.data.selectedDate;
     if (!selectedDate) { this.setData({ selectedEvents: [], selectedDateLabel: '' }); return; }
-    var monthEvents = this.data.monthEvents;
-    var selectedEvents = monthEvents.filter(function(e) {
+    var selectedEvents = this.data.filteredEvents.filter(function(e) {
       return that.formatDate(new Date(e.date)) === selectedDate;
-    }).map(function(e) {
-      return Object.assign({}, e, { dateLabel: that.formatDate(new Date(e.date)) });
     });
     this.setData({ selectedEvents: selectedEvents, selectedDateLabel: selectedDate });
+  },
+
+  goToItem: function(e) {
+    var pagePath = e.currentTarget.dataset.page;
+    var id = e.currentTarget.dataset.id;
+    var title = e.currentTarget.dataset.title || '';
+    var type = e.currentTarget.dataset.type;
+
+    if (type === 'task') {
+      wx.navigateTo({
+        url: '/pages/calendar/task-editor/task-editor?taskId=' + id
+      });
+    } else if (pagePath) {
+      var url = pagePath + '?targetId=' + id;
+      if (title) url += '&targetTitle=' + encodeURIComponent(title) + '&autoEdit=true';
+      wx.navigateTo({ url: url });
+    }
   },
 
   prevMonth: function() {

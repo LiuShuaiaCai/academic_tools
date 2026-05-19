@@ -23,3 +23,88 @@ button:focus { outline: 0; }
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
   padding: 24rpx;
 }
+
+/* ========== 公共事件列表项样式（复用于首页和日历） ========== */
+.upcoming-item {
+  background: linear-gradient(135deg, #fff 0%, #fafbfc 100%);
+  border-radius: 10rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  box-shadow: 0 1rpx 2rpx rgba(0,0,0,0.04);
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  border: 1rpx solid rgba(0,0,0,0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.upcoming-item:last-child { margin-bottom: 0; }
+
+/* 左侧彩色条 */
+.upcoming-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  border-radius: 10rpx 0 0 10rpx;
+}
+
+.upcoming-item.type-blue::before { background: #2563eb; }
+.upcoming-item.type-red::before { background: #EF4444; }
+.upcoming-item.type-green::before { background: #10B981; }
+.upcoming-item.type-purple::before { background: #8B5CF6; }
+
+.upcoming-icon {
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upcoming-title {
+  font-weight: 500;
+  font-size: 28rpx;
+  color: #111827;
+  margin-bottom: 8rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.type-label {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background: #F3F4F6;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.upcoming-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 24rpx;
+}
+
+.upcoming-meta .date {
+  color: #6B7280;
+}
+
+.upcoming-meta .countdown {
+  font-weight: 600;
+}
+
+.upcoming-meta .countdown.urgent { color: #EF4444; }
+.upcoming-meta .countdown.normal { color: #10B981; }
