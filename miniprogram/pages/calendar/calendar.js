@@ -48,6 +48,11 @@ Page({
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   },
 
+  parseDate: function(str) {
+    if (!str) return new Date(NaN);
+    return new Date(String(str).replace(' ', 'T'));
+  },
+
   formatEvent: function(e) {
     var typeMeta = {
       submission: { iconEmoji: '📄', pagePath: '/pages/submissions/submissions' },
@@ -110,7 +115,7 @@ Page({
     var eventDates = {};
     var eventCounts = {};
     filteredEvents.forEach(function(i) {
-      var d = that.formatDate(new Date(i.date));
+      var d = that.formatDate(that.parseDate(i.date));
       eventCounts[d] = (eventCounts[d] || 0) + 1;
       if (!eventDates[d]) eventDates[d] = [];
       if (eventDates[d].indexOf(i.type) === -1) {
@@ -133,8 +138,8 @@ Page({
     var repeatType = task.repeatType;
     if (!repeatType || repeatType === 'none') return [task];
 
-    var startDate = new Date(task.date);
-    var repeatEnd = task.repeatEndDate ? new Date(task.repeatEndDate) : null;
+    var startDate = this.parseDate(task.date);
+    var repeatEnd = task.repeatEndDate ? this.parseDate(task.repeatEndDate) : null;
     var monthStart = new Date(year, month - 1, 1);
     var monthEnd = new Date(year, month, 0);
 
@@ -203,14 +208,13 @@ Page({
 
     Promise.all([
       // 投稿
-      db.collection('submissions').where({ deleteTime: null, nextDeadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('submissions').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 审稿
-      db.collection('reviews').where({ deleteTime: null, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('reviews').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 会议
-      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('conferences').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 任务 - 按月份字符串筛选（包含已完成，在日历上展示所有事件）
       db.collection('tasks').where({
-        deleteTime: null,
         date: _.gte(startDateStr).and(_.lt(endDateStr))
       }).get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
@@ -219,14 +223,14 @@ Page({
       var eventCounts = {};
       var monthEvents = [];
 
-      // 投稿
-      subRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, journal: i.journal, type: 'submission', typeLabel: '投稿', date: i.nextDeadline, deadline: i.nextDeadline }); });
-      // 审稿
-      revRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline }); });
-      // 会议
-      confRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline }); });
-      // 任务（展开重复任务）
-      taskRes.data.forEach(function(i) {
+      // 投稿（过滤已删除）
+      subRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, journal: i.journal, type: 'submission', typeLabel: '投稿', date: i.deadline, deadline: i.deadline }); });
+      // 审稿（过滤已删除）
+      revRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline }); });
+      // 会议（过滤已删除）
+      confRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline }); });
+      // 任务（展开重复任务，过滤已删除）
+      taskRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) {
         var expanded = that.expandRepeatingTasks(i, currentYear, currentMonth);
         expanded.forEach(function(inst) {
           monthEvents.push({
@@ -245,10 +249,10 @@ Page({
         });
       });
 
-      monthEvents.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+      monthEvents.sort(function(a, b) { return that.parseDate(a.date) - that.parseDate(b.date); });
       monthEvents = monthEvents.map(function(e) { return that.formatEvent(e); });
       monthEvents.forEach(function(i) {
-        var d = that.formatDate(new Date(i.date));
+        var d = that.formatDate(that.parseDate(i.date));
         eventCounts[d] = (eventCounts[d] || 0) + 1;
         if (!eventDates[d]) eventDates[d] = [];
         if (eventDates[d].indexOf(i.type) === -1) {
@@ -305,7 +309,7 @@ Page({
     var dateEventCount = {};
     var filteredEvents = this.data.filteredEvents;
     filteredEvents.forEach(function(e) {
-      var d = that.formatDate(new Date(e.date));
+      var d = that.formatDate(that.parseDate(e.date));
       dateEventCount[d] = (dateEventCount[d] || 0) + 1;
     });
 
@@ -351,7 +355,7 @@ Page({
     // 按日期分组
     var groups = {};
     filteredEvents.forEach(function(item) {
-      var d = that.formatDate(new Date(item.date));
+      var d = that.formatDate(that.parseDate(item.date));
       if (!groups[d]) groups[d] = [];
       groups[d].push(item);
     });
@@ -371,11 +375,17 @@ Page({
       } else {
         label = dayNames[date.getDay()];
       }
+      // 同一日期内：未完成的排在上面
+      var events = groups[dateStr].sort(function(a, b) {
+        var aDone = a.completed ? 1 : 0;
+        var bDone = b.completed ? 1 : 0;
+        return aDone - bDone;
+      });
       return {
         dateStr: dateStr,
         dateLabel: label,
         dateSub: (date.getMonth() + 1) + '月' + date.getDate() + '日',
-        events: groups[dateStr]
+        events: events
       };
     });
 
@@ -421,7 +431,7 @@ Page({
     var selectedDate = this.data.selectedDate;
     if (!selectedDate) { this.setData({ selectedEvents: [], selectedDateLabel: '' }); return; }
     var selectedEvents = this.data.filteredEvents.filter(function(e) {
-      return that.formatDate(new Date(e.date)) === selectedDate;
+      return that.formatDate(that.parseDate(e.date)) === selectedDate;
     });
     this.setData({ selectedEvents: selectedEvents, selectedDateLabel: selectedDate });
   },

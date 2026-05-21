@@ -2,7 +2,7 @@
 // 自定义任务编辑器页面
 
 const app = getApp();
-var reminderCheck = require('../../utils/reminder-check');
+var reminderCheck = require('../../../utils/reminder-check');
 
 Page({
   data: {
