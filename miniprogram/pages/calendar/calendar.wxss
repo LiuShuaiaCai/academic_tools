@@ -448,34 +448,130 @@ page { background: #F6F6F6; }
   flex-direction: column;
 }
 
-/* 列表视图中的 upcoming-item 已完成状态 */
-.list-group-events .upcoming-item.completed .upcoming-title {
+/* ========== 统一事件卡片样式 ========== */
+.event-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.event-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8rpx;
+}
+
+.event-card.type-blue::before { background: #2563eb; }
+.event-card.type-red::before { background: #EF4444; }
+.event-card.type-green::before { background: #10B981; }
+.event-card.type-purple::before { background: #8B5CF6; }
+
+.event-card.completed {
+  opacity: 0.55;
+}
+
+.event-card.completed .event-title-text {
   text-decoration: line-through;
   color: #9CA3AF;
 }
 
-.list-group-events .upcoming-item.completed .upcoming-meta .date,
-.list-group-events .upcoming-item.completed .upcoming-meta .countdown {
+.event-card.completed .event-meta-row {
   color: #9CA3AF;
 }
 
-.list-checkbox {
+.event-icon {
+  font-size: 44rpx;
+  flex-shrink: 0;
+  margin-left: 8rpx;
+}
+
+.event-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.event-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 28rpx;
+  overflow: hidden;
+}
+
+.event-type-label {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background: #F3F4F6;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.event-title-text {
+  color: #111827;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 24rpx;
+}
+
+.event-date {
+  color: #6B7280;
+}
+
+.event-status {
+  font-weight: 600;
+}
+
+.event-status.urgent {
+  color: #EF4444;
+}
+
+.event-status.normal {
+  color: #6B7280;
+}
+
+.event-check {
+  width: 48rpx;
+  height: 48rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-check-circle {
   width: 40rpx;
   height: 40rpx;
   border: 2rpx solid #D1D5DB;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-left: auto;
+  box-sizing: border-box;
 }
 
-.checkbox-inner.checked {
-  width: 24rpx;
-  height: 24rpx;
+.event-check-circle.checked {
   background: #10B981;
-  border-radius: 50%;
+  border-color: #10B981;
 }
 
 .list-empty {
