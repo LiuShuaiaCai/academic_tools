@@ -20,8 +20,11 @@ Page({
     // 筛选
     filterTypes: ['submission', 'review', 'conference', 'task'],
     filterTypeStates: { submission: true, review: true, conference: true, task: true },
-    filterCompleted: 'all',
-    filteredEvents: []
+
+    filteredEvents: [],
+    pendingEvents: [],
+    completedEvents: [],
+    dayStats: { total: 0, completed: 0, pending: 0, completionRate: 0 }
   },
 
   onLoad: function() {
@@ -91,24 +94,13 @@ Page({
     this.applyFilters();
   },
 
-  setFilterCompleted: function(e) {
-    var status = e.currentTarget.dataset.status;
-    this.setData({ filterCompleted: status });
-    this.applyFilters();
-  },
-
   applyFilters: function() {
     var that = this;
     var monthEvents = this.data.monthEvents;
     var filterTypes = this.data.filterTypes;
-    var filterCompleted = this.data.filterCompleted;
 
     var filteredEvents = monthEvents.filter(function(e) {
       if (filterTypes.indexOf(e.type) === -1) return false;
-      if (e.type === 'task' && filterCompleted !== 'all') {
-        if (filterCompleted === 'done' && !e.completed) return false;
-        if (filterCompleted === 'undone' && e.completed) return false;
-      }
       return true;
     });
 
@@ -224,11 +216,11 @@ Page({
       var monthEvents = [];
 
       // 投稿（过滤已删除）
-      subRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, journal: i.journal, type: 'submission', typeLabel: '投稿', date: i.deadline, deadline: i.deadline }); });
+      subRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, title: i.title, journal: i.journal, type: 'submission', typeLabel: '投稿', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
       // 审稿（过滤已删除）
-      revRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline }); });
+      revRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
       // 会议（过滤已删除）
-      confRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline }); });
+      confRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
       // 任务（展开重复任务，过滤已删除）
       taskRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) {
         var expanded = that.expandRepeatingTasks(i, currentYear, currentMonth);
@@ -394,19 +386,29 @@ Page({
 
   toggleTaskComplete: function(e) {
     var id = e.currentTarget.dataset.id;
+    var type = e.currentTarget.dataset.type;
     var that = this;
 
-    var task = null;
-    this.data.monthEvents.forEach(function(item) {
-      if (item._id === id && item.type === 'task') {
-        task = item;
+    var collectionMap = {
+      task: 'tasks',
+      submission: 'submissions',
+      review: 'reviews',
+      conference: 'conferences'
+    };
+    var collectionName = collectionMap[type];
+    if (!collectionName) return;
+
+    var item = null;
+    this.data.monthEvents.forEach(function(evt) {
+      if (evt._id === id && evt.type === type) {
+        item = evt;
       }
     });
-    if (!task) return;
+    if (!item) return;
 
-    var newCompleted = !task.completed;
+    var newCompleted = !item.completed;
 
-    wx.cloud.database().collection('tasks').doc(id).update({
+    wx.cloud.database().collection(collectionName).doc(id).update({
       data: {
         completed: newCompleted,
         completedTime: newCompleted ? new Date() : null,
@@ -414,9 +416,9 @@ Page({
       }
     }).then(function() {
       var monthEvents = that.data.monthEvents;
-      monthEvents.forEach(function(item) {
-        if (item._id === id && item.type === 'task') {
-          item.completed = newCompleted;
+      monthEvents.forEach(function(evt) {
+        if (evt._id === id && evt.type === type) {
+          evt.completed = newCompleted;
         }
       });
       that.setData({ monthEvents: monthEvents });
@@ -429,11 +431,142 @@ Page({
   loadSelectedEvents: function() {
     var that = this;
     var selectedDate = this.data.selectedDate;
-    if (!selectedDate) { this.setData({ selectedEvents: [], selectedDateLabel: '' }); return; }
+    if (!selectedDate) { 
+      this.setData({ 
+        selectedEvents: [], 
+        selectedDateLabel: '',
+        pendingEvents: [],
+        completedEvents: [],
+        dayStats: { total: 0, completed: 0, pending: 0, completionRate: 0 }
+      }); 
+      return; 
+    }
     var selectedEvents = this.data.filteredEvents.filter(function(e) {
       return that.formatDate(that.parseDate(e.date)) === selectedDate;
     });
-    this.setData({ selectedEvents: selectedEvents, selectedDateLabel: selectedDate });
+    
+    var pendingEvents = selectedEvents.filter(function(e) { return !e.completed; });
+    var completedEvents = selectedEvents.filter(function(e) { return e.completed; });
+    var total = selectedEvents.length;
+    var completed = completedEvents.length;
+    var pending = total - completed;
+    var completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    this.setData({ 
+      selectedEvents: selectedEvents, 
+      selectedDateLabel: selectedDate,
+      pendingEvents: pendingEvents,
+      completedEvents: completedEvents,
+      dayStats: { total: total, completed: completed, pending: pending, completionRate: completionRate }
+    });
+  },
+
+  // 删除任务（软删除）
+  deleteTask: function(e) {
+    var taskId = e.currentTarget.dataset.id;
+    var that = this;
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要删除这个任务吗？',
+      success: function(res) {
+        if (res.confirm) {
+          wx.cloud.database().collection('tasks').doc(taskId).update({
+            data: {
+              deleteTime: new Date(),
+              updateTime: new Date()
+            }
+          }).then(function() {
+            wx.showToast({ title: '已删除', icon: 'success' });
+            that.loadMonthEvents();
+          }).catch(function() {
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          });
+        }
+      }
+    });
+  },
+
+  // 全部标记完成（仅 task 类型）
+  markAllComplete: function() {
+    var pendingTaskIds = this.data.pendingEvents
+      .filter(function(e) { return e.type === 'task'; })
+      .map(function(e) { return e._id; });
+    if (pendingTaskIds.length === 0) return;
+
+    var db = wx.cloud.database();
+    var BATCH_SIZE = 20;
+
+    var runBatch = function(ids) {
+      var batch = db.batch();
+      ids.forEach(function(id) {
+        batch.update(db.collection('tasks').doc(id), {
+          data: {
+            completed: true,
+            completedTime: new Date(),
+            updateTime: new Date()
+          }
+        });
+      });
+      return batch.commit();
+    };
+
+    var batches = [];
+    for (var i = 0; i < pendingTaskIds.length; i += BATCH_SIZE) {
+      batches.push(runBatch(pendingTaskIds.slice(i, i + BATCH_SIZE)));
+    }
+
+    var that = this;
+    Promise.all(batches).then(function() {
+      that.loadMonthEvents();
+      wx.showToast({ title: '已全部完成', icon: 'success' });
+    }).catch(function() {
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    });
+  },
+
+  // 清除已完成任务（仅 task 类型，软删除）
+  clearCompleted: function() {
+    var completedTaskIds = this.data.completedEvents
+      .filter(function(e) { return e.type === 'task'; })
+      .map(function(e) { return e._id; });
+    if (completedTaskIds.length === 0) return;
+
+    var that = this;
+    wx.showModal({
+      title: '确认清除',
+      content: '确定要清除 ' + completedTaskIds.length + ' 个已完成任务吗？',
+      success: function(res) {
+        if (res.confirm) {
+          var db = wx.cloud.database();
+          var BATCH_SIZE = 20;
+
+          var runBatch = function(ids) {
+            var batch = db.batch();
+            ids.forEach(function(id) {
+              batch.update(db.collection('tasks').doc(id), {
+                data: {
+                  deleteTime: new Date(),
+                  updateTime: new Date()
+                }
+              });
+            });
+            return batch.commit();
+          };
+
+          var batches = [];
+          for (var i = 0; i < completedTaskIds.length; i += BATCH_SIZE) {
+            batches.push(runBatch(completedTaskIds.slice(i, i + BATCH_SIZE)));
+          }
+
+          Promise.all(batches).then(function() {
+            that.loadMonthEvents();
+            wx.showToast({ title: '已清除', icon: 'success' });
+          }).catch(function() {
+            wx.showToast({ title: '清除失败', icon: 'none' });
+          });
+        }
+      }
+    });
   },
 
   goToItem: function(e) {
