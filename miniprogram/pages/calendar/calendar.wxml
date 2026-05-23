@@ -149,6 +149,7 @@
       <view class="section-title">📅 {{selectedDateLabel}} 的事件</view>
       <view class="section-actions">
         <view class="action-btn primary" bindtap="goToDailyTasks">每日任务</view>
+        <view class="action-btn primary" bindtap="showAddTaskModal">添加任务</view>
       </view>
     </view>
 
