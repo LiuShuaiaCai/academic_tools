@@ -299,11 +299,28 @@ page { background: #F6F6F6; }
 
 /* ========== 顶部标题 ========== */
 .cal-header {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background:
+    radial-gradient(ellipse 80% 60% at 90% 10%, rgba(96, 165, 250, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 10% 90%, rgba(30, 58, 138, 0.45) 0%, transparent 55%),
+    linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
   padding: 100rpx 32rpx 40rpx;
   display: flex;
   align-items: center;
   gap: 16rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.cal-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1rpx, transparent 1rpx);
+  background-size: 48rpx 48rpx;
+  pointer-events: none;
 }
 
 .cal-title {
@@ -577,7 +594,8 @@ page { background: #F6F6F6; }
 /* ========== 选中日期事件分区列表（daily-tasks 风格） ========== */
 
 /* 统计卡片 */
-.day-stats-card {
+.day-stats-card,
+.list-stats-card {
   background: #fff;
   border-radius: 16rpx;
   padding: 28rpx;
@@ -588,28 +606,33 @@ page { background: #F6F6F6; }
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
 }
 
-.day-stats-item {
+.day-stats-item,
+.list-stats-item {
   text-align: center;
   flex: 1;
 }
 
-.day-stats-num {
+.day-stats-num,
+.list-stats-num {
   font-size: 44rpx;
   font-weight: 700;
   color: #10B981;
 }
 
-.day-stats-num.pending {
+.day-stats-num.pending,
+.list-stats-num.pending {
   color: #F59E0B;
 }
 
-.day-stats-label {
+.day-stats-label,
+.list-stats-label {
   font-size: 24rpx;
   color: #9CA3AF;
   margin-top: 4rpx;
 }
 
-.day-stats-divider {
+.day-stats-divider,
+.list-stats-divider {
   width: 1rpx;
   height: 60rpx;
   background: #E5E7EB;

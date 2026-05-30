@@ -79,6 +79,24 @@
 
   <!-- 列表视图 -->
   <view class="list-view" wx:if="{{currentView === 'list'}}">
+    <!-- 当月统计 -->
+    <view class="list-stats-card" wx:if="{{listMonthStats.total > 0}}">
+      <view class="list-stats-item">
+        <view class="list-stats-num">{{listMonthStats.completed}}</view>
+        <view class="list-stats-label">已完成</view>
+      </view>
+      <view class="list-stats-divider"></view>
+      <view class="list-stats-item">
+        <view class="list-stats-num pending">{{listMonthStats.pending}}</view>
+        <view class="list-stats-label">待完成</view>
+      </view>
+      <view class="list-stats-divider"></view>
+      <view class="list-stats-item">
+        <view class="list-stats-num">{{listMonthStats.completionRate}}%</view>
+        <view class="list-stats-label">完成率</view>
+      </view>
+    </view>
+
     <block wx:for="{{listGroups}}" wx:key="dateStr" wx:for-item="group">
       <view class="list-group">
         <view class="list-group-header">

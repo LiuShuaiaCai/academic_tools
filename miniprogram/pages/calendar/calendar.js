@@ -21,6 +21,7 @@ Page({
     pendingEvents: [],
     completedEvents: [],
     dayStats: { total: 0, completed: 0, pending: 0, completionRate: 0 },
+    listMonthStats: { total: 0, completed: 0, pending: 0, completionRate: 0 },
 
     // 弹窗添加/编辑任务
     showTaskModal: false,
@@ -184,11 +185,13 @@ Page({
         monthEvents.push({
           _id: i._id,
           title: i.title,
+          description: i.description,
           type: 'task',
           typeLabel: '任务',
           date: i.date,
           time: i.time,
           reminderEnabled: i.reminderEnabled,
+          reminderMinutes: i.reminderMinutes,
           completed: i.completed
         });
       });
@@ -311,13 +314,13 @@ Page({
 
     var listGroups = sortedDates.map(function(dateStr) {
       var date = new Date(dateStr);
-      var label = '';
+      var weekLabel = '';
       if (dateStr === today) {
-        label = '今天';
+        weekLabel = '今天';
       } else if (dateStr === tomorrow) {
-        label = '明天';
+        weekLabel = '明天';
       } else {
-        label = dayNames[date.getDay()];
+        weekLabel = dayNames[date.getDay()];
       }
       // 同一日期内：未完成的排在上面
       var events = groups[dateStr].sort(function(a, b) {
@@ -325,15 +328,25 @@ Page({
         var bDone = b.completed ? 1 : 0;
         return aDone - bDone;
       });
+      var dateLabel = (date.getMonth() + 1) + '月' + date.getDate() + '日';
       return {
         dateStr: dateStr,
-        dateLabel: label,
-        dateSub: (date.getMonth() + 1) + '月' + date.getDate() + '日',
+        dateLabel: dateLabel,
+        dateSub: weekLabel,
         events: events
       };
     });
 
-    this.setData({ listGroups: listGroups });
+    // 当月统计
+    var total = filteredEvents.length;
+    var completed = filteredEvents.filter(function(e) { return e.completed; }).length;
+    var pending = total - completed;
+    var completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    this.setData({
+      listGroups: listGroups,
+      listMonthStats: { total: total, completed: completed, pending: pending, completionRate: completionRate }
+    });
   },
 
   toggleTaskComplete: function(e) {
