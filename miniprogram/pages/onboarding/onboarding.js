@@ -15,7 +15,6 @@ var DEFAULT_TOOLS = [
 // 按原型定义的角色工具配置
 var ROLE_CONFIG = {
   researcher: ['submission', 'conference', 'archive'],
-  reviewer: ['review', 'archive'],
   editor: ['submission', 'review', 'conference', 'archive']
 };
 
@@ -25,8 +24,7 @@ Page({
     selectedRole: '',
     roleOptions: [
       { id: 'researcher', name: '科研人员', desc: '以投稿论文、参加学术会议为主', icon: '🎓', color: 'blue' },
-      { id: 'reviewer', name: '审稿人', desc: '以审稿任务、学术评议为主', icon: '👓', color: 'green' },
-      { id: 'editor', name: '学术编辑', desc: '统筹稿件、指派审稿、管理会议', icon: '💼', color: 'orange' }
+      { id: 'editor', name: '学术编辑', desc: '统筹稿件、管理会议', icon: '💼', color: 'orange' }
     ],
     enabledTools: [],
     disabledTools: []

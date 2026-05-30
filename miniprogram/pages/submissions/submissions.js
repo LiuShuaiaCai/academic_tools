@@ -550,5 +550,30 @@ Page({
     this.setData({ showForm:true, isEdit:true, editId:id });
   },
 
+  /* ======== 完成/取消完成 ======== */
+  toggleComplete:function(e){
+    var that = this;
+    var id = e.currentTarget.dataset.id;
+    var currentlyCompleted = e.currentTarget.dataset.completed;
+    var newCompleted = !currentlyCompleted;
+    var db = wx.cloud.database();
+
+    wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask:true });
+    db.collection('submissions').doc(id).update({
+      data:{ completed: newCompleted }
+    }).then(function(){
+      wx.hideLoading();
+      wx.showToast({ title: newCompleted ? '已完成' : '已取消', icon:'success' });
+      // 重新加载列表，让 formatItem 正确计算过期状态
+      that.loadList();
+      // 刷新统计
+      that.loadStats();
+    }).catch(function(e){
+      wx.hideLoading();
+      console.error('[投稿] 标记完成失败', e);
+      wx.showToast({ title:'操作失败', icon:'none' });
+    });
+  },
+
   doNothing:function(){}
 });

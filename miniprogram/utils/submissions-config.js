@@ -4,14 +4,14 @@
  */
 
 var ST_DEF = {
-  preparing:   { label:'准备中', color:'#f59e0b', bg:'#fef3c7', icon:'✏️' },
-  submitted:   { label:'已投稿', color:'#3b82f6', bg:'#dbeafe', icon:'📤' },
-  under_review:{ label:'审稿中', color:'#8b5cf6', bg:'#ede9fe', icon:'🔍' },
-  revision:    { label:'修回中', color:'#f97316', bg:'#ffedd5', icon:'✏️' },
-  resubmitted: { label:'再投中', color:'#06b6d4', bg:'#cffafe', icon:'🔄' },
-  accepted:    { label:'已接收', color:'#10b981', bg:'#d1fae5', icon:'✅' },
-  rejected:    { label:'被拒',   color:'#ef4444', bg:'#fee2e2', icon:'❌' },
-  withdrawn:   { label:'已撤稿', color:'#6b7280', bg:'#f3f4f6', icon:'↩️' }
+  preparing:    { label:'准备中',  color:'#f59e0b', bg:'#fef3c7', icon:'✏️' },
+  submitted:    { label:'已投稿',  color:'#3b82f6', bg:'#dbeafe', icon:'📤' },
+  revision:     { label:'返修中',  color:'#f97316', bg:'#ffedd5', icon:'🔧' },
+  accepted:     { label:'已接收',  color:'#10b981', bg:'#d1fae5', icon:'✅' },
+  proofreading: { label:'校对中',  color:'#8b5cf6', bg:'#ede9fe', icon:'🔍' },
+  rejected:     { label:'被拒稿',  color:'#ef4444', bg:'#fee2e2', icon:'❌' },
+  withdrawn:    { label:'已撤稿',  color:'#6b7280', bg:'#f3f4f6', icon:'↩️' },
+  published:    { label:'已发布',  color:'#059669', bg:'#d1fae5', icon:'📢' }
 };
 
 var PRIORITY_LABEL = { low:'低', normal:'普通', high:'高', urgent:'紧急' };
@@ -42,15 +42,14 @@ var TYPE_OPTIONS = [
 ];
 
 var TL_EVENT_OPTIONS = [
-  { value:'submitted',   label:'投稿', color:'#3b82f6' },
-  { value:'under_review',label:'送审', color:'#8b5cf6' },
-  { value:'revision',    label:'修回通知', color:'#f97316' },
-  { value:'resubmitted', label:'再投稿', color:'#06b6d4' },
-  { value:'accepted',    label:'接收', color:'#10b981' },
-  { value:'rejected',    label:'拒稿', color:'#ef4444' },
-  { value:'withdrawn',   label:'撤稿', color:'#6b7280' },
-  { value:'published',   label:'发表', color:'#10b981' },
-  { value:'other',       label:'其他', color:'#6b7280' }
+  { value:'submitted',    label:'投稿',    color:'#3b82f6' },
+  { value:'revision',     label:'返修通知', color:'#f97316' },
+  { value:'accepted',     label:'接收',    color:'#10b981' },
+  { value:'proofreading', label:'校对',    color:'#8b5cf6' },
+  { value:'rejected',     label:'拒稿',    color:'#ef4444' },
+  { value:'withdrawn',    label:'撤稿',    color:'#6b7280' },
+  { value:'published',    label:'发表',    color:'#059669' },
+  { value:'other',        label:'其他',    color:'#6b7280' }
 ];
 
 function getStatusOptions() {

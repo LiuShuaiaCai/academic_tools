@@ -86,12 +86,20 @@ page { background: #F6F6F6; }
 .action-icon-text { font-size: 24rpx; }
 .action-count { font-size: 20rpx; color: #6B7280; }
 .card-info-row { display: flex; gap: 16rpx; flex-wrap: wrap; margin-bottom: 8rpx; font-size: 22rpx; color: #9CA3AF; }
-.card-overdue { padding: 8rpx 0; font-size: 22rpx; margin-bottom: 12rpx; display: flex; align-items: center; gap: 8rpx; justify-content: flex-start; }
+.card-overdue-row { margin-bottom: 12rpx; }
+.card-overdue { padding: 8rpx 0; font-size: 22rpx; display: flex; align-items: center; gap: 16rpx; }
 .card-overdue.overdue { color: #DC2626; font-weight: 600; }
 .card-overdue.urgent { color: #D97706; font-weight: 500; }
 .card-overdue.urgent-critical { color: #EF4444; font-weight: 700; }
 .card-overdue.normal { color: #9CA3AF; }
 .card-overdue.completed { color: #6B7280; font-weight: 500; }
+
+/* 完成开关 */
+.card-switch { display: inline-flex; align-items: center; }
+.card-switch-track { width: 72rpx; height: 36rpx; border-radius: 18rpx; background: #D1D5DB; position: relative; transition: background 0.25s ease; }
+.card-switch-track.on { background: #10B981; }
+.card-switch-knob { width: 28rpx; height: 28rpx; border-radius: 50%; background: #fff; position: absolute; top: 4rpx; left: 4rpx; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: transform 0.25s ease; }
+.card-switch-track.on .card-switch-knob { transform: translateX(36rpx); }
 .card-link { font-size: 22rpx; color: #2563eb; margin-bottom: 12rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-text { font-size: 22rpx; }
 .card-tags-row { display: flex; flex-wrap: wrap; gap: 8rpx; margin-bottom: 12rpx; }

@@ -4,7 +4,7 @@ var creditsUtil = require('../../utils/credits.js');
 Page({
   data: {
     userRole: '',
-    roleLabels: { researcher: '科研人员', reviewer: '审稿人', editor: '学术编辑' },
+    roleLabels: { researcher: '科研人员', editor: '学术编辑' },
     stats: { submissions: 0, reviews: 0, conferences: 0, archives: 0 },
     credits: 0,
     signedToday: false,
@@ -304,7 +304,7 @@ Page({
   showAbout: function () {
     wx.showModal({
       title: '关于学术工具',
-      content: '版本：v1.0.0\n\n学术工具是一款面向科研人员、审稿人、学术编辑的工具集，帮助您高效管理学术工作流。',
+      content: '版本：v1.0.0\n\n学术工具是一款面向科研人员、学术编辑的工具集，帮助您高效管理学术工作流。',
       showCancel: false
     });
   },

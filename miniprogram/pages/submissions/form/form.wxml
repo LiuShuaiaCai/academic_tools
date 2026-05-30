@@ -91,53 +91,7 @@
         <input class="form-input" placeholder="其他合作者姓名，用逗号分隔" bindinput="onFormInput" data-field="coauthors" value="{{form.coauthors}}"/>
       </view>
 
-      <!-- 11. 时间线 -->
-      <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📅</text> 时间线<text class="form-label-hint">（任务完成：最后一次处理时间大于到期时间）</text></view>
-
-        <view class="tl-add-row">
-          <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
-            <view class="tl-picker-box">
-              <view class="cal-icon cal-icon-sm"></view>
-              <text class="tl-picker-text {{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
-              <text class="tl-picker-text tl-arrow">▼</text>
-            </view>
-          </picker>
-          <picker class="tl-event-picker" range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
-            <view class="tl-picker-box">
-              <text class="tl-picker-text {{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
-              <text class="tl-picker-text tl-arrow">▼</text>
-            </view>
-          </picker>
-        </view>
-        <view class="tl-remark-row">
-          <input class="tl-remark-input" placeholder="备注（选填）" value="{{form.tlNewRemark}}" data-field="tlNewRemark" bindinput="onFormInput"/>
-          <view class="tl-add-btn" bindtap="addTimelineItem">
-            <text class="tl-add-text">添加</text>
-          </view>
-        </view>
-
-        <!-- 已有时间线事件列表 -->
-        <view class="tl-list" wx:if="{{form.timelineList.length > 0}}">
-          <view class="tl-item-card" wx:for="{{form.timelineList}}" wx:key="index">
-            <view class="tl-card-left">
-              <view class="tl-card-dot" style="background:{{item.dotColor}}"></view>
-            </view>
-            <view class="tl-card-content">
-              <view class="tl-card-top">
-                <text class="tl-card-date">{{item.date}}</text>
-                <text class="tl-card-event" style="color:{{item.dotColor}}">{{item.event}}</text>
-              </view>
-              <text class="tl-card-remark" wx:if="{{item.remark}}">{{item.remark}}</text>
-            </view>
-            <view class="tl-card-del" data-i="{{index}}" catchtap="removeTimelineItem">
-              <text>×</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 12. DOI -->
+      <!-- 11. DOI -->
       <view class="form-group">
         <view class="form-label">DOI</view>
         <input class="form-input" placeholder="10.xxxx/xxxx" bindinput="onFormInput" data-field="doi" value="{{form.doi}}"/>
@@ -200,6 +154,52 @@
       <view class="form-group">
         <view class="form-label">备注</view>
         <textarea class="form-textarea" placeholder="其他备注信息..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
+      </view>
+
+      <!-- 20. 时间线 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">📅</text> 时间线<text class="form-label-hint">（任务完成：最后一次处理时间大于到期时间）</text></view>
+
+        <view class="tl-add-row">
+          <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
+            <view class="tl-picker-box">
+              <view class="cal-icon cal-icon-sm"></view>
+              <text class="tl-picker-text {{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
+              <text class="tl-picker-text tl-arrow">▼</text>
+            </view>
+          </picker>
+          <picker class="tl-event-picker" range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
+            <view class="tl-picker-box">
+              <text class="tl-picker-text {{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
+              <text class="tl-picker-text tl-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+        <view class="tl-remark-row">
+          <input class="tl-remark-input" placeholder="备注（选填）" value="{{form.tlNewRemark}}" data-field="tlNewRemark" bindinput="onFormInput"/>
+          <view class="tl-add-btn" bindtap="addTimelineItem">
+            <text class="tl-add-text">添加</text>
+          </view>
+        </view>
+
+        <!-- 已有时间线事件列表 -->
+        <view class="tl-list" wx:if="{{form.timelineList.length > 0}}">
+          <view class="tl-item-card" wx:for="{{form.timelineList}}" wx:key="index">
+            <view class="tl-card-left">
+              <view class="tl-card-dot" style="background:{{item.dotColor}}"></view>
+            </view>
+            <view class="tl-card-content">
+              <view class="tl-card-top">
+                <text class="tl-card-date">{{item.date}}</text>
+                <text class="tl-card-event" style="color:{{item.dotColor}}">{{item.event}}</text>
+              </view>
+              <text class="tl-card-remark" wx:if="{{item.remark}}">{{item.remark}}</text>
+            </view>
+            <view class="tl-card-del" data-i="{{index}}" catchtap="removeTimelineItem">
+              <text>×</text>
+            </view>
+          </view>
+        </view>
       </view>
 
     </scroll-view>

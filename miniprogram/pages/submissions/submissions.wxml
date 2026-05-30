@@ -132,9 +132,27 @@
           <text class="card-role" wx:if="{{item.roleLabel}}">{{item.roleLabel}}</text>
         </view>
 
-        <!-- 截止日期提示 -->
-        <view class="card-overdue {{item.overdueClass}}" wx:if="{{item.overdueLabel}}">
-          <text user-select="true">{{item.overdueLabel}}</text>
+        <!-- 截止日期提示 + 完成开关 -->
+        <view class="card-overdue-row" wx:if="{{item.overdueLabel}}">
+          <view class="card-overdue {{item.overdueClass}}">
+            <text user-select="true">{{item.overdueLabel}}</text>
+            <view class="card-switch" catchtap="toggleComplete" data-id="{{item._id}}" data-completed="{{item.completed}}">
+              <view class="card-switch-track {{item.completed ? 'on' : ''}}">
+                <view class="card-switch-knob"></view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <!-- 没有截止日期但有完成状态时单独显示开关 -->
+        <view class="card-overdue-row" wx:if="{{!item.overdueLabel && item.completed}}">
+          <view class="card-overdue completed">
+            <text user-select="true">已完成</text>
+            <view class="card-switch" catchtap="toggleComplete" data-id="{{item._id}}" data-completed="{{item.completed}}">
+              <view class="card-switch-track on">
+                <view class="card-switch-knob"></view>
+              </view>
+            </view>
+          </view>
         </view>
 
         <!-- 标签 -->
