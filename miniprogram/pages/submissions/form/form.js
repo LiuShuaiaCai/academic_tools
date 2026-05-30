@@ -32,7 +32,8 @@ Component({
     typeOptions: config.TYPE_OPTIONS,
     tlEventOptions: config.TL_EVENT_OPTIONS,
     relatedWorkOptions:[],
-    showQuotaTip: false
+    showQuotaTip: false,
+    sectionOpen: { basic:true, author:false, track:false, tag:false, note:false }
   },
 
   lifetimes: {
@@ -363,6 +364,13 @@ Component({
     onQuotaTipConfirm: function() {
       this.setData({ showQuotaTip: false });
       wx.navigateTo({ url: '/pages/settings/settings' });
+    },
+
+    toggleSection: function(e) {
+      var key = e.currentTarget.dataset.key;
+      var open = this.data.sectionOpen;
+      open[key] = !open[key];
+      this.setData({ sectionOpen: open });
     },
 
     doNothing: function() {}
