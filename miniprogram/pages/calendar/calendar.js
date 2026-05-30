@@ -17,14 +17,30 @@ Page({
       conference: '#10B981',
       task: '#8B5CF6'
     },
-    // 筛选
-    filterTypes: ['submission', 'review', 'conference', 'task'],
-    filterTypeStates: { submission: true, review: true, conference: true, task: true },
-
     filteredEvents: [],
     pendingEvents: [],
     completedEvents: [],
-    dayStats: { total: 0, completed: 0, pending: 0, completionRate: 0 }
+    dayStats: { total: 0, completed: 0, pending: 0, completionRate: 0 },
+
+    // 弹窗添加/编辑任务
+    showTaskModal: false,
+    modalMode: 'add',
+    modalEditId: '',
+    modalTitle: '',
+    modalDesc: '',
+    modalDate: '',
+    modalTime: '09:00',
+    modalReminder: null,
+    academicTemplates: [
+      { icon: '📚', title: '文献阅读', desc: '阅读论文/书籍' },
+      { icon: '✍️', title: '论文写作', desc: '撰写或修改论文' },
+      { icon: '📊', title: '数据分析', desc: '处理实验数据' },
+      { icon: '🔬', title: '实验记录', desc: '记录实验过程' },
+      { icon: '📧', title: '邮件回复', desc: '回复学术邮件' },
+      { icon: '📝', title: '会议笔记', desc: '整理会议内容' },
+      { icon: '🎓', title: '组会汇报', desc: '准备组会汇报' },
+      { icon: '📄', title: '论文投稿', desc: '提交论文' }
+    ]
   },
 
   onLoad: function() {
@@ -68,41 +84,23 @@ Page({
     var dIso = deadline ? String(deadline).replace(' ', 'T') : '';
     var daysLeft = dIso ? Math.ceil((new Date(dIso) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
 
+    var label = this.formatDeadlineLabel(deadline);
+    if (e.type === 'task' && e.time) {
+      label += ' ' + e.time;
+    }
     return Object.assign({}, e, {
       iconEmoji: meta.iconEmoji,
       pagePath: meta.pagePath,
-      deadlineLabel: this.formatDeadlineLabel(deadline),
-      countdownLabel: daysLeft <= 0 ? '已超期' : daysLeft + '天',
-      urgent: daysLeft <= 7
+      deadlineLabel: label,
+      countdownLabel: e.completed ? '已完成' : (daysLeft <= 0 ? '已超期' : daysLeft + '天'),
+      urgent: e.completed ? false : (daysLeft <= 7)
     });
-  },
-
-  toggleFilterType: function(e) {
-    var type = e.currentTarget.dataset.type;
-    var filterTypes = this.data.filterTypes.slice();
-    var idx = filterTypes.indexOf(type);
-    if (idx === -1) {
-      filterTypes.push(type);
-    } else {
-      filterTypes.splice(idx, 1);
-    }
-    var states = {};
-    ['submission', 'review', 'conference', 'task'].forEach(function(t) {
-      states[t] = filterTypes.indexOf(t) !== -1;
-    });
-    this.setData({ filterTypes: filterTypes, filterTypeStates: states });
-    this.applyFilters();
   },
 
   applyFilters: function() {
     var that = this;
     var monthEvents = this.data.monthEvents;
-    var filterTypes = this.data.filterTypes;
-
-    var filteredEvents = monthEvents.filter(function(e) {
-      if (filterTypes.indexOf(e.type) === -1) return false;
-      return true;
-    });
+    var filteredEvents = monthEvents;
 
     var eventDates = {};
     var eventCounts = {};
@@ -122,46 +120,6 @@ Page({
     else if (view === 'week') this.buildWeekView();
     else this.buildCalendar();
     this.loadSelectedEvents();
-  },
-
-  // 展开重复任务到指定月份
-  expandRepeatingTasks: function(task, year, month) {
-    var results = [];
-    var repeatType = task.repeatType;
-    if (!repeatType || repeatType === 'none') return [task];
-
-    var startDate = this.parseDate(task.date);
-    var repeatEnd = task.repeatEndDate ? this.parseDate(task.repeatEndDate) : null;
-    var monthStart = new Date(year, month - 1, 1);
-    var monthEnd = new Date(year, month, 0);
-
-    // 如果重复已结束，不展开
-    if (repeatEnd && repeatEnd < monthStart) return [];
-
-    var effectiveStart = startDate > monthStart ? startDate : monthStart;
-    var effectiveEnd = repeatEnd && repeatEnd < monthEnd ? repeatEnd : monthEnd;
-
-    var cursor = new Date(effectiveStart);
-    var origDay = startDate.getDate();
-
-    while (cursor <= effectiveEnd) {
-      var match = false;
-      if (repeatType === 'daily') {
-        match = true;
-      } else if (repeatType === 'weekly') {
-        match = cursor.getDay() === startDate.getDay();
-      } else if (repeatType === 'monthly') {
-        match = cursor.getDate() === origDay;
-      }
-
-      if (match) {
-        var dateStr = this.formatDate(cursor);
-        results.push(Object.assign({}, task, { date: dateStr, _isRepeatInstance: true }));
-      }
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    return results;
   },
 
   switchView: function(e) {
@@ -221,23 +179,17 @@ Page({
       revRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
       // 会议（过滤已删除）
       confRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
-      // 任务（展开重复任务，过滤已删除）
+      // 任务（过滤已删除）
       taskRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) {
-        var expanded = that.expandRepeatingTasks(i, currentYear, currentMonth);
-        expanded.forEach(function(inst) {
-          monthEvents.push({
-            _id: inst._id,
-            title: inst.title,
-            type: 'task',
-            typeLabel: '任务',
-            date: inst.date,
-            time: inst.time,
-            priority: inst.priority,
-            category: inst.category,
-            reminderEnabled: inst.reminderEnabled,
-            completed: inst.completed,
-            _isRepeatInstance: inst._isRepeatInstance || false
-          });
+        monthEvents.push({
+          _id: i._id,
+          title: i.title,
+          type: 'task',
+          typeLabel: '任务',
+          date: i.date,
+          time: i.time,
+          reminderEnabled: i.reminderEnabled,
+          completed: i.completed
         });
       });
 
@@ -419,6 +371,11 @@ Page({
       monthEvents.forEach(function(evt) {
         if (evt._id === id && evt.type === type) {
           evt.completed = newCompleted;
+          var deadline = evt.deadline || evt.date;
+          var dIso = deadline ? String(deadline).replace(' ', 'T') : '';
+          var daysLeft = dIso ? Math.ceil((new Date(dIso) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
+          evt.countdownLabel = newCompleted ? '已完成' : (daysLeft <= 0 ? '已超期' : daysLeft + '天');
+          evt.urgent = newCompleted ? false : (daysLeft <= 7);
         }
       });
       that.setData({ monthEvents: monthEvents });
@@ -486,89 +443,6 @@ Page({
     });
   },
 
-  // 全部标记完成（仅 task 类型）
-  markAllComplete: function() {
-    var pendingTaskIds = this.data.pendingEvents
-      .filter(function(e) { return e.type === 'task'; })
-      .map(function(e) { return e._id; });
-    if (pendingTaskIds.length === 0) return;
-
-    var db = wx.cloud.database();
-    var BATCH_SIZE = 20;
-
-    var runBatch = function(ids) {
-      var batch = db.batch();
-      ids.forEach(function(id) {
-        batch.update(db.collection('tasks').doc(id), {
-          data: {
-            completed: true,
-            completedTime: new Date(),
-            updateTime: new Date()
-          }
-        });
-      });
-      return batch.commit();
-    };
-
-    var batches = [];
-    for (var i = 0; i < pendingTaskIds.length; i += BATCH_SIZE) {
-      batches.push(runBatch(pendingTaskIds.slice(i, i + BATCH_SIZE)));
-    }
-
-    var that = this;
-    Promise.all(batches).then(function() {
-      that.loadMonthEvents();
-      wx.showToast({ title: '已全部完成', icon: 'success' });
-    }).catch(function() {
-      wx.showToast({ title: '操作失败', icon: 'none' });
-    });
-  },
-
-  // 清除已完成任务（仅 task 类型，软删除）
-  clearCompleted: function() {
-    var completedTaskIds = this.data.completedEvents
-      .filter(function(e) { return e.type === 'task'; })
-      .map(function(e) { return e._id; });
-    if (completedTaskIds.length === 0) return;
-
-    var that = this;
-    wx.showModal({
-      title: '确认清除',
-      content: '确定要清除 ' + completedTaskIds.length + ' 个已完成任务吗？',
-      success: function(res) {
-        if (res.confirm) {
-          var db = wx.cloud.database();
-          var BATCH_SIZE = 20;
-
-          var runBatch = function(ids) {
-            var batch = db.batch();
-            ids.forEach(function(id) {
-              batch.update(db.collection('tasks').doc(id), {
-                data: {
-                  deleteTime: new Date(),
-                  updateTime: new Date()
-                }
-              });
-            });
-            return batch.commit();
-          };
-
-          var batches = [];
-          for (var i = 0; i < completedTaskIds.length; i += BATCH_SIZE) {
-            batches.push(runBatch(completedTaskIds.slice(i, i + BATCH_SIZE)));
-          }
-
-          Promise.all(batches).then(function() {
-            that.loadMonthEvents();
-            wx.showToast({ title: '已清除', icon: 'success' });
-          }).catch(function() {
-            wx.showToast({ title: '清除失败', icon: 'none' });
-          });
-        }
-      }
-    });
-  },
-
   goToItem: function(e) {
     var pagePath = e.currentTarget.dataset.page;
     var id = e.currentTarget.dataset.id;
@@ -576,14 +450,41 @@ Page({
     var type = e.currentTarget.dataset.type;
 
     if (type === 'task') {
-      wx.navigateTo({
-        url: '/pages/calendar/task-editor/task-editor?taskId=' + id
-      });
+      this.showEditTaskModal(id);
     } else if (pagePath) {
       var url = pagePath + '?targetId=' + id;
       if (title) url += '&targetTitle=' + encodeURIComponent(title) + '&autoEdit=true';
       wx.navigateTo({ url: url });
     }
+  },
+
+  showEditTaskModal: function(taskId) {
+    var task = null;
+    var monthEvents = this.data.monthEvents;
+    for (var i = 0; i < monthEvents.length; i++) {
+      if (monthEvents[i]._id === taskId && monthEvents[i].type === 'task') {
+        task = monthEvents[i];
+        break;
+      }
+    }
+    if (!task) {
+      wx.showToast({ title: '未找到任务', icon: 'none' });
+      return;
+    }
+    var reminder = null;
+    if (task.reminderEnabled && task.reminderMinutes && task.reminderMinutes.length > 0) {
+      reminder = task.reminderMinutes[0];
+    }
+    this.setData({
+      showTaskModal: true,
+      modalMode: 'edit',
+      modalEditId: taskId,
+      modalTitle: task.title || '',
+      modalDesc: task.description || '',
+      modalDate: task.date || this.formatDate(new Date()),
+      modalTime: task.time || '09:00',
+      modalReminder: reminder
+    });
   },
 
   prevMonth: function() {
@@ -668,22 +569,6 @@ Page({
     this.loadSelectedEvents();
   },
 
-  // 跳转到每日任务页面
-  goToDailyTasks: function() {
-    var selectedDate = this.data.selectedDate;
-    wx.navigateTo({
-      url: '/pages/calendar/daily-tasks/daily-tasks?date=' + selectedDate
-    });
-  },
-
-  // 跳转到任务编辑器
-  goToTaskEditor: function() {
-    var selectedDate = this.data.selectedDate;
-    wx.navigateTo({
-      url: '/pages/calendar/task-editor/task-editor?date=' + selectedDate
-    });
-  },
-
   // 获取日期标签
   getDateLabel: function(dateStr) {
     var today = this.formatDate(new Date());
@@ -700,5 +585,113 @@ Page({
       task: '任务'
     };
     return names[type] || type;
-  }
+  },
+
+  // 显示添加任务弹窗
+  showAddTaskModal: function() {
+    var now = new Date();
+    var hours = String(now.getHours());
+    var minutes = String(now.getMinutes());
+    if (hours.length < 2) hours = '0' + hours;
+    if (minutes.length < 2) minutes = '0' + minutes;
+    this.setData({
+      showTaskModal: true,
+      modalMode: 'add',
+      modalEditId: '',
+      modalTitle: '',
+      modalDesc: '',
+      modalDate: this.data.selectedDate || this.formatDate(now),
+      modalTime: hours + ':' + minutes,
+      modalReminder: null
+    });
+  },
+
+  hideAddTaskModal: function() {
+    this.setData({ showTaskModal: false });
+  },
+
+  addFromTemplate: function(e) {
+    var template = this.data.academicTemplates[e.currentTarget.dataset.index];
+    this.setData({ modalTitle: template.title });
+  },
+
+  onModalTitleInput: function(e) {
+    this.setData({ modalTitle: e.detail.value });
+  },
+
+  onModalDescInput: function(e) {
+    this.setData({ modalDesc: e.detail.value });
+  },
+
+  onModalDateChange: function(e) {
+    this.setData({ modalDate: e.detail.value });
+  },
+
+  onModalTimeChange: function(e) {
+    this.setData({ modalTime: e.detail.value });
+  },
+
+  onModalReminderChange: function(e) {
+    var val = e.currentTarget.dataset.value;
+    this.setData({ modalReminder: val === 'null' ? null : parseInt(val, 10) });
+  },
+
+  confirmAddTask: function() {
+    var title = this.data.modalTitle.trim();
+    if (!title) {
+      wx.showToast({ title: '请输入任务标题', icon: 'none' });
+      return;
+    }
+
+    var reminderMinutes = [];
+    var reminderEnabled = false;
+    if (this.data.modalReminder !== null) {
+      reminderMinutes = [this.data.modalReminder];
+      reminderEnabled = true;
+    }
+
+    var that = this;
+
+    if (this.data.modalMode === 'edit' && this.data.modalEditId) {
+      wx.cloud.database().collection('tasks').doc(this.data.modalEditId).update({
+        data: {
+          title: title,
+          description: this.data.modalDesc.trim(),
+          date: this.data.modalDate,
+          time: this.data.modalTime,
+          reminderEnabled: reminderEnabled,
+          reminderMinutes: reminderMinutes,
+          updateTime: new Date()
+        }
+      }).then(function() {
+        that.hideAddTaskModal();
+        that.loadMonthEvents();
+        wx.showToast({ title: '保存成功', icon: 'success' });
+      }).catch(function() {
+        wx.showToast({ title: '保存失败', icon: 'none' });
+      });
+    } else {
+      wx.cloud.database().collection('tasks').add({
+        data: {
+          title: title,
+          description: this.data.modalDesc.trim(),
+          date: this.data.modalDate,
+          time: this.data.modalTime,
+          reminderEnabled: reminderEnabled,
+          reminderMinutes: reminderMinutes,
+          completed: false,
+          completedTime: null,
+          createTime: new Date(),
+          updateTime: new Date()
+        }
+      }).then(function() {
+        that.hideAddTaskModal();
+        that.loadMonthEvents();
+        wx.showToast({ title: '添加成功', icon: 'success' });
+      }).catch(function() {
+        wx.showToast({ title: '添加失败', icon: 'none' });
+      });
+    }
+  },
+
 });

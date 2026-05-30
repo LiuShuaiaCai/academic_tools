@@ -4,7 +4,7 @@
   <view class="cal-header">
     <view class="cal-title">学术日历</view>
     <view class="header-actions">
-      <view class="header-btn add-task" bindtap="goToTaskEditor">+</view>
+      <view class="header-btn add-task" bindtap="showAddTaskModal">+</view>
       <view class="header-btn" bindtap="goToToday">今</view>
     </view>
   </view>
@@ -77,17 +77,6 @@
     </view>
   </view>
 
-  <!-- 列表视图的筛选栏 -->
-  <view class="filter-bar" wx:if="{{currentView === 'list'}}">
-    <view class="filter-group">
-      <view class="filter-tag {{filterTypeStates.submission ? 'active type-blue' : ''}}" bindtap="toggleFilterType" data-type="submission"><view class="filter-dot"></view>投稿</view>
-      <view class="filter-tag {{filterTypeStates.review ? 'active type-red' : ''}}" bindtap="toggleFilterType" data-type="review"><view class="filter-dot"></view>审稿</view>
-      <view class="filter-tag {{filterTypeStates.conference ? 'active type-green' : ''}}" bindtap="toggleFilterType" data-type="conference"><view class="filter-dot"></view>会议</view>
-      <view class="filter-tag {{filterTypeStates.task ? 'active type-purple' : ''}}" bindtap="toggleFilterType" data-type="task"><view class="filter-dot"></view>任务</view>
-    </view>
-
-  </view>
-
   <!-- 列表视图 -->
   <view class="list-view" wx:if="{{currentView === 'list'}}">
     <block wx:for="{{listGroups}}" wx:key="dateStr" wx:for-item="group">
@@ -128,27 +117,17 @@
     <view wx:if="{{listGroups.length === 0}}" class="list-empty">
       <view class="empty-icon">📅</view>
       <view class="empty-text">暂无事件</view>
-      <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
+      <view class="empty-action" bindtap="showAddTaskModal">添加任务</view>
     </view>
   </view>
 
-  <!-- 月视图/周视图的筛选栏 -->
-  <view class="filter-bar" wx:if="{{currentView !== 'list'}}">
-    <view class="filter-group">
-      <view class="filter-tag {{filterTypeStates.submission ? 'active type-blue' : ''}}" bindtap="toggleFilterType" data-type="submission"><view class="filter-dot"></view>投稿</view>
-      <view class="filter-tag {{filterTypeStates.review ? 'active type-red' : ''}}" bindtap="toggleFilterType" data-type="review"><view class="filter-dot"></view>审稿</view>
-      <view class="filter-tag {{filterTypeStates.conference ? 'active type-green' : ''}}" bindtap="toggleFilterType" data-type="conference"><view class="filter-dot"></view>会议</view>
-      <view class="filter-tag {{filterTypeStates.task ? 'active type-purple' : ''}}" bindtap="toggleFilterType" data-type="task"><view class="filter-dot"></view>任务</view>
-    </view>
 
-  </view>
 
   <!-- 选中日期的事件（月视图/周视图显示） -->
   <view class="events-section" wx:if="{{currentView !== 'list'}}">
     <view class="section-header">
       <view class="section-title">📅 {{selectedDateLabel}} 的事件</view>
       <view class="section-actions">
-        <view class="action-btn primary" bindtap="goToDailyTasks">每日任务</view>
         <view class="action-btn primary" bindtap="showAddTaskModal">添加任务</view>
       </view>
     </view>
@@ -178,13 +157,10 @@
           <text class="day-dot pending"></text>
           <text>待完成 ({{pendingEvents.length}})</text>
         </view>
-        <view class="day-section-actions">
-          <view class="day-action-btn" bindtap="markAllComplete">全部完成</view>
-        </view>
       </view>
       <view class="day-task-items">
         <view 
-          class="day-task-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : item.priority || 'type-purple'}}"
+          class="day-task-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}}"
           wx:for="{{pendingEvents}}"
           wx:key="index"
           data-page="{{item.pagePath}}"
@@ -201,7 +177,6 @@
             <view class="day-task-meta">
               <text class="day-task-tag">{{item.typeLabel}}</text>
               <text class="day-task-date">{{item.deadlineLabel}}</text>
-              <text class="day-task-status {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
             </view>
           </view>
           <view class="day-task-actions" wx:if="{{item.type === 'task'}}">
@@ -218,13 +193,10 @@
           <text class="day-dot completed"></text>
           <text>已完成 ({{completedEvents.length}})</text>
         </view>
-        <view class="day-section-actions">
-          <view class="day-action-btn danger" bindtap="clearCompleted">清除</view>
-        </view>
       </view>
       <view class="day-task-items">
         <view 
-          class="day-task-item completed {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : item.priority || 'type-purple'}}"
+          class="day-task-item completed {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}}"
           wx:for="{{completedEvents}}"
           wx:key="index"
           data-page="{{item.pagePath}}"
@@ -253,8 +225,60 @@
     <view wx:if="{{selectedEvents.length === 0}}" class="events-empty">
       <text class="empty-icon">📭</text>
       <text class="empty-text">这天没有安排</text>
-      <view class="empty-action" bindtap="goToTaskEditor">添加任务</view>
     </view>
   </view>
 
+  <!-- 添加任务弹窗 -->
+  <view class="add-sheet {{showTaskModal ? 'show' : ''}}">
+    <view class="sheet-mask" bindtap="hideAddTaskModal"></view>
+    <view class="sheet-content">
+      <view class="sheet-header">
+        <text class="sheet-title">{{modalMode === 'edit' ? '编辑任务' : '添加任务'}}</text>
+        <view class="sheet-close" bindtap="hideAddTaskModal">×</view>
+      </view>
+      <!-- 标题 -->
+      <view class="form-row">
+        <view class="form-label">任务标题 <text class="required">*</text></view>
+        <input class="form-input" placeholder="请输入任务标题" value="{{modalTitle}}" bindinput="onModalTitleInput" maxlength="100"/>
+      </view>
+
+      <!-- 描述 -->
+      <view class="form-row">
+        <view class="form-label">任务描述</view>
+        <textarea class="form-textarea" placeholder="添加任务详细说明（可选）" value="{{modalDesc}}" bindinput="onModalDescInput" maxlength="500"/>
+      </view>
+
+      <!-- 日期时间 -->
+      <view class="form-row">
+        <view class="form-label">日期和时间</view>
+        <view class="datetime-row">
+          <picker mode="date" value="{{modalDate}}" bindchange="onModalDateChange">
+            <view class="datetime-picker">
+              <text class="datetime-icon">📅</text>
+              <text>{{modalDate}}</text>
+            </view>
+          </picker>
+          <picker mode="time" value="{{modalTime}}" bindchange="onModalTimeChange">
+            <view class="datetime-picker">
+              <text class="datetime-icon">🕐</text>
+              <text>{{modalTime}}</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <!-- 提醒设置 -->
+      <view class="form-row">
+        <view class="form-label">提醒设置</view>
+        <view class="reminder-options">
+          <view class="reminder-item {{modalReminder === null ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="null">不提醒</view>
+          <view class="reminder-item {{modalReminder === 60 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="60">提前1小时</view>
+          <view class="reminder-item {{modalReminder === 120 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="120">提前2小时</view>
+          <view class="reminder-item {{modalReminder === 180 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="180">提前3小时</view>
+        </view>
+      </view>
+
+      <view class="sheet-confirm-btn" bindtap="confirmAddTask">{{modalMode === 'edit' ? '保存修改' : '确认添加'}}</view>
+    </view>
+  </view>
 </view>

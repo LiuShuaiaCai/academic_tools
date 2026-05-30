@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "每日任务",
-  "navigationBarBackgroundColor": "#2563eb",
-  "navigationBarTextStyle": "white",
-  "enablePullDownRefresh": true,
-  "usingComponents": {}
-}
