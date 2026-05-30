@@ -663,134 +663,29 @@ page { background: #F6F6F6; }
   background: #FEE2E2;
 }
 
-/* 任务项 */
+/* 任务项容器 */
 .day-task-items {
-  background: #fff;
-  border-radius: 16rpx;
-  overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
-}
-
-.day-task-item {
   display: flex;
-  align-items: center;
-  padding: 24rpx;
-  border-bottom: 1rpx solid #F3F4F6;
-  border-left: 4rpx solid transparent;
-  position: relative;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
-.day-task-item:last-child {
-  border-bottom: none;
-}
-
-.day-task-item.type-blue { border-left-color: #2563eb; }
-.day-task-item.type-red { border-left-color: #EF4444; }
-.day-task-item.type-green { border-left-color: #10B981; }
-.day-task-item.type-purple { border-left-color: #8B5CF6; }
-.day-task-item.high { border-left-color: #EF4444; }
-.day-task-item.medium { border-left-color: #F59E0B; }
-.day-task-item.low { border-left-color: #10B981; }
-
-.day-task-item.completed {
-  opacity: 0.55;
-}
-
-.day-task-item.completed .day-task-title {
-  text-decoration: line-through;
-  color: #9CA3AF;
-}
-
-.day-task-item.completed .day-task-meta {
-  color: #9CA3AF;
-}
-
-/* 复选框 */
-.day-task-check {
-  margin-right: 20rpx;
-  flex-shrink: 0;
-}
-
-.day-check-circle {
-  width: 40rpx;
-  height: 40rpx;
-  border: 2rpx solid #D1D5DB;
-  border-radius: 50%;
+/* 右侧操作列（复选框 + 删除） */
+.event-actions-col {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  color: transparent;
-  box-sizing: border-box;
-}
-
-.day-check-circle.checked {
-  background: #10B981;
-  border-color: #10B981;
-  color: #fff;
-}
-
-/* 内容区 */
-.day-task-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.day-task-title {
-  font-size: 28rpx;
-  color: #111827;
-  margin-bottom: 8rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.day-task-meta {
-  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 12rpx;
-  flex-wrap: wrap;
-  font-size: 24rpx;
-}
-
-.day-task-tag {
-  font-size: 20rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
-  background: #F3F4F6;
-  color: #6B7280;
   flex-shrink: 0;
 }
 
-.day-task-date {
-  color: #9CA3AF;
-}
-
-.day-task-status {
-  font-weight: 600;
-}
-
-.day-task-status.urgent {
-  color: #EF4444;
-}
-
-.day-task-status.normal {
-  color: #6B7280;
-}
-
-/* 删除按钮 */
-.day-task-actions {
-  margin-left: 16rpx;
-  flex-shrink: 0;
-}
-
-.day-delete-btn {
-  width: 48rpx;
-  height: 48rpx;
+.event-delete {
+  width: 40rpx;
+  height: 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
+  font-size: 32rpx;
   color: #9CA3AF;
 }
 

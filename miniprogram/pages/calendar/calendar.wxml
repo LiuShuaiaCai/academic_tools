@@ -159,8 +159,8 @@
         </view>
       </view>
       <view class="day-task-items">
-        <view 
-          class="day-task-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}}"
+        <view
+          class="event-card {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}}"
           wx:for="{{pendingEvents}}"
           wx:key="index"
           data-page="{{item.pagePath}}"
@@ -169,18 +169,22 @@
           data-type="{{item.type}}"
           bindtap="goToItem"
         >
-          <view class="day-task-check" data-id="{{item._id}}" data-type="{{item.type}}" catchtap="toggleTaskComplete">
-            <view class="day-check-circle"></view>
-          </view>
-          <view class="day-task-content">
-            <view class="day-task-title">{{item.title || item.name || item.paperTitle || '未命名'}}</view>
-            <view class="day-task-meta">
-              <text class="day-task-tag">{{item.typeLabel}}</text>
-              <text class="day-task-date">{{item.deadlineLabel}}</text>
+          <view class="event-icon">{{item.iconEmoji}}</view>
+          <view class="event-info">
+            <view class="event-title-row">
+              <text class="event-type-label">{{item.typeLabel}}</text>
+              <text class="event-title-text">{{item.title || item.name || item.paperTitle || '未命名'}}</text>
+            </view>
+            <view class="event-meta-row">
+              <text class="event-date">{{item.deadlineLabel}}</text>
+              <text class="event-status {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
             </view>
           </view>
-          <view class="day-task-actions" wx:if="{{item.type === 'task'}}">
-            <view class="day-delete-btn" catchtap="deleteTask" data-id="{{item._id}}">×</view>
+          <view class="event-actions-col">
+            <view class="event-check" data-id="{{item._id}}" data-type="{{item.type}}" catchtap="toggleTaskComplete">
+              <view class="event-check-circle"></view>
+            </view>
+            <view class="event-delete" wx:if="{{item.type === 'task'}}" catchtap="deleteTask" data-id="{{item._id}}">×</view>
           </view>
         </view>
       </view>
@@ -195,8 +199,8 @@
         </view>
       </view>
       <view class="day-task-items">
-        <view 
-          class="day-task-item completed {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}}"
+        <view
+          class="event-card completed {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'conference' ? 'type-green' : 'type-purple'}}"
           wx:for="{{completedEvents}}"
           wx:key="index"
           data-page="{{item.pagePath}}"
@@ -205,18 +209,22 @@
           data-type="{{item.type}}"
           bindtap="goToItem"
         >
-          <view class="day-task-check checked" data-id="{{item._id}}" data-type="{{item.type}}" catchtap="toggleTaskComplete">
-            <view class="day-check-circle checked">✓</view>
-          </view>
-          <view class="day-task-content">
-            <view class="day-task-title">{{item.title || item.name || item.paperTitle || '未命名'}}</view>
-            <view class="day-task-meta">
-              <text class="day-task-tag">{{item.typeLabel}}</text>
-              <text class="day-task-date">{{item.deadlineLabel}}</text>
+          <view class="event-icon">{{item.iconEmoji}}</view>
+          <view class="event-info">
+            <view class="event-title-row">
+              <text class="event-type-label">{{item.typeLabel}}</text>
+              <text class="event-title-text">{{item.title || item.name || item.paperTitle || '未命名'}}</text>
+            </view>
+            <view class="event-meta-row">
+              <text class="event-date">{{item.deadlineLabel}}</text>
+              <text class="event-status {{item.urgent ? 'urgent' : 'normal'}}">{{item.countdownLabel}}</text>
             </view>
           </view>
-          <view class="day-task-actions" wx:if="{{item.type === 'task'}}">
-            <view class="day-delete-btn" catchtap="deleteTask" data-id="{{item._id}}">×</view>
+          <view class="event-actions-col">
+            <view class="event-check" data-id="{{item._id}}" data-type="{{item.type}}" catchtap="toggleTaskComplete">
+              <view class="event-check-circle checked"></view>
+            </view>
+            <view class="event-delete" wx:if="{{item.type === 'task'}}" catchtap="deleteTask" data-id="{{item._id}}">×</view>
           </view>
         </view>
       </view>
