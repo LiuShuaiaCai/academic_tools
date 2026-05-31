@@ -102,7 +102,7 @@ page { background: #F6F6F6; }
 .card-system-link { font-size: 22rpx; color: #3B82F6; margin-bottom: 12rpx; padding: 6rpx 0; }
 
 .card-footer { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 24rpx; border-top: 1rpx solid #F3F4F6; }
-.footer-btn { font-size: 24rpx; color: #2563eb; padding: 8rpx 16rpx; }
+.footer-btn { font-size: 24rpx; color: #2563eb; padding: 8rpx 16rpx 8rpx 0; }
 .footer-del { font-size: 24rpx; color: #EF4444; padding: 8rpx 16rpx; }
 
 /* ========== 空状态 ========== */

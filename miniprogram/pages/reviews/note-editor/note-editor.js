@@ -25,11 +25,14 @@ Page({
 
   onSave: function() {
     var note = this.data.note;
-    // 返回上一页并传递数据
+    // 返回上一页并传递数据到 form 组件
     var pages = getCurrentPages();
     var prevPage = pages[pages.length - 2];
     if (prevPage) {
-      prevPage.setData({ 'form.note': note });
+      var formComponent = prevPage.selectComponent('#reviewForm');
+      if (formComponent) {
+        formComponent.setData({ 'form.note': note });
+      }
     }
     wx.navigateBack();
   }

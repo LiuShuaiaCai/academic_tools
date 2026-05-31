@@ -98,10 +98,11 @@
           <text class="card-status" style="background:{{item.completed ? '#F3F4F6;color:#6B7280' : item.status === 'pending' ? '#FEF3C7;color:#92400E' : item.status === 'in_progress' ? '#DBEAFE;color:#1E40AF' : '#D1FAE5;color:#065F46'}}">{{item.completed ? '已完成' : item.status === 'pending' ? '待审稿' : item.status === 'in_progress' ? '审稿中' : '已提交'}}</text>
         </view>
 
-        <!-- 邀请时间 + 截止时间 -->
-        <view class="card-dates-row" wx:if="{{item.invitedDate || item.deadline}}">
+        <!-- 邀请时间 + 截止时间 + 完成时间 -->
+        <view class="card-dates-row" wx:if="{{item.invitedDate || item.deadline || item.decisionTime}}">
           <text class="card-date-item" wx:if="{{item.invitedDate}}">邀请：{{item.invitedDate}}</text>
-          <text class="card-date-item card-deadline {{item.daysLeft < 0 ? 'overdue' : item.daysLeft <= 1 ? 'urgent-critical' : item.daysLeft <= 3 ? 'urgent' : ''}}" wx:if="{{item.deadline}}">截止：{{item.deadline}}（{{item.daysLeft >= 0 ? item.daysLeft + '天' : '已过期'}}）</text>
+          <text class="card-date-item {{item.completed ? '' : item.daysLeft < 0 ? 'overdue' : item.daysLeft <= 1 ? 'urgent-critical' : item.daysLeft <= 3 ? 'urgent' : ''}}" wx:if="{{item.deadline}}">截止：{{item.deadline}}<text wx:if="{{!item.completed}}">（{{item.daysLeft >= 0 ? item.daysLeft + '天' : '已过期'}}）</text></text>
+          <text class="card-date-item" wx:if="{{item.completed && item.decisionTime}}">完成：{{item.decisionTime}}</text>
         </view>
 
         <!-- 审稿决定 -->
@@ -113,12 +114,12 @@
         <view class="card-system-link" wx:if="{{item.systemUrl}}" catchtap="onOpenSystemUrl" data-url="{{item.systemUrl}}">
           <text>🔗 打开审稿系统</text>
         </view>
+      </view>
 
-        <!-- 卡片底部操作 -->
-        <view class="card-footer" catchtap="doNothing">
-          <view class="footer-btn" catchtap="showDecision" data-id="{{item._id}}" wx:if="{{!item.completed}}">录入决定</view>
-          <view class="footer-del footer-btn" catchtap="deleteItem" data-id="{{item._id}}">删除</view>
-        </view>
+      <!-- 卡片底部操作 -->
+      <view class="card-footer" catchtap="doNothing">
+        <view class="footer-btn" catchtap="showDecision" data-id="{{item._id}}" wx:if="{{!item.completed}}">✏️ 录入决定</view>
+        <view class="footer-del footer-btn" catchtap="deleteItem" data-id="{{item._id}}">删除</view>
       </view>
     </view>
   </view>

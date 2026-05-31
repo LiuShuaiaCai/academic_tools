@@ -18,6 +18,7 @@ function formatItem(item) {
     deadline: item.deadline || '',
     invitedDate: item.invitedDate || '',
     status: item.status || 'pending',
+    completed: item.completed || false,
     decision: item.decision || '',
     decisionNote: item.decisionNote || '',
     decisionTime: item.decisionTime || '',

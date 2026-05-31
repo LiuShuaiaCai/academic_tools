@@ -242,11 +242,6 @@
       <view class="form-close" bindtap="closeDecision">✕</view>
     </view>
     <view class="form-body">
-      <view class="decision-info">
-        <view class="decision-paper">{{decisionPaper}}</view>
-        <view class="decision-journal" wx:if="{{decisionJournal}}">{{decisionJournal}}</view>
-      </view>
-
       <view class="form-group">
         <view class="form-label">审稿决定</view>
         <view class="decision-options decision-options-grid">
@@ -262,6 +257,38 @@
         </view>
       </view>
 
+      <!-- 上传稿件 -->
+      <view class="form-group">
+        <view class="form-label-row">
+          <view class="form-label"><text class="form-label-icon">📄</text> 上传稿件 <text class="form-label-hint">（PDF/Word，最大50MB）</text></view>
+        </view>
+        <!-- 未上传时：选择文件按钮 -->
+        <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
+          <view class="manuscript-upload-icon">📄</view>
+          <view class="manuscript-upload-text">上传稿件文件</view>
+          <view class="manuscript-upload-hint">支持 PDF / Word，最大 50MB</view>
+        </view>
+        <!-- 已上传时：显示文件信息 -->
+        <view wx:else class="manuscript-file-card" bindtap="previewManuscript">
+          <view class="manuscript-file-info">
+            <view class="manuscript-file-icon">{{form.manuscript.fileType === 'pdf' ? '📕' : '📘'}}</view>
+            <view class="manuscript-file-detail">
+              <view class="manuscript-file-name">{{form.manuscript.fileName}}</view>
+              <view class="manuscript-file-meta">{{form.manuscript.fileSizeText}}<text wx:if="{{form.manuscript.uploadTime}}"> · {{form.manuscript.uploadTime}}</text></view>
+            </view>
+          </view>
+          <view class="manuscript-file-actions">
+            <view class="manuscript-action-btn" catchtap="previewManuscript">预览</view>
+            <view class="manuscript-action-btn manuscript-action-del" catchtap="removeManuscript">删除</view>
+          </view>
+        </view>
+        <!-- 上传进度 -->
+        <view wx:if="{{manuscriptUploading}}" class="manuscript-progress">
+          <progress percent="{{manuscriptUploadPercent}}" stroke-width="4" activeColor="#2563EB" backgroundColor="#E5E7EB"/>
+          <text class="manuscript-progress-text">上传中 {{manuscriptUploadPercent}}%</text>
+        </view>
+      </view>
+
       <view class="form-group">
         <view class="form-label-row">
           <view class="form-label">审稿意见</view>
@@ -273,6 +300,10 @@
             <view class="template-btn" bindtap="showTemplateModal">
               <text class="template-btn-icon">📋</text>
               <text class="template-btn-text">插入模板</text>
+            </view>
+            <view class="template-btn" bindtap="openNoteEditor">
+              <text class="template-btn-icon">✏️</text>
+              <text class="template-btn-text">编辑</text>
             </view>
             <view class="template-btn clear-note-btn" bindtap="clearNote">
               <text class="template-btn-icon">🗑</text>

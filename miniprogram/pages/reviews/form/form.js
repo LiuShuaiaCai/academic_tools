@@ -769,11 +769,14 @@ Component({
         decisionJournal: ds.journal || '',
         decision: ds.decision || ''
       });
-      // 从数据库查询 note，回显到 form.note
+      // 从数据库查询 note 和 manuscript，回显到 form
       if (id) {
-        wx.cloud.database().collection('reviews').doc(id).field({ note: true }).get().then(function(res) {
+        wx.cloud.database().collection('reviews').doc(id).field({ note: true, manuscript: true }).get().then(function(res) {
           if (res.data) {
-            that.setData({ 'form.note': res.data.note || '' });
+            var updates = {};
+            if (res.data.note !== undefined) updates['form.note'] = res.data.note || '';
+            if (res.data.manuscript !== undefined) updates['form.manuscript'] = res.data.manuscript || { fileID: '', fileName: '', fileSize: 0, fileSizeText: '', fileType: '', uploadTime: '' };
+            that.setData(updates);
           }
         });
       }
@@ -792,6 +795,7 @@ Component({
       var decisionId = this.data.decisionId;
       var decision = this.data.decision;
       var note = this.data.form.note || '';
+      var manuscript = this.data.form.manuscript || null;
       if (!decision) { wx.showToast({ title: '请选择审稿决定', icon: 'none' }); return; }
       var updateData = {
         decision: decision,
@@ -799,6 +803,9 @@ Component({
         decisionTime: formatTime(),
         updateTime: formatTime()
       };
+      if (manuscript && manuscript.fileID) {
+        updateData.manuscript = manuscript;
+      }
       wx.showLoading({ title: '提交中...' });
       wx.cloud.database().collection('reviews').doc(decisionId).update({ data: updateData })
         .then(function() {
