@@ -10,11 +10,12 @@
 .form-body { flex: 1; padding: 24rpx 32rpx; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
 
 /* ========== 分组折叠 ========== */
-.form-section { margin-bottom: 16rpx; background: #fff; border-radius: 16rpx; border: 1rpx solid #F3F4F6; overflow: hidden; }
-.section-header { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; background: #F9FAFB; }
-.section-title { font-size: 28rpx; font-weight: 600; color: #111827; }
-.section-arrow { font-size: 24rpx; color: #9CA3AF; }
-.section-body { padding: 20rpx 28rpx 4rpx; }
+.form-section { margin-bottom: 16rpx; background: #fff; border-radius: 16rpx; border: 1rpx solid #E5E7EB; overflow: hidden; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); }
+.section-header { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; background: #F0F4FF; position: relative; }
+.section-header::after { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 6rpx; height: 36rpx; background: #2563eb; border-radius: 0 3rpx 3rpx 0; }
+.section-title { font-size: 28rpx; font-weight: 700; color: #1F2937; padding-left: 8rpx; }
+.section-arrow { font-size: 24rpx; color: #6B7280; font-weight: 600; }
+.section-body { padding: 20rpx 28rpx 4rpx; border-top: 1rpx solid #EEF2FF; }
 
 /* ========== 表单组 ========== */
 .form-group { margin-bottom: 28rpx; }

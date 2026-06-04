@@ -39,7 +39,8 @@ Component({
   lifetimes: {
     attached: function() {
       var opts = config.getStatusOptions();
-      this.setData({ statusOptions: opts });
+      var roleOpts = [{ value:'', label:'请选择' }].concat(config.ROLE_OPTIONS);
+      this.setData({ statusOptions: opts, roleOptions: roleOpts });
       if (this.data.isEdit && this.data.editId) {
         this.loadEditData(this.data.editId);
       }
@@ -102,7 +103,7 @@ Component({
         that.setData({
           form: {
             title:item.title||'', journal:item.journal||'', status:item.status||'preparing',
-            role:item.role||'first', paperType:item.paperType||'研究论文',
+            role:item.role||'first', roleLabel: config.getRoleLabel(item.role||'first'), paperType:item.paperType||'研究论文',
             priority:item.priority||'normal',
             priorityLabel: config.getPriorityLabel(item.priority),
             deadline:item.deadline ? formatUtil.formatDate(new Date(String(item.deadline).replace(' ','T'))) : '',

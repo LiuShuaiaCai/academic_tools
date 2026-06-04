@@ -7,13 +7,12 @@
     </view>
     <scroll-view scroll-y class="form-body">
 
-      <!-- ======== 基本信息（默认展开） ======== -->
+      <!-- ======== 基本信息 ======== -->
       <view class="form-section">
-        <view class="section-header" bindtap="toggleSection" data-key="basic">
+        <view class="section-header">
           <text class="section-title">基本信息</text>
-          <text class="section-arrow">{{sectionOpen.basic ? '▲' : '▼'}}</text>
         </view>
-        <view class="section-body" wx:if="{{sectionOpen.basic}}">
+        <view class="section-body">
           <view class="form-group">
             <view class="form-label">论文标题 <text class="required">*</text></view>
             <input class="form-input" placeholder="请输入论文标题" bindinput="onFormInput" data-field="title" value="{{form.title}}"/>

@@ -1,4 +1,4 @@
-/* form.wxss - 审稿表单组件样式（从 reviews.wxss 提取） */
+/* form.wxss - 审稿表单组件样式（平铺布局，无分组） */
 
 /* ========== 表单弹层 ========== */
 .form-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: flex-end; justify-content: center; }
@@ -9,6 +9,7 @@
 .form-close { font-size: 36rpx; color: #6B7280; padding: 8rpx; }
 .form-body { flex: 1; padding: 24rpx 32rpx; overflow-y: auto; box-sizing: border-box; }
 
+/* ========== 表单字段 ========== */
 .form-group { margin-bottom: 28rpx; }
 .form-label { font-size: 26rpx; font-weight: 500; color: #374151; margin-bottom: 12rpx; display: block; }
 .form-label-icon { margin-right: 4rpx; }
@@ -169,8 +170,6 @@
 .ai-review-btn .template-btn-text { color: #16A34A; }
 
 /* ======== AI 模型选择器 ======== */
-
-
 
 .ai-review-loading { display: flex; align-items: center; gap: 16rpx; padding: 8rpx 0; }
 .ai-review-spinner { width: 32rpx; height: 32rpx; border: 3rpx solid #E5E7EB; border-top-color: #2563EB; border-radius: 50%; animation: ai-spin 0.8s linear infinite; }

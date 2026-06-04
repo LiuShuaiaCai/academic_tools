@@ -92,8 +92,8 @@ page { background: #F6F6F6; }
 .card-journal-row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; margin-bottom: 12rpx; }
 .card-journal { font-size: 24rpx; color: #6B7280; flex: 1; }
 .card-status { font-size: 20rpx; padding: 4rpx 16rpx; border-radius: 20rpx; font-weight: 500; flex-shrink: 0; }
-.card-dates-row { display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; margin-bottom: 12rpx; }
-.card-date-item { font-size: 22rpx; color: #9CA3AF; }
+.card-dates-row { display: flex; flex-direction: column; gap: 8rpx; margin-bottom: 12rpx; }
+.card-date-item { font-size: 22rpx; color: #6B7280; line-height: 1.6; }
 .card-date-item.card-deadline { font-weight: 500; }
 .card-date-item.urgent { color: #D97706; }
 .card-date-item.urgent-critical { color: #EF4444; }

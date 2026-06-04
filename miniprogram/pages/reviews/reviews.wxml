@@ -118,7 +118,7 @@
 
       <!-- 卡片底部操作 -->
       <view class="card-footer" catchtap="doNothing">
-        <view class="footer-btn" catchtap="showDecision" data-id="{{item._id}}" wx:if="{{!item.completed}}">✏️ 录入决定</view>
+        <view class="footer-btn" catchtap="showDecision" data-id="{{item._id}}">✏️ 录入决定</view>
         <view class="footer-del footer-btn" catchtap="deleteItem" data-id="{{item._id}}">删除</view>
       </view>
     </view>

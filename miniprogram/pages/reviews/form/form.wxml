@@ -8,25 +8,19 @@
     </view>
     <scroll-view scroll-y class="form-body">
 
-      <!-- 1. 论文标题 -->
+      <!-- 1. 论文标题* -->
       <view class="form-group">
         <view class="form-label">论文标题 <text class="required">*</text></view>
         <input class="form-input" placeholder="审稿论文标题" bindinput="onFormInput" data-field="paperTitle" value="{{form.paperTitle}}"/>
       </view>
 
-      <!-- 2. 期刊/会议 -->
+      <!-- 2. 期刊/会议* -->
       <view class="form-group">
         <view class="form-label">期刊/会议 <text class="required">*</text></view>
         <input class="form-input" placeholder="来稿期刊/会议" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
       </view>
 
-      <!-- 2.5 审稿ID -->
-      <view class="form-group">
-        <view class="form-label">审稿ID</view>
-        <input class="form-input" placeholder="如 #XX-2026-01" bindinput="onFormInput" data-field="reviewId" value="{{form.reviewId}}"/>
-      </view>
-
-      <!-- 3. 邀请时间 -->
+      <!-- 3. 邀请时间* -->
       <view class="form-group">
         <view class="form-label">邀请时间 <text class="required">*</text></view>
         <picker mode="date" value="{{form.invitedDate}}" bindchange="onInvitedDateChange">
@@ -38,7 +32,7 @@
         </picker>
       </view>
 
-      <!-- 4. 截止时间 -->
+      <!-- 4. 截止时间* -->
       <view class="form-group">
         <view class="form-label">截止时间 <text class="required">*</text></view>
         <picker mode="date" value="{{form.deadline}}" bindchange="onDeadlineChange">
@@ -50,7 +44,13 @@
         </picker>
       </view>
 
-      <!-- 5. 轮次 -->
+      <!-- 5. 审稿ID -->
+      <view class="form-group">
+        <view class="form-label">审稿ID</view>
+        <input class="form-input" placeholder="如 #XX-2026-01" bindinput="onFormInput" data-field="reviewId" value="{{form.reviewId}}"/>
+      </view>
+
+      <!-- 6. 轮次 -->
       <view class="form-group">
         <view class="form-label">轮次 <text class="form-label-hint">（同一稿件的第几轮审稿）</text></view>
         <picker mode="selector" range="{{roundOptions}}" range-key="label" value="{{form.roundIdx}}" bindchange="onRoundChange">
@@ -58,26 +58,13 @@
         </picker>
       </view>
 
-      <!-- 6. 审稿决定 -->
+      <!-- 7. 关联审稿 -->
       <view class="form-group">
-        <view class="form-label">审稿决定</view>
-        <picker mode="selector" range="{{decisionOptions}}" range-key="label" value="{{form.decisionIdx}}" bindchange="onDecisionChange">
-          <view class="form-picker {{form.decisionIdx >= 0 ? '' : 'placeholder'}}">
-            <text style="flex:1">{{form.decisionIdx >= 0 ? decisionOptions[form.decisionIdx].label : '请选择决定'}}</text>
-            <text class="picker-arrow">›</text>
-          </view>
+        <view class="form-label"><text class="form-label-icon">🔗</text> 关联审稿 <text class="form-label-hint">（同一稿件多轮审稿）</text></view>
+        <picker mode="selector" range="{{relatedReviewOptions}}" range-key="title" value="{{form.relatedReviewIdx}}" bindchange="onRelatedReviewChange">
+          <view class="form-picker {{form.relatedReviewTitle ? '' : 'placeholder'}}">{{form.relatedReviewTitle || '不关联'}} <text class="picker-arrow">›</text></view>
         </picker>
       </view>
-
-      <!-- 7. 状态 -->
-      <!-- <view class="form-group">
-        <view class="form-label">状态</view>
-        <view class="radio-group">
-          <view class="radio-item {{form.status === 'pending' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="pending">待审稿</view>
-          <view class="radio-item {{form.status === 'in_progress' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="in_progress">审稿中</view>
-          <view class="radio-item {{form.status === 'submitted' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="submitted">已提交</view>
-        </view>
-      </view> -->
 
       <!-- 8. 审稿系统链接 -->
       <view class="form-group">
@@ -91,27 +78,18 @@
         <input class="form-input" placeholder="编辑联系邮箱" bindinput="onFormInput" data-field="editorEmail" value="{{form.editorEmail}}"/>
       </view>
 
-      <!-- 9. 审稿系统账号（可选） -->
-      <!-- <view class="form-group">
-        <view class="form-label">审稿系统账号 <text class="form-label-hint">（选填，邮箱）</text></view>
-        <input class="form-input" placeholder="登录邮箱" bindinput="onFormInput" data-field="systemAccount" value="{{form.systemAccount}}"/>
-      </view> -->
-
-      <!-- 10. 审稿系统密码（可选） -->
-      <!-- <view class="form-group">
-        <view class="form-label">审稿系统密码 <text class="form-label-hint">（选填）</text></view>
-        <input class="form-input" placeholder="登录密码" password="true" bindinput="onFormInput" data-field="systemPassword" value="{{form.systemPassword}}"/>
-      </view> -->
-
-      <!-- 11. 关联稿件 -->
+      <!-- 10. 审稿决定 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">🔗</text> 关联审稿 <text class="form-label-hint">（同一稿件多轮审稿）</text></view>
-        <picker mode="selector" range="{{relatedReviewOptions}}" range-key="title" value="{{form.relatedReviewIdx}}" bindchange="onRelatedReviewChange">
-          <view class="form-picker {{form.relatedReviewTitle ? '' : 'placeholder'}}">{{form.relatedReviewTitle || '不关联'}} <text class="picker-arrow">›</text></view>
+        <view class="form-label">审稿决定</view>
+        <picker mode="selector" range="{{decisionOptions}}" range-key="label" value="{{form.decisionIdx}}" bindchange="onDecisionChange">
+          <view class="form-picker {{form.decisionIdx >= 0 ? '' : 'placeholder'}}">
+            <text style="flex:1">{{form.decisionIdx >= 0 ? decisionOptions[form.decisionIdx].label : '请选择决定'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
         </picker>
       </view>
 
-      <!-- 12. 上传稿件 -->
+      <!-- 11. 上传稿件 -->
       <view class="form-group">
         <view class="form-label-row">
           <view class="form-label"><text class="form-label-icon">📄</text> 上传稿件 <text class="form-label-hint">（PDF/Word，最大50MB）</text></view>
@@ -141,11 +119,9 @@
           <progress percent="{{manuscriptUploadPercent}}" stroke-width="4" activeColor="#2563EB" backgroundColor="#E5E7EB"/>
           <text class="manuscript-progress-text">上传中 {{manuscriptUploadPercent}}%</text>
         </view>
-        
       </view>
 
-
-      <!-- 13. 审稿笔记 -->
+      <!-- 12. 审稿意见 -->
       <view class="form-group">
         <view class="form-label-row">
           <view class="form-label">审稿意见</view>
@@ -178,7 +154,7 @@
         <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}" maxlength="-1"></textarea>
       </view>
       
-      <!-- 12. 处理时间线 -->
+      <!-- 13. 处理时间线 -->
       <view class="form-group">
         <view class="form-label"><text class="form-label-icon">📅</text> 处理时间线<text class="form-label-hint">（任务完成：最后一次处理时间大于到期时间）</text></view>
 

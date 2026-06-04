@@ -671,6 +671,10 @@ Component({
       var that = this;
       var f = this.data.form;
       if (!f.paperTitle) { wx.showToast({ title: '请填写论文标题', icon: 'none' }); return; }
+      if (!f.journal) { wx.showToast({ title: '请填写期刊/会议', icon: 'none' }); return; }
+      if (!f.invitedDate) { wx.showToast({ title: '请选择邀请时间', icon: 'none' }); return; }
+      if (!f.deadline) { wx.showToast({ title: '请选择截止时间', icon: 'none' }); return; }
+
 
       // 时间线数据清理
       var tlSave = (f.timelineList || []).filter(function(item) {
