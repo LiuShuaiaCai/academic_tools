@@ -10,6 +10,8 @@ Page({
   data: {
     list:[], filteredList:[], searchKeyword:'',
     showForm:false, isEdit:false, editId:'',
+    // 链接弹窗
+    showLinkModal: false, currentUrl: '',
     // 分页
     page:0, pageSize:20, hasMore:true, loadingMore:false, searchLoading:false,
     // 快速筛选
@@ -400,17 +402,57 @@ Page({
     this.loadList();
   },
 
+  /* ======== 完成/取消完成 ======== */
+  toggleComplete:function(e){
+    var that = this;
+    var id = e.currentTarget.dataset.id;
+    var currentlyCompleted = e.currentTarget.dataset.completed;
+    var newCompleted = !currentlyCompleted;
+    var db = wx.cloud.database();
+
+    wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask:true });
+    db.collection('reviews').doc(id).update({
+      data:{ completed: newCompleted }
+    }).then(function(){
+      wx.hideLoading();
+      wx.showToast({ title: newCompleted ? '已完成' : '已取消', icon:'success' });
+      that.loadList();
+      that.loadStats();
+    }).catch(function(e){
+      wx.hideLoading();
+      console.error('[审稿] 标记完成失败', e);
+      wx.showToast({ title:'操作失败', icon:'none' });
+    });
+  },
+
   /* ======== 打开审稿系统链接 ======== */
   onOpenSystemUrl:function(e){
     var url = e.currentTarget.dataset.url;
     if(url){
+      this.setData({ showLinkModal: true, currentUrl: url });
+    }
+  },
+  onOpenEmail:function(e){
+    var email = e.currentTarget.dataset.email;
+    if(email){
       wx.setClipboardData({
-        data: url,
-        success: function() {
-          wx.showToast({ title: '链接已复制', icon: 'success' });
+        data: email,
+        success: function(){
+          wx.showToast({ title:'邮箱已复制，请到邮箱 APP 发送', icon:'none', duration:2000 });
         }
       });
     }
+  },
+  onCopyLinkModal:function(){
+    wx.setClipboardData({
+      data: this.data.currentUrl,
+      success: function(){
+        wx.showToast({ title:'已复制', icon:'success' });
+      }
+    });
+  },
+  onCloseLinkModal:function(){
+    this.setData({ showLinkModal: false });
   },
 
   doNothing:function(){}

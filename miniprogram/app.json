@@ -10,7 +10,6 @@
     "pages/citation/citation",
     "pages/submissions/submissions",
     "pages/reviews/reviews",
-    "pages/reviews/note-editor/note-editor",
     "pages/conferences/conferences",
     "pages/archive/archive",
     "pages/toolManager/toolManager",

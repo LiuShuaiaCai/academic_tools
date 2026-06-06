@@ -20,7 +20,7 @@ Component({
     form: {
       paperTitle: '', journal: '', reviewId: '', deadline: '', invitedDate: '',
       status: 'pending', decision: '', round: 0,
-      systemUrl: '', systemAccount: '', systemPassword: '',
+      systemUrl: '', systemAccount: '', systemPassword: '', editorEmail: '',
       note: '',
       relatedReviewId: '', relatedReviewTitle: '', relatedReviewIdx: 0,
       tlNewDate: '', tlNewEventIdx: -1, tlNewRemark: '',
@@ -55,7 +55,9 @@ Component({
     manuscriptUploading: false,
     manuscriptUploadPercent: 0,
     aiReviewLoading: false,
-    showQuotaTip: false
+    showQuotaTip: false,
+    showNotePreview: false,
+    notePreviewText: ''
   },
 
   lifetimes: {
@@ -103,7 +105,7 @@ Component({
         form: {
           paperTitle: '', journal: '', reviewId: '', deadline: '', invitedDate: '',
           status: 'pending', decision: '', round: 0,
-          systemUrl: '', systemAccount: '', systemPassword: '',
+          systemUrl: '', systemAccount: '', systemPassword: '', editorEmail: '',
           note: '',
           relatedReviewId: '', relatedReviewTitle: '', relatedReviewIdx: 0,
           tlNewDate: '', tlNewEventIdx: -1, tlNewRemark: '',
@@ -175,6 +177,7 @@ Component({
             systemUrl: item.systemUrl || '',
             systemAccount: item.systemAccount || '',
             systemPassword: item.systemPassword || '',
+            editorEmail: item.editorEmail || '',
             note: item.note || '',
             relatedReviewId: item.relatedReviewId || '',
             relatedReviewTitle: '',
@@ -455,11 +458,40 @@ Component({
 
     // ======== 稿件上传 ========
 
-    // 跳转到全屏编辑器
-    openNoteEditor: function() {
-      var note = encodeURIComponent(this.data.form.note || '');
-      wx.navigateTo({
-        url: '/pages/reviews/note-editor/note-editor?note=' + note
+    // 全屏编辑审稿意见
+    showNotePreview: function() {
+      this.setData({
+        showNotePreview: true,
+        notePreviewText: this.data.form.note || ''
+      });
+    },
+    closeNotePreview: function() {
+      this.setData({ showNotePreview: false });
+    },
+
+    // 编辑中的输入
+    onNotePreviewInput: function(e) {
+      this.setData({ notePreviewText: e.detail.value });
+    },
+
+    // 保存并关闭弹窗
+    saveNotePreview: function() {
+      var note = this.data.notePreviewText || '';
+      this.setData({
+        'form.note': note,
+        showNotePreview: false
+      });
+    },
+
+    // 复制弹窗内全文
+    copyNotePreview: function() {
+      var note = this.data.notePreviewText || '';
+      if (!note) { wx.showToast({ title: '暂无内容', icon: 'none' }); return; }
+      wx.setClipboardData({
+        data: note,
+        success: function() {
+          wx.showToast({ title: '已复制', icon: 'success' });
+        }
       });
     },
 
@@ -698,6 +730,7 @@ Component({
         systemUrl: f.systemUrl,
         systemAccount: f.systemAccount,
         systemPassword: f.systemPassword,
+        editorEmail: f.editorEmail || '',
         note: f.note,
         relatedReviewId: f.relatedReviewId || '',
         manuscript: f.manuscript && f.manuscript.fileID ? {

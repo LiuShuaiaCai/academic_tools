@@ -8,123 +8,142 @@
     </view>
     <scroll-view scroll-y class="form-body">
 
-      <!-- 1. 论文标题* -->
-      <view class="form-group">
-        <view class="form-label">论文标题 <text class="required">*</text></view>
-        <input class="form-input" placeholder="审稿论文标题" bindinput="onFormInput" data-field="paperTitle" value="{{form.paperTitle}}"/>
-      </view>
+      <!-- 基本信息区 -->
+      <view class="form-section">
+        <view class="section-label">基本信息</view>
 
-      <!-- 2. 期刊/会议* -->
-      <view class="form-group">
-        <view class="form-label">期刊/会议 <text class="required">*</text></view>
-        <input class="form-input" placeholder="来稿期刊/会议" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
-      </view>
-
-      <!-- 3. 邀请时间* -->
-      <view class="form-group">
-        <view class="form-label">邀请时间 <text class="required">*</text></view>
-        <picker mode="date" value="{{form.invitedDate}}" bindchange="onInvitedDateChange">
-          <view class="form-picker {{form.invitedDate ? '' : 'placeholder'}}">
-            <view class="cal-icon"></view>
-            <text style="flex:1">{{form.invitedDate || '请选择邀请日期'}}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-      </view>
-
-      <!-- 4. 截止时间* -->
-      <view class="form-group">
-        <view class="form-label">截止时间 <text class="required">*</text></view>
-        <picker mode="date" value="{{form.deadline}}" bindchange="onDeadlineChange">
-          <view class="form-picker {{form.deadline ? '' : 'placeholder'}}">
-            <view class="cal-icon"></view>
-            <text style="flex:1">{{form.deadline || '请选择截止日期'}}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-      </view>
-
-      <!-- 5. 审稿ID -->
-      <view class="form-group">
-        <view class="form-label">审稿ID</view>
-        <input class="form-input" placeholder="如 #XX-2026-01" bindinput="onFormInput" data-field="reviewId" value="{{form.reviewId}}"/>
-      </view>
-
-      <!-- 6. 轮次 -->
-      <view class="form-group">
-        <view class="form-label">轮次 <text class="form-label-hint">（同一稿件的第几轮审稿）</text></view>
-        <picker mode="selector" range="{{roundOptions}}" range-key="label" value="{{form.roundIdx}}" bindchange="onRoundChange">
-          <view class="form-picker {{form.roundIdx ? '' : 'placeholder'}}">{{form.roundIdx ? roundOptions[form.roundIdx].label : '请选择轮次'}} <text class="picker-arrow">›</text></view>
-        </picker>
-      </view>
-
-      <!-- 7. 关联审稿 -->
-      <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">🔗</text> 关联审稿 <text class="form-label-hint">（同一稿件多轮审稿）</text></view>
-        <picker mode="selector" range="{{relatedReviewOptions}}" range-key="title" value="{{form.relatedReviewIdx}}" bindchange="onRelatedReviewChange">
-          <view class="form-picker {{form.relatedReviewTitle ? '' : 'placeholder'}}">{{form.relatedReviewTitle || '不关联'}} <text class="picker-arrow">›</text></view>
-        </picker>
-      </view>
-
-      <!-- 8. 审稿系统链接 -->
-      <view class="form-group">
-        <view class="form-label">审稿系统链接</view>
-        <input class="form-input" placeholder="https://... 审稿系统地址" bindinput="onFormInput" data-field="systemUrl" value="{{form.systemUrl}}"/>
-      </view>
-
-      <!-- 9. 编辑联系邮箱 -->
-      <view class="form-group">
-        <view class="form-label">编辑联系邮箱</view>
-        <input class="form-input" placeholder="编辑联系邮箱" bindinput="onFormInput" data-field="editorEmail" value="{{form.editorEmail}}"/>
-      </view>
-
-      <!-- 10. 审稿决定 -->
-      <view class="form-group">
-        <view class="form-label">审稿决定</view>
-        <picker mode="selector" range="{{decisionOptions}}" range-key="label" value="{{form.decisionIdx}}" bindchange="onDecisionChange">
-          <view class="form-picker {{form.decisionIdx >= 0 ? '' : 'placeholder'}}">
-            <text style="flex:1">{{form.decisionIdx >= 0 ? decisionOptions[form.decisionIdx].label : '请选择决定'}}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-      </view>
-
-      <!-- 11. 上传稿件 -->
-      <view class="form-group">
-        <view class="form-label-row">
-          <view class="form-label"><text class="form-label-icon">📄</text> 上传稿件 <text class="form-label-hint">（PDF/Word，最大50MB）</text></view>
+        <!-- 1. 论文标题* -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">📝</text> 论文标题 <text class="required">*</text></view>
+          <input class="form-input" placeholder="审稿论文标题" bindinput="onFormInput" data-field="paperTitle" value="{{form.paperTitle}}"/>
         </view>
-        <!-- 未上传时：选择文件按钮 -->
-        <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
-          <view class="manuscript-upload-icon">📄</view>
-          <view class="manuscript-upload-text">上传稿件文件</view>
-          <view class="manuscript-upload-hint">支持 PDF / Word，最大 50MB</view>
+
+        <!-- 2. 期刊/会议* -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">📚</text> 期刊/会议 <text class="required">*</text></view>
+          <input class="form-input" placeholder="来稿期刊/会议" bindinput="onFormInput" data-field="journal" value="{{form.journal}}"/>
         </view>
-        <!-- 已上传时：显示文件信息 -->
-        <view wx:else class="manuscript-file-card" bindtap="previewManuscript">
-          <view class="manuscript-file-info">
-            <view class="manuscript-file-icon">{{form.manuscript.fileType === 'pdf' ? '📕' : '📘'}}</view>
-            <view class="manuscript-file-detail">
-              <view class="manuscript-file-name">{{form.manuscript.fileName}}</view>
-              <view class="manuscript-file-meta">{{form.manuscript.fileSizeText}}<text wx:if="{{form.manuscript.uploadTime}}"> · {{form.manuscript.uploadTime}}</text></view>
+
+        <!-- 3. 邀请时间* -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">📅</text> 邀请时间 <text class="required">*</text></view>
+          <picker mode="date" value="{{form.invitedDate}}" bindchange="onInvitedDateChange">
+            <view class="form-picker {{form.invitedDate ? '' : 'placeholder'}}">
+              <text style="flex:1">{{form.invitedDate || '请选择邀请日期'}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 4. 截止时间* -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">⏰</text> 截止时间 <text class="required">*</text></view>
+          <picker mode="date" value="{{form.deadline}}" bindchange="onDeadlineChange">
+            <view class="form-picker {{form.deadline ? '' : 'placeholder'}}">
+              <text style="flex:1">{{form.deadline || '请选择截止日期'}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <!-- 详细信息区 -->
+      <view class="form-section">
+        <view class="section-label">详细信息</view>
+
+        <!-- 5. 审稿ID -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">🏷️</text> 审稿ID</view>
+          <input class="form-input" placeholder="如 #XX-2026-01" bindinput="onFormInput" data-field="reviewId" value="{{form.reviewId}}"/>
+        </view>
+
+        <!-- 6. 轮次 -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">🔄</text> 轮次 <text class="label-hint">同一稿件第几轮</text></view>
+          <picker mode="selector" range="{{roundOptions}}" range-key="label" value="{{form.roundIdx}}" bindchange="onRoundChange">
+            <view class="form-picker {{form.roundIdx ? '' : 'placeholder'}}">
+              <text style="flex:1">{{form.roundIdx ? roundOptions[form.roundIdx].label : '请选择轮次'}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 7. 关联审稿 -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">🔗</text> 关联审稿 <text class="label-hint">同一稿件多轮审稿</text></view>
+          <picker mode="selector" range="{{relatedReviewOptions}}" range-key="title" value="{{form.relatedReviewIdx}}" bindchange="onRelatedReviewChange">
+            <view class="form-picker {{form.relatedReviewTitle ? '' : 'placeholder'}}">
+              <text style="flex:1">{{form.relatedReviewTitle || '不关联'}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 8. 审稿系统链接 -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">🌐</text> 审稿系统链接</view>
+          <input class="form-input" placeholder="https://... 审稿系统地址" bindinput="onFormInput" data-field="systemUrl" value="{{form.systemUrl}}"/>
+        </view>
+
+        <!-- 9. 编辑联系邮箱 -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">✉️</text> 编辑联系邮箱</view>
+          <input class="form-input" placeholder="编辑联系邮箱" bindinput="onFormInput" data-field="editorEmail" value="{{form.editorEmail}}"/>
+        </view>
+      </view>
+
+      <!-- 决定与稿件区 -->
+      <view class="form-section">
+        <view class="section-label">决定与稿件</view>
+
+        <!-- 10. 审稿决定 -->
+        <view class="form-group">
+          <view class="form-label"><text class="label-icon">✅</text> 审稿决定</view>
+          <picker mode="selector" range="{{decisionOptions}}" range-key="label" value="{{form.decisionIdx}}" bindchange="onDecisionChange">
+            <view class="form-picker {{form.decisionIdx >= 0 ? '' : 'placeholder'}}">
+              <text style="flex:1">{{form.decisionIdx >= 0 ? decisionOptions[form.decisionIdx].label : '请选择决定'}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+
+        <!-- 11. 上传稿件 -->
+        <view class="form-group">
+          <view class="form-label-row">
+            <view class="form-label"><text class="label-icon">📎</text> 上传稿件 <text class="label-hint">PDF/Word，最大50MB</text></view>
+          </view>
+          <!-- 未上传时 -->
+          <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
+            <view class="manuscript-upload-icon">+</view>
+            <view class="manuscript-upload-text">点击上传稿件文件</view>
+            <view class="manuscript-upload-hint">支持 PDF / Word，最大 50MB</view>
+          </view>
+          <!-- 已上传时 -->
+          <view wx:else class="manuscript-file-card" bindtap="previewManuscript">
+            <view class="manuscript-file-info">
+              <view class="manuscript-file-icon">{{form.manuscript.fileType === 'pdf' ? '📕' : '📘'}}</view>
+              <view class="manuscript-file-detail">
+                <view class="manuscript-file-name">{{form.manuscript.fileName}}</view>
+                <view class="manuscript-file-meta">{{form.manuscript.fileSizeText}}<text wx:if="{{form.manuscript.uploadTime}}"> · {{form.manuscript.uploadTime}}</text></view>
+              </view>
+            </view>
+            <view class="manuscript-file-actions">
+              <view class="manuscript-action-btn" catchtap="previewManuscript">预览</view>
+              <view class="manuscript-action-btn manuscript-action-del" catchtap="removeManuscript">删除</view>
             </view>
           </view>
-          <view class="manuscript-file-actions">
-            <view class="manuscript-action-btn" catchtap="previewManuscript">预览</view>
-            <view class="manuscript-action-btn manuscript-action-del" catchtap="removeManuscript">删除</view>
+          <!-- 上传进度 -->
+          <view wx:if="{{manuscriptUploading}}" class="manuscript-progress">
+            <progress percent="{{manuscriptUploadPercent}}" stroke-width="4" activeColor="#2563EB" backgroundColor="#E5E7EB"/>
+            <text class="manuscript-progress-text">上传中 {{manuscriptUploadPercent}}%</text>
           </view>
-        </view>
-        <!-- 上传进度 -->
-        <view wx:if="{{manuscriptUploading}}" class="manuscript-progress">
-          <progress percent="{{manuscriptUploadPercent}}" stroke-width="4" activeColor="#2563EB" backgroundColor="#E5E7EB"/>
-          <text class="manuscript-progress-text">上传中 {{manuscriptUploadPercent}}%</text>
         </view>
       </view>
 
-      <!-- 12. 审稿意见 -->
-      <view class="form-group">
+      <!-- 审稿意见区 -->
+      <view class="form-section">
         <view class="form-label-row">
-          <view class="form-label">审稿意见</view>
+          <view class="form-label"><text class="label-icon">💬</text> 审稿意见</view>
           <view class="decision-btns">
             <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{!aiReviewLoading}}">
               <text class="template-btn-icon">🤖</text>
@@ -132,14 +151,14 @@
             </view>
             <view class="template-btn" bindtap="showTemplateModal">
               <text class="template-btn-icon">📋</text>
-              <text class="template-btn-text">插入模板</text>
+              <text class="template-btn-text">模板</text>
             </view>
-            <view class="template-btn" bindtap="openNoteEditor">
-              <text class="template-btn-icon">✏️</text>
-              <text class="template-btn-text">编辑</text>
+            <view class="template-btn view-note-btn" bindtap="showNotePreview">
+              <text class="template-btn-icon">👁️</text>
+              <text class="template-btn-text">全屏</text>
             </view>
             <view class="template-btn clear-note-btn" bindtap="clearNote">
-              <text class="template-btn-icon">🗑</text>
+              <text class="template-btn-icon">🗑️</text>
               <text class="template-btn-text">清空</text>
             </view>
           </view>
@@ -154,14 +173,13 @@
         <textarea class="form-textarea" placeholder="审稿意见和笔记..." bindinput="onFormInput" data-field="note" value="{{form.note}}" maxlength="-1"></textarea>
       </view>
       
-      <!-- 13. 处理时间线 -->
-      <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📅</text> 处理时间线<text class="form-label-hint">（任务完成：最后一次处理时间大于到期时间）</text></view>
+      <!-- 处理时间线区 -->
+      <view class="form-section">
+        <view class="form-label"><text class="label-icon">📋</text> 处理时间线 <text class="label-hint">记录处理过程</text></view>
 
         <view class="tl-add-row">
           <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
             <view class="tl-picker-box">
-              <view class="cal-icon cal-icon-sm"></view>
               <text class="tl-picker-text {{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
               <text class="tl-picker-text tl-arrow">▼</text>
             </view>
@@ -236,15 +254,15 @@
       <!-- 上传稿件 -->
       <view class="form-group">
         <view class="form-label-row">
-          <view class="form-label"><text class="form-label-icon">📄</text> 上传稿件 <text class="form-label-hint">（PDF/Word，最大50MB）</text></view>
+          <view class="form-label"><text class="label-icon">📎</text> 上传稿件 <text class="label-hint">PDF/Word，最大50MB</text></view>
         </view>
-        <!-- 未上传时：选择文件按钮 -->
+        <!-- 未上传时 -->
         <view wx:if="{{!form.manuscript || !form.manuscript.fileID}}" class="manuscript-upload-area" bindtap="chooseManuscript">
-          <view class="manuscript-upload-icon">📄</view>
-          <view class="manuscript-upload-text">上传稿件文件</view>
+          <view class="manuscript-upload-icon">+</view>
+          <view class="manuscript-upload-text">点击上传稿件文件</view>
           <view class="manuscript-upload-hint">支持 PDF / Word，最大 50MB</view>
         </view>
-        <!-- 已上传时：显示文件信息 -->
+        <!-- 已上传时 -->
         <view wx:else class="manuscript-file-card" bindtap="previewManuscript">
           <view class="manuscript-file-info">
             <view class="manuscript-file-icon">{{form.manuscript.fileType === 'pdf' ? '📕' : '📘'}}</view>
@@ -267,7 +285,7 @@
 
       <view class="form-group">
         <view class="form-label-row">
-          <view class="form-label">审稿意见</view>
+          <view class="form-label"><text class="label-icon">💬</text> 审稿意见</view>
           <view class="decision-btns">
             <view class="template-btn ai-review-btn" bindtap="startAiReview" wx:if="{{!aiReviewLoading}}">
               <text class="template-btn-icon">🤖</text>
@@ -275,14 +293,14 @@
             </view>
             <view class="template-btn" bindtap="showTemplateModal">
               <text class="template-btn-icon">📋</text>
-              <text class="template-btn-text">插入模板</text>
+              <text class="template-btn-text">模板</text>
             </view>
-            <view class="template-btn" bindtap="openNoteEditor">
-              <text class="template-btn-icon">✏️</text>
-              <text class="template-btn-text">编辑</text>
+            <view class="template-btn view-note-btn" bindtap="showNotePreview">
+              <text class="template-btn-icon">👁️</text>
+              <text class="template-btn-text">全屏</text>
             </view>
             <view class="template-btn clear-note-btn" bindtap="clearNote">
-              <text class="template-btn-icon">🗑</text>
+              <text class="template-btn-icon">🗑️</text>
               <text class="template-btn-text">清空</text>
             </view>
           </view>
@@ -294,7 +312,7 @@
             <text class="ai-review-loading-text">AI 正在分析稿件，请稍候...</text>
           </view>
         </view>
-        <textarea class="form-textarea" placeholder="审稿意见..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
+        <textarea class="form-textarea" placeholder="审稿意见..." bindinput="onFormInput" data-field="note" value="{{form.note}}" maxlength="-1"></textarea>
       </view>
     </view>
     <view class="form-footer">
@@ -308,7 +326,7 @@
 <view class="form-overlay {{showTemplateModal ? 'active' : ''}}" bindtap="closeTemplateModal">
   <view class="form-sheet template-sheet" catchtap="doNothing">
     <view class="form-header">
-      <view class="form-title">📋 选择审稿模板</view>
+      <view class="form-title">选择审稿模板</view>
       <view class="form-close" bindtap="closeTemplateModal">✕</view>
     </view>
     <scroll-view scroll-y class="form-body">
@@ -387,6 +405,29 @@
     <view class="form-footer" wx:if="{{selectedTemplate}}">
       <button class="btn-cancel" bindtap="closeTemplateModal">取消</button>
       <button class="btn-confirm" bindtap="useTemplate">使用模板</button>
+    </view>
+  </view>
+</view>
+
+<!-- 审稿意见全屏编辑弹窗 -->
+<view class="note-preview-overlay {{showNotePreview ? 'active' : ''}}" bindtap="closeNotePreview">
+  <view class="note-preview-sheet" catchtap="doNothing">
+    <view class="note-preview-header">
+      <view class="note-preview-title">审稿意见</view>
+      <view class="note-preview-close" bindtap="closeNotePreview">✕</view>
+    </view>
+    <textarea
+      class="note-preview-textarea"
+      placeholder="输入审稿意见..."
+      value="{{notePreviewText}}"
+      bindinput="onNotePreviewInput"
+      maxlength="-1"
+      show-confirm-bar="{{false}}"
+      cursor-spacing="{{20}}"
+    ></textarea>
+    <view class="note-preview-footer">
+      <view class="note-preview-copy" bindtap="copyNotePreview">复制全文</view>
+      <view class="note-preview-save" bindtap="saveNotePreview">保存</view>
     </view>
   </view>
 </view>

@@ -83,7 +83,7 @@
       data-id="{{item._id}}"
     >
       <!-- 顶部彩色状态条 -->
-      <view class="card-topbar" style="background:{{item.status === 'pending' ? '#F59E0B' : item.status === 'in_progress' ? '#3B82F6' : item.status === 'submitted' ? '#10B981' : '#9CA3AF'}}"></view>
+      <view class="card-topbar" style="background:{{item.statusColor}}"></view>
 
       <view class="card-body">
         <!-- 标题 + 轮次 -->
@@ -92,27 +92,32 @@
           <text class="card-round" wx:if="{{item.round}}">{{item.roundLabel}}</text>
         </view>
 
-        <!-- 期刊 + 状态 -->
+        <!-- 期刊 -->
         <view class="card-journal-row">
-          <text class="card-journal" user-select="true">{{item.journal || '未设置期刊'}}</text>
-          <text class="card-status" style="background:{{item.completed ? '#F3F4F6;color:#6B7280' : item.status === 'pending' ? '#FEF3C7;color:#92400E' : item.status === 'in_progress' ? '#DBEAFE;color:#1E40AF' : '#D1FAE5;color:#065F46'}}">{{item.completed ? '已完成' : item.status === 'pending' ? '待审稿' : item.status === 'in_progress' ? '审稿中' : '已提交'}}</text>
+          <text class="card-journal" user-select="true">{{item.journal || '未设置期刊'}}<text wx:if="{{item.reviewId}}"> #{{item.reviewId}}</text></text>
         </view>
 
-        <!-- 邀请时间 + 截止时间 + 完成时间 -->
-        <view class="card-dates-row" wx:if="{{item.invitedDate || item.deadline || item.decisionTime}}">
-          <text class="card-date-item" wx:if="{{item.invitedDate}}">邀请：{{item.invitedDate}}</text>
-          <text class="card-date-item {{item.completed ? '' : item.daysLeft < 0 ? 'overdue' : item.daysLeft <= 1 ? 'urgent-critical' : item.daysLeft <= 3 ? 'urgent' : ''}}" wx:if="{{item.deadline}}">截止：{{item.deadline}}<text wx:if="{{!item.completed}}">（{{item.daysLeft >= 0 ? item.daysLeft + '天' : '已过期'}}）</text></text>
-          <text class="card-date-item" wx:if="{{item.completed && item.decisionTime}}">完成：{{item.decisionTime}}</text>
+        <!-- 决定 + 状态 同一行 -->
+        <view class="card-status-row">
+          <text class="card-decision-label" user-select="true">{{item.decisionLabel}}</text>
+          <view class="card-status-right">
+            <text class="card-status-text {{item.overdueClass}}" wx:if="{{item.overdueLabel}}">{{item.overdueLabel}}</text>
+            <view class="card-switch" catchtap="toggleComplete" data-id="{{item._id}}" data-completed="{{item.completed}}">
+              <view class="card-switch-track {{item.completed ? 'on' : ''}}">
+                <view class="card-switch-knob"></view>
+              </view>
+            </view>
+          </view>
         </view>
 
-        <!-- 审稿决定 -->
-        <view class="card-decision" wx:if="{{item.decision}}">
-          <text>决定：{{item.decision === 'pending' ? '⏳ 待定' : item.decision === 'peer' ? '👥 同行' : item.decision === 'accept' ? '✅ 接收' : item.decision === 'minor' ? '🔄 小修' : item.decision === 'major' ? '⚠️ 大修' : item.decision === 'reject' ? '❌ 拒绝' : '📝 其他'}}</text>
-        </view>
-
-        <!-- 系统链接 -->
-        <view class="card-system-link" wx:if="{{item.systemUrl}}" catchtap="onOpenSystemUrl" data-url="{{item.systemUrl}}">
-          <text>🔗 打开审稿系统</text>
+        <!-- 系统链接 + 编辑邮箱 同行 -->
+        <view class="card-link-row" wx:if="{{item.systemUrl || item.editorEmail}}">
+          <view class="card-link-left" catchtap="onOpenSystemUrl" data-url="{{item.systemUrl}}" wx:if="{{item.systemUrl}}">
+            <text class="card-link-text">🔗 打开审稿系统</text>
+          </view>
+          <view class="card-link-right" catchtap="onOpenEmail" data-email="{{item.editorEmail}}" wx:if="{{item.editorEmail}}">
+            <text class="card-link-text">✉️ {{item.editorEmail}}</text>
+          </view>
         </view>
       </view>
 
@@ -140,6 +145,26 @@
 
   <!-- FAB 悬浮按钮 -->
   <view class="fab" bindtap="showAddForm">+</view>
+
+  <!-- 链接复制弹窗 -->
+  <view class="link-modal-mask" wx:if="{{showLinkModal}}" catchtouchmove="true">
+    <view class="link-modal">
+      <view class="link-modal-header">
+        <text class="link-modal-title">🔗 打开审稿系统</text>
+        <text class="link-modal-close" bindtap="onCloseLinkModal">✕</text>
+      </view>
+      <view class="link-modal-body">
+        <text class="link-modal-desc">微信小程序无法直接打开外部链接，请复制后使用系统浏览器访问：</text>
+        <view class="link-modal-url-box" selectable="true">
+          <text class="link-modal-url">{{currentUrl}}</text>
+        </view>
+      </view>
+      <view class="link-modal-footer">
+        <button class="link-btn-copy" bindtap="onCopyLinkModal">📋 复制链接</button>
+        <button class="link-btn-cancel" bindtap="onCloseLinkModal">取消</button>
+      </view>
+    </view>
+  </view>
 
   <!-- 表单组件 -->
   <review-form
