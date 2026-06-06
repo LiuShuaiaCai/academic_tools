@@ -8,6 +8,8 @@ Page({
     dayEvents: [], eventDates: {},
     listEvents: [], // 列表视图专用数据，避免覆盖 monthEvents
     weekRangeLabel: '', // 周视图日期范围标签
+    // 加载状态
+    isLoading: false,
     // 任务相关
     tasks: [],
     taskTypes: ['submission', 'review', 'conference', 'task'],
@@ -55,6 +57,7 @@ Page({
   },
 
   onShow: function() {
+    // 每次显示时重新加载数据，确保从详情页返回后数据是最新的
     this.loadMonthEvents();
   },
 
@@ -148,6 +151,13 @@ Page({
     var that = this;
     var currentYear = this.data.currentYear;
     var currentMonth = this.data.currentMonth;
+
+    // 防止重复加载
+    if (this.data.isLoading) {
+      return;
+    }
+    this.setData({ isLoading: true });
+
     var db = wx.cloud.database();
     var _ = db.command;
 
@@ -214,13 +224,15 @@ Page({
         }
       });
 
-      that.setData({ monthEvents: monthEvents });
+      that.setData({ monthEvents: monthEvents, isLoading: false });
       that.applyFilters();
     }).catch(function(e) {
       console.error('[日历] 加载失败', e);
+      that.setData({ isLoading: false });
       var view = that.data.currentView;
       if (view === 'week') that.buildWeekView();
-      else if (view !== 'list') that.buildCalendar();
+      else if (view === 'month') that.buildCalendar();
+      else if (view === 'list') that.buildListview();
     });
   },
 
