@@ -53,6 +53,9 @@
         <view class="card-stats" wx:if="{{item.isTaskType}}">
           <text>{{item.count}} 任务待完成</text>
         </view>
+        <view class="card-stats" wx:elif="{{item.id === 'archive'}}">
+          <text>{{item.count}} 份资料</text>
+        </view>
         <view class="card-urgent-badge" wx:if="{{item.urgent > 0}}">{{item.urgent}}</view>
       </view>
     </view>

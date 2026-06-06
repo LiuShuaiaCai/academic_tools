@@ -174,10 +174,10 @@ Page({
       db.collection('reviews').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 会议 - deadline
       db.collection('conferences').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
-      // 会议 - 按开始日期（有状态的）
+      // 会议 - 按开始日期显示（只要填写了 startDate 就显示在日历上）
       db.collection('conferences').where({
-        status: _.neq(null).and(_.neq('')),
-        startDate: _.gte(startDateStr).and(_.lt(endDateStr))
+        deleteTime: null,
+        startDate: _.exists(true).and(_.neq('')).and(_.gte(startDateStr)).and(_.lt(endDateStr))
       }).get().catch(function() { return { data: [] }; }),
       // 任务 - 按月份字符串筛选（包含已完成，在日历上展示所有事件）
       db.collection('tasks').where({

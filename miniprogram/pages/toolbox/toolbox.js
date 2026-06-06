@@ -90,7 +90,7 @@ Page({
     for (var i = 0; i < tools.length; i++) {
       (function(tool) {
         // 非任务型工具：不查 count
-        if (!tool.isTaskType) {
+        if (!tool.isTaskType && tool.id !== 'archive') {
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji, color: tool.color,
@@ -100,6 +100,7 @@ Page({
         }
 
         var colName = TASK_COLLECTION_MAP[tool.id];
+        if (tool.id === 'archive') colName = 'archives';
         console.log('[toolbox] 查询工具:', tool.id, '->', colName, 'isTaskType:', tool.isTaskType);
 
         if (colName) {
@@ -116,7 +117,25 @@ Page({
               completed: false,
               deadline: _.gte(nowStr).and(_.lt(urgentStr))
             }).count();
-          } else if (tool.id === 'review' || tool.id === 'conference') {
+          } else if (tool.id === 'conference') {
+            var todayDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            var startUrgentDate = new Date(now);
+            startUrgentDate.setDate(startUrgentDate.getDate() + 3);
+            var startUrgentDateStr = startUrgentDate.getFullYear() + '-' + String(startUrgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(startUrgentDate.getDate()).padStart(2, '0');
+            urgentPromise = Promise.all([
+              db.collection(colName).where({
+                deleteTime: null,
+                deadline: _.gte(nowStr).and(_.lt(urgentStr))
+              }).count(),
+              db.collection(colName).where({
+                deleteTime: null,
+                status: _.neq(null).and(_.neq('')),
+                startDate: _.gte(todayDateStr).and(_.lte(startUrgentDateStr + ' 23:59:59'))
+              }).count()
+            ]).then(function(res) {
+              return { total: res[0].total + res[1].total };
+            });
+          } else if (tool.id === 'review') {
             urgentPromise = db.collection(colName).where({
               deleteTime: null,
               deadline: _.gte(nowStr).and(_.lt(urgentStr))
@@ -131,12 +150,12 @@ Page({
               return {
                 id: tool.id, name: tool.name, desc: tool.desc,
                 iconEmoji: tool.iconEmoji, color: tool.color,
-                pagePath: tool.pagePath, isTaskType: true,
+                pagePath: tool.pagePath, isTaskType: tool.isTaskType,
                 count: results[0].total, urgent: results[1].total
               };
             }).catch(function(e) {
               console.error('[toolbox] 查询失败:', tool.id, e);
-              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji, color: tool.color, pagePath: tool.pagePath, isTaskType: true, count: 0, urgent: 0 };
+              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji, color: tool.color, pagePath: tool.pagePath, isTaskType: tool.isTaskType, count: 0, urgent: 0 };
             })
           );
         } else {
@@ -144,7 +163,7 @@ Page({
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji, color: tool.color,
-            pagePath: tool.pagePath, isTaskType: true, count: 0, urgent: 0
+            pagePath: tool.pagePath, isTaskType: tool.isTaskType, count: 0, urgent: 0
           }));
         }
       })(tools[i]);
