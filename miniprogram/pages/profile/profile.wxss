@@ -112,13 +112,19 @@
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
 }
 
-.pstat-item { flex: 1; text-align: center; }
+.pstat-item { flex: 1; text-align: center; padding: 8rpx 0; }
+.pstat-item-active { opacity: 0.6; }
 .pstat-divider { width: 1rpx; height: 60rpx; background: #E5E7EB; }
 .pstat-num { font-size: 48rpx; font-weight: 700; }
 .pstat-num.blue { color: #2563eb; }
 .pstat-num.red { color: #EF4444; }
 .pstat-num.green { color: #10B981; }
 .pstat-num.orange { color: #F59E0B; }
+.pstat-num.purple { color: #7C3AED; }
+.pstat-num.yellow { color: #EAB308; }
+.pstat-num.cyan { color: #06B6D4; }
+.pstat-num.pink { color: #EC4899; }
+.pstat-num.gray { color: #6B7280; }
 .pstat-label { font-size: 22rpx; color: #6B7280; margin-top: 4rpx; }
 
 .menu-group {

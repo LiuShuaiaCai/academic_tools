@@ -58,7 +58,7 @@ Page({
         if (res.result && res.result.success) {
           var profile = res.result.profile || {};
           var avatarUrl = profile.avatar || '🎓';
-          var isWechatAvatar = avatarUrl.indexOf('http') === 0;
+          var isWechatAvatar = avatarUrl.indexOf('http') === 0 || avatarUrl.indexOf('cloud://') === 0;
           
           // 构建地区显示文本
           var regionText = '';
@@ -82,16 +82,38 @@ Page({
     });
   },
 
-  // 微信选择头像回调
+  // 选择头像 → 自动上传云存储 → 直接写数据库，不用点保存
   onChooseAvatar: function(e) {
     var avatarUrl = e.detail.avatarUrl;
-    if (avatarUrl) {
-      this.setData({
-        avatarUrl: avatarUrl,
+    if (!avatarUrl) return;
+    var self = this;
+    wx.showLoading({ title: '上传中' });
+    var cloudPath = 'avatars/' + Date.now() + '.png';
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: avatarUrl
+    }).then(function(uploadRes) {
+      var fileID = uploadRes.fileID;
+      self.setData({
+        avatarUrl: fileID,
         isWechatAvatar: true,
-        'profile.avatar': avatarUrl
+        'profile.avatar': fileID
       });
-    }
+      return new Promise(function(resolve, reject) {
+        wx.cloud.callFunction({
+          name: 'creditsAPI',
+          data: { action: 'updateProfile', profile: { avatar: fileID } },
+          success: function(r) { resolve(r); },
+          fail: function(err) { reject(err); }
+        });
+      });
+    }).then(function() {
+      wx.hideLoading();
+    }).catch(function(err) {
+      wx.hideLoading();
+      console.error('[editProfile] 头像上传失败', err);
+      wx.showToast({ title: '头像上传失败', icon: 'none' });
+    });
   },
 
   // 显示emoji选择器

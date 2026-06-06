@@ -2,7 +2,7 @@
 page { background: #F6F6F6; min-height: 100vh; }
 
 .onboarding-container {
-  padding: 0 0 40rpx 0;
+  padding: 120rpx 0 40rpx 0;
 }
 
 .step-panel {

@@ -35,26 +35,14 @@
   </view>
 
   <!-- 统计数据 -->
-  <view class="profile-stats">
-    <view class="pstat-item">
-      <view class="pstat-num blue">{{stats.submissions}}</view>
-      <view class="pstat-label">投稿</view>
-    </view>
-    <view class="pstat-divider"></view>
-    <view class="pstat-item">
-      <view class="pstat-num red">{{stats.reviews}}</view>
-      <view class="pstat-label">审稿</view>
-    </view>
-    <view class="pstat-divider"></view>
-    <view class="pstat-item">
-      <view class="pstat-num green">{{stats.conferences}}</view>
-      <view class="pstat-label">会议</view>
-    </view>
-    <view class="pstat-divider"></view>
-    <view class="pstat-item">
-      <view class="pstat-num orange">{{stats.archives}}</view>
-      <view class="pstat-label">归档</view>
-    </view>
+  <view class="profile-stats" wx:if="{{statItems.length > 0}}">
+    <block wx:for="{{statItems}}" wx:key="id">
+      <view class="pstat-item" bindtap="goToStatPage" data-page="{{item.pagePath}}" hover-class="pstat-item-active">
+        <view class="pstat-num {{item.color}}">{{item.count}}</view>
+        <view class="pstat-label">{{item.name}}</view>
+      </view>
+      <view class="pstat-divider" wx:if="{{index < statItems.length - 1}}"></view>
+    </block>
   </view>
 
   <!-- 资料入口 -->
@@ -72,20 +60,6 @@
     <view class="menu-item" bindtap="goToToolManager">
       <text class="menu-icon">🔧</text>
       <text class="menu-text">工具管理</text>
-      <text class="menu-arrow">›</text>
-    </view>
-  </view>
-
-  <!-- 数据管理 -->
-  <view class="menu-group">
-    <view class="menu-item" bindtap="backupData">
-      <text class="menu-icon">💾</text>
-      <text class="menu-text">数据备份</text>
-      <text class="menu-arrow">›</text>
-    </view>
-    <view class="menu-item" bindtap="restoreData">
-      <text class="menu-icon">📥</text>
-      <text class="menu-text">数据还原</text>
       <text class="menu-arrow">›</text>
     </view>
   </view>

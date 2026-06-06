@@ -176,11 +176,28 @@ async function getCreditsInfo() {
   // 计算有效积分（排除已过期和已删除的积分）
   var validCredits = await calculateValidCredits(openid);
 
+  var continuousDays = (config && config.continuousDays) || 0;
+  var lastDate = config && config.lastSigninDate;
+
+  // 实时判断连续签到是否已断：只有昨天或今天签过才算连续
+  if (lastDate) {
+    var last = new Date(lastDate + 'T00:00:00');
+    var yesterday = new Date(todayStr + 'T00:00:00');
+    yesterday.setDate(yesterday.getDate() - 1);
+    var isYesterday = last.getTime() === yesterday.getTime();
+    var isToday = lastDate === todayStr;
+    if (!isYesterday && !isToday) {
+      continuousDays = 0;
+    }
+  } else {
+    continuousDays = 0;
+  }
+
   return {
     success: true,
     credits: validCredits,
     signinDays: (config && config.signinDays) || 0,
-    continuousDays: (config && config.continuousDays) || 0,
+    continuousDays: continuousDays,
     signedToday: (config && config.lastSigninDate) === todayStr
   };
 }
@@ -293,10 +310,18 @@ async function doSignin() {
   var bonusPoints = 0;
   var bonusDescription = '';
 
-  // 连续签到7天额外奖励50积分
-  if (continuousDays === CREDITS_RULES.continuous_signin_days) {
-    bonusPoints = CREDITS_RULES.continuous_bonus;
-    bonusDescription = '连续签到7天 +' + bonusPoints;
+  // 连续签到7天额外奖励50积分，周期循环
+  if (continuousDays >= CREDITS_RULES.continuous_signin_days) {
+    var remainder = continuousDays % CREDITS_RULES.continuous_signin_days;
+    if (remainder === 0) {
+      // 刚好第7天（或14、21...）：发奖励，显示7
+      bonusPoints = CREDITS_RULES.continuous_bonus;
+      bonusDescription = '连续签到7天 +' + bonusPoints;
+      continuousDays = CREDITS_RULES.continuous_signin_days;
+    } else {
+      // 超过7天（如第8天）：重置为余数，显示1
+      continuousDays = remainder;
+    }
   }
 
   var totalPoints = basePoints + bonusPoints;
@@ -463,6 +488,33 @@ async function getUserProfile() {
     profile: config.profile || null,
     credits: config.credits || 0
   };
+}
+
+// 部分更新用户资料（不触发积分奖励，不覆盖未传字段）
+async function updateProfile(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var now = formatTime();
+
+  var profileData = event.profile || {};
+  var config = await findRecord('user_config', { _openid: openid });
+  if (!config) {
+    return { success: false, error: '用户未初始化' };
+  }
+
+  // 只更新传入的字段，避免覆盖已有资料
+  var updateData = { updateTime: now };
+  for (var key in profileData) {
+    if (profileData.hasOwnProperty(key)) {
+      updateData['profile.' + key] = profileData[key];
+    }
+  }
+
+  await db.collection('user_config').doc(config._id).update({
+    data: updateData
+  });
+
+  return { success: true };
 }
 
 // 分页获取积分流水
@@ -1002,6 +1054,7 @@ exports.main = async (event, context) => {
       // 资料管理
       case 'completeProfile': return await completeProfile(event);
       case 'getUserProfile': return await getUserProfile();
+      case 'updateProfile': return await updateProfile(event);
       // 工具函数
       case 'getCreditsRules': return {
         success: true,

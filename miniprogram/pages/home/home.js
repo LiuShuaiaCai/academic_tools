@@ -18,12 +18,37 @@ Page({
   onLoad: function() {
     this.loadEnabledTools();
   },
-  onShow: function() { this.loadEnabledTools(); this.loadCreditsInfo(); },
+  onShow: function() { 
+    this.loadEnabledTools(); 
+    this.loadCreditsInfo();
+    // 兜底：2 秒后如果还没签也没弹窗，再触发一次检查
+    var that = this;
+    setTimeout(function() {
+      if (!that.data.signedToday && !that.data.showSigninModal) {
+        that.checkSigninModal();
+      }
+    }, 2000);
+  },
+
+  // 获取北京时间日期字符串 YYYY-MM-DD
+  getBeijingDateStr: function() {
+    var now = new Date();
+    var bj = new Date(now.getTime() + 8 * 3600000);
+    var y = bj.getFullYear();
+    var m = String(bj.getMonth() + 1).padStart(2, '0');
+    var d = String(bj.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  },
 
   checkSigninModal: function() {
     if (this.data.signedToday) return;
-    var today = new Date().toISOString().slice(0, 10);
-    var dismissed = wx.getStorageSync('signin_dismissed_' + today);
+    var today = this.getBeijingDateStr();
+    var dismissed = false;
+    try {
+      dismissed = wx.getStorageSync('signin_dismissed_' + today);
+    } catch(e) {
+      dismissed = false;
+    }
     if (!dismissed) {
       this.setData({ showSigninModal: true });
     }
@@ -31,21 +56,31 @@ Page({
 
   closeSigninModal: function() {
     this.setData({ showSigninModal: false });
-    var today = new Date().toISOString().slice(0, 10);
+    var today = this.getBeijingDateStr();
     wx.setStorageSync('signin_dismissed_' + today, true);
   },
 
   loadCreditsInfo: function() {
     var that = this;
-    creditsUtil.getCreditsInfo().then(function(res) {
+    var promise;
+    try {
+      promise = creditsUtil.getCreditsInfo();
+    } catch(e) {
+      // 同步异常（如 cloud 未初始化），仍然检查弹窗
+      that.checkSigninModal();
+      return;
+    }
+    promise.then(function(res) {
       if (res.success !== false) {
         that.setData({
           signedToday: res.signedToday || false,
           continuousDays: res.continuousDays || 0
         });
-        that.checkSigninModal();
       }
-    }).catch(function() {});
+      that.checkSigninModal();
+    }).catch(function() {
+      that.checkSigninModal();
+    });
   },
 
   doSignin: function() {

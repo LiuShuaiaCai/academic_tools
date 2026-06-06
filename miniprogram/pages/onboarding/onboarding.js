@@ -14,8 +14,8 @@ var DEFAULT_TOOLS = [
 
 // 按原型定义的角色工具配置
 var ROLE_CONFIG = {
-  researcher: ['submission', 'conference', 'archive'],
-  editor: ['submission', 'review', 'conference', 'archive']
+  researcher: ['submission', 'review', 'conference', 'archive'],
+  editor: ['conference', 'archive']
 };
 
 Page({
