@@ -13,11 +13,40 @@
     </view>
   </view>
 
+  <!-- 统计概览 -->
+  <view class="stats-overview" wx:if="{{!loading && tools.length > 0}}">
+    <view class="overview-item">
+      <view class="overview-num">{{totalCount}}</view>
+      <view class="overview-label">总任务数</view>
+    </view>
+    <view class="overview-divider"></view>
+    <view class="overview-item">
+      <view class="overview-num urgent">{{totalUrgent}}</view>
+      <view class="overview-label">紧急待办</view>
+    </view>
+  </view>
+
+  <!-- 统计概览骨架屏 -->
+  <view class="stats-overview skeleton-overview" wx:if="{{loading}}">
+    <view class="overview-item">
+      <view class="skeleton-num skeleton-pulse"></view>
+      <view class="skeleton-label skeleton-pulse"></view>
+    </view>
+    <view class="overview-divider"></view>
+    <view class="overview-item">
+      <view class="skeleton-num skeleton-pulse"></view>
+      <view class="skeleton-label skeleton-pulse"></view>
+    </view>
+  </view>
+
   <!-- 工作台 -->
   <view class="stats-frame">
-    <view class="stats-frame-title">
+    <view class="stats-frame-title" wx:if="{{!loading}}">
       <text>🧰</text>
       <text>我的工具</text>
+    </view>
+    <view class="stats-frame-title skeleton-title" wx:if="{{loading}}">
+      <view class="skeleton-title-text skeleton-pulse"></view>
     </view>
 
     <!-- 加载骨架屏 -->
@@ -58,19 +87,6 @@
         </view>
         <view class="card-urgent-badge" wx:if="{{item.urgent > 0}}">{{item.urgent}}</view>
       </view>
-    </view>
-  </view>
-
-  <!-- 统计概览 -->
-  <view class="stats-overview" wx:if="{{!loading && tools.length > 0}}">
-    <view class="overview-item">
-      <view class="overview-num">{{totalCount}}</view>
-      <view class="overview-label">总任务数</view>
-    </view>
-    <view class="overview-divider"></view>
-    <view class="overview-item">
-      <view class="overview-num urgent">{{totalUrgent}}</view>
-      <view class="overview-label">紧急待办</view>
     </view>
   </view>
 </view>

@@ -193,7 +193,7 @@ page { background: #F6F6F6; }
   background: #fff;
   border-radius: 16rpx;
   padding: 24rpx;
-  margin: 24rpx;
+  margin: -20rpx 24rpx 24rpx;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
 }
 
@@ -261,4 +261,29 @@ page { background: #F6F6F6; }
   0% { opacity: 1; }
   50% { opacity: 0.4; }
   100% { opacity: 1; }
+}
+
+/* 统计概览骨架 */
+.skeleton-overview .skeleton-num {
+  width: 60rpx;
+  height: 48rpx;
+  border-radius: 8rpx;
+  background: #E5E7EB;
+  margin: 0 auto 8rpx;
+}
+
+.skeleton-overview .skeleton-label {
+  width: 80rpx;
+  height: 24rpx;
+  border-radius: 6rpx;
+  background: #E5E7EB;
+  margin: 0 auto;
+}
+
+/* 标题骨架 */
+.skeleton-title-text {
+  width: 140rpx;
+  height: 28rpx;
+  border-radius: 6rpx;
+  background: #E5E7EB;
 }
