@@ -5,13 +5,15 @@
 
 // ======== 会议状态定义 ========
 var STATUS_DEF = {
-  pending:     { label: '待截稿', color: '#F59E0B', bg: '#FEF3C7' },
+  submitted:   { label: '已投稿', color: '#3B82F6', bg: '#DBEAFE' },
+  accepted:    { label: '已录用', color: '#8B5CF6', bg: '#EDE9FE' },
   registered:  { label: '已报名', color: '#10B981', bg: '#D1FAE5' },
   expired:     { label: '已过期', color: '#9CA3AF', bg: '#F3F4F6' }
 };
 
 var STATUS_LABEL_MAP = {
-  pending:    '待截稿',
+  submitted:  '已投稿',
+  accepted:   '已录用',
   registered: '已报名',
   expired:    '已过期'
 };
@@ -19,24 +21,15 @@ var STATUS_LABEL_MAP = {
 // ======== 列表页快速筛选选项 ========
 var FILTER_OPTIONS = [
   { value: 'all',       label: '全部' },
-  { value: 'pending',   label: '待截稿' },
   { value: 'near',      label: '急需处理' },
-  { value: 'registered', label: '已报名' }
+  { value: 'registered', label: '已截止' }
 ];
 
 // ======== 表单选项 ========
 var STATUS_OPTIONS_FOR_FORM = [
-  { value: 'pending',    label: '待截稿' },
+  { value: 'submitted',  label: '已投稿' },
+  { value: 'accepted',   label: '已录用' },
   { value: 'registered', label: '已报名' }
-];
-
-// ======== 时间线事件选项 ========
-var TL_EVENT_OPTIONS = [
-  { value: 'deadline',   label: '截稿', color: '#EF4444' },
-  { value: 'notification', label: '录用通知', color: '#F59E0B' },
-  { value: 'registration',  label: '报名', color: '#10B981' },
-  { value: 'start',      label: '会议开始', color: '#3B82F6' },
-  { value: 'end',        label: '会议结束', color: '#8B5CF6' }
 ];
 
 // ======== 辅助函数 ========
@@ -67,7 +60,6 @@ module.exports = {
   STATUS_LABEL_MAP: STATUS_LABEL_MAP,
   FILTER_OPTIONS: FILTER_OPTIONS,
   STATUS_OPTIONS_FOR_FORM: STATUS_OPTIONS_FOR_FORM,
-  TL_EVENT_OPTIONS: TL_EVENT_OPTIONS,
   getStatusOptions: getStatusOptions,
   getStatusLabel: getStatusLabel,
   getStatusColor: getStatusColor,

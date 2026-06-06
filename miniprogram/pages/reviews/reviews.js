@@ -151,8 +151,13 @@ Page({
     }
 
     Promise.all(queries).then(function(results){
-      var listRes = results[0];
-      var optionsRes = results[1];
+      if (!results || !results.length) {
+        console.error('[审稿] Promise.all 返回异常:', results);
+        that.setData({ loadingMore:false, searchLoading:false, list:[], filteredList:[] });
+        return;
+      }
+      var listRes = results[0] || {};
+      var optionsRes = results[1] || {};
 
       var rawData = Array.isArray(listRes.data) ? listRes.data : [];
       var newItems = rawData.map(function(item){ return formatUtil.formatItem(item); });
@@ -404,25 +409,33 @@ Page({
 
   /* ======== 完成/取消完成 ======== */
   toggleComplete:function(e){
-    var that = this;
-    var id = e.currentTarget.dataset.id;
-    var currentlyCompleted = e.currentTarget.dataset.completed;
-    var newCompleted = !currentlyCompleted;
-    var db = wx.cloud.database();
+    try {
+      var that = this;
+      var target = (e && e.currentTarget) ? e.currentTarget : {};
+      var dataset = target.dataset || {};
+      var id = dataset.id;
+      if (!id) return;
+      var currentlyCompleted = !!dataset.completed;
+      var newCompleted = !currentlyCompleted;
+      var db = wx.cloud.database();
 
-    wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask:true });
-    db.collection('reviews').doc(id).update({
-      data:{ completed: newCompleted }
-    }).then(function(){
+      wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask:true });
+      db.collection('reviews').doc(id).update({
+        data:{ completed: newCompleted }
+      }).then(function(){
+        wx.hideLoading();
+        wx.showToast({ title: newCompleted ? '已完成' : '已取消', icon:'success' });
+        that.loadList();
+        that.loadStats();
+      }).catch(function(err){
+        wx.hideLoading();
+        console.error('[审稿] 标记完成失败', err);
+        wx.showToast({ title:'操作失败', icon:'none' });
+      });
+    } catch(err) {
+      console.error('[审稿] toggleComplete 异常', err);
       wx.hideLoading();
-      wx.showToast({ title: newCompleted ? '已完成' : '已取消', icon:'success' });
-      that.loadList();
-      that.loadStats();
-    }).catch(function(e){
-      wx.hideLoading();
-      console.error('[审稿] 标记完成失败', e);
-      wx.showToast({ title:'操作失败', icon:'none' });
-    });
+    }
   },
 
   /* ======== 打开审稿系统链接 ======== */

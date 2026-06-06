@@ -35,6 +35,13 @@
   padding-left: 4rpx; margin-bottom: 12rpx;
 }
 
+/* 分区标题行（带操作按钮） */
+.section-label-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12rpx;
+}
+.section-label-row .section-label { margin-bottom: 0; }
+
 /* ========== 表单字段 ========== */
 .form-group { margin-bottom: 20rpx; }
 
@@ -343,3 +350,49 @@
 /* 查看按钮 */
 .view-note-btn { background: #FDF4FF; }
 .view-note-btn .template-btn-text { color: #A855F7; }
+
+/* ========== 智能识别邮件按钮 ========== */
+.recognize-btn {
+  display: flex; align-items: center; gap: 4rpx;
+  padding: 6rpx 18rpx; background: #FEF3C7;
+  border-radius: 16rpx; flex-shrink: 0; border: none;
+}
+.recognize-icon { font-size: 22rpx; }
+.recognize-text { font-size: 21rpx; color: #D97706; font-weight: 500; }
+.recognize-btn.recognizing { background: #FEE2E2; }
+.recognize-btn.recognizing .recognize-text { color: #DC2626; }
+
+/* ========== 智能识别 - 方式选择弹窗 ========== */
+.recognize-method-sheet { padding-bottom: 48rpx; }
+.recognize-hint {
+  font-size: 24rpx; color: #9CA3AF;
+  text-align: center; padding: 10rpx 0 20rpx;
+}
+.recognize-options { display: flex; flex-direction: column; gap: 14rpx; }
+.recognize-option-card {
+  display: flex; align-items: center; padding: 24rpx 20rpx;
+  border: 1.5rpx solid #E5E7EB; border-radius: 14rpx;
+  background: #fff; transition: all 0.15s;
+}
+.recognize-option-card:active { background: #F9FAFB; }
+.recognize-option-icon { font-size: 40rpx; margin-right: 18rpx; flex-shrink: 0; }
+.recognize-option-info { flex: 1; }
+.recognize-option-title { font-size: 28rpx; font-weight: 600; color: #111827; margin-bottom: 4rpx; }
+.recognize-option-desc { font-size: 22rpx; color: #9CA3AF; }
+.recognize-option-arrow { font-size: 28rpx; color: #D1D5DB; margin-left: 10rpx; }
+
+/* ========== 智能识别 - 粘贴文本弹窗 ========== */
+.paste-sheet { padding-bottom: 48rpx; }
+.paste-hint {
+  font-size: 24rpx; color: #9CA3AF;
+  padding: 4rpx 0 16rpx; line-height: 1.6;
+}
+.paste-textarea {
+  display: block; width: 100%; padding: 20rpx;
+  border: 1.5rpx solid #E5E7EB; border-radius: 12rpx;
+  font-size: 26rpx; color: #111827; min-height: 360rpx;
+  box-sizing: border-box; background: #FAFBFC;
+}
+
+/* 按钮禁用态 */
+.btn-disabled { opacity: 0.5; pointer-events: none; }

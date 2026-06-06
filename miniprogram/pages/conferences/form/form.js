@@ -1,7 +1,6 @@
 // pages/conferences/form/form.js
 var dbInit = require('../../../utils/dbInit');
 var formatTime = dbInit.formatTime;
-var parseDate = dbInit.parseDate;
 var formatUtil = require('../../../utils/conferences-format');
 var creditsUtil = require('../../../utils/credits');
 var reminderCheck = require('../../../utils/reminder-check');
@@ -16,31 +15,23 @@ Component({
   data: {
     form: {
       name: '',
-      shortName: '',
       location: '',
+      conferenceType: '',
+      conferenceTypeLabel: '',
+      rank: '',
+      organizer: '',
       deadline: '',
-      notificationDate: '',
       startDate: '',
+      endDate: '',
       url: '',
       note: '',
-      status: 'pending',
-      // 时间线
-      tlNewDate: '',
-      tlNewEventIdx: -1,
-      tlNewRemark: '',
-      timelineList: []
+      status: '',
+      statusLabel: ''
     },
-    statusOptions: [
-      { value: 'pending',    label: '待截稿' },
-      { value: 'registered', label: '已报名' }
-    ],
-    tlEventOptions: [
-      { value: 'deadline',      label: '截稿', color: '#EF4444' },
-      { value: 'notification',  label: '录用通知', color: '#F59E0B' },
-      { value: 'registration',  label: '报名', color: '#10B981' },
-      { value: 'start',         label: '会议开始', color: '#3B82F6' },
-      { value: 'end',           label: '会议结束', color: '#8B5CF6' }
-    ],
+    conferenceTypeLabels: ['请选择', '线下', '线上'],
+    conferenceTypeValues: ['', 'offline', 'online'],
+    statusLabels: ['请选择', '已投稿', '已录用', '已报名'],
+    statusValues: ['', 'submitted', 'accepted', 'registered'],
     showQuotaTip: false
   },
 
@@ -72,18 +63,18 @@ Component({
       this.setData({
         form: {
           name: '',
-          shortName: '',
           location: '',
+          conferenceType: '',
+          conferenceTypeLabel: '',
+          rank: '',
+          organizer: '',
           deadline: '',
-          notificationDate: '',
           startDate: '',
+          endDate: '',
           url: '',
           note: '',
-          status: 'pending',
-          tlNewDate: '',
-          tlNewEventIdx: -1,
-          tlNewRemark: '',
-          timelineList: []
+          status: '',
+          statusLabel: ''
         }
       });
     },
@@ -94,34 +85,21 @@ Component({
         var item = res.data;
         if (!item) return;
 
-        // 时间线
-        var tlList = (item.timeline || []).map(function(t) {
-          return { date: t.date || '', event: t.event || '', remark: t.remark || '', dotColor: t.dotColor || '' };
-        });
-        var colorMap = {};
-        that.data.tlEventOptions.forEach(function(opt) { colorMap[opt.label] = opt.color; });
-        tlList.forEach(function(tl) {
-          if (!tl.dotColor && colorMap[tl.event]) {
-            tl.dotColor = colorMap[tl.event];
-          }
-        });
-        tlList.sort(function(a, b) { return b.date.localeCompare(a.date); });
-
         that.setData({
           form: {
             name: item.name || '',
-            shortName: item.shortName || '',
             location: item.location || '',
+            conferenceType: item.conferenceType || '',
+            conferenceTypeLabel: item.conferenceType === 'online' ? '线上' : item.conferenceType === 'offline' ? '线下' : '',
+            rank: item.rank || '',
+            organizer: item.organizer || '',
             deadline: formatUtil.formatDeadlineToDate(item.deadline),
-            notificationDate: formatUtil.formatDeadlineToDate(item.notificationDate),
             startDate: formatUtil.formatDeadlineToDate(item.startDate),
+            endDate: formatUtil.formatDeadlineToDate(item.endDate),
             url: item.url || '',
             note: item.note || '',
-            status: item.status || 'pending',
-            tlNewDate: '',
-            tlNewEventIdx: -1,
-            tlNewRemark: '',
-            timelineList: tlList
+            status: item.status || '',
+            statusLabel: item.status === 'submitted' ? '已投稿' : item.status === 'accepted' ? '已录用' : item.status === 'registered' ? '已报名' : '',
           }
         });
       }).catch(function() {
@@ -142,45 +120,36 @@ Component({
       this.setData({ 'form.deadline': e.detail.value });
     },
 
-    onNotifyChange: function(e) {
-      this.setData({ 'form.notificationDate': e.detail.value });
-    },
-
     onStartChange: function(e) {
       this.setData({ 'form.startDate': e.detail.value });
     },
 
-    onSelectStatus: function(e) {
-      this.setData({ 'form.status': e.currentTarget.dataset.status });
+    onEndChange: function(e) {
+      this.setData({ 'form.endDate': e.detail.value });
     },
 
-    // ======== 时间线 ========
-    addTimelineItem: function() {
-      var f = this.data.form;
-      if (!f.tlNewDate || f.tlNewEventIdx < 0) {
-        wx.showToast({ title: '请选择日期和事件', icon: 'none' });
-        return;
-      }
-      var ev = this.data.tlEventOptions[f.tlNewEventIdx];
-      var tl = (this.data.form.timelineList || []).slice();
-      var remark = (f.tlNewRemark || '').trim();
-      var newItem = { date: f.tlNewDate, event: ev.label, dotColor: ev.color, remark: remark };
-      tl.push(newItem);
-      tl.sort(function(a, b) { return b.date.localeCompare(a.date); });
+    onStatusChange: function(e) {
+      var idx = parseInt(e.detail.value);
       this.setData({
-        'form.timelineList': tl,
-        'form.tlNewDate': '',
-        'form.tlNewEventIdx': -1,
-        'form.tlNewRemark': ''
+        'form.status': this.data.statusValues[idx],
+        'form.statusLabel': this.data.statusLabels[idx]
       });
-      wx.showToast({ title: '已添加：' + ev.label, icon: 'success' });
     },
 
-    removeTimelineItem: function(e) {
-      var idx = e.currentTarget.dataset.i;
-      var tl = this.data.form.timelineList.slice();
-      tl.splice(idx, 1);
-      this.setData({ 'form.timelineList': tl });
+    onConferenceTypeChange: function(e) {
+      var idx = parseInt(e.detail.value);
+      this.setData({
+        'form.conferenceType': this.data.conferenceTypeValues[idx],
+        'form.conferenceTypeLabel': this.data.conferenceTypeLabels[idx]
+      });
+    },
+
+    onSelectRank: function(e) {
+      var newRank = e.currentTarget.dataset.rank;
+      if (this.data.form.rank === newRank) {
+        newRank = '';
+      }
+      this.setData({ 'form.rank': newRank });
     },
 
     // ======== 保存 ========
@@ -188,25 +157,24 @@ Component({
       var that = this;
       var f = this.data.form;
       if (!f.name) { wx.showToast({ title: '请填写会议名称', icon: 'none' }); return; }
-
-      // 时间线数据清理
-      var tlSave = (f.timelineList || []).filter(function(item) {
-        return (item.date || '') && (item.event || '');
-      }).map(function(item) {
-        return { date: item.date, event: item.event, remark: item.remark || '', dotColor: item.dotColor || '' };
-      });
+      if (!f.url) { wx.showToast({ title: '请填写会议官网', icon: 'none' }); return; }
+      if (!f.location) { wx.showToast({ title: '请填写会议地点', icon: 'none' }); return; }
+      if (!f.conferenceType) { wx.showToast({ title: '请选择会议类型', icon: 'none' }); return; }
+      if (!f.startDate) { wx.showToast({ title: '请选择会议开始日期', icon: 'none' }); return; }
+      if (f.endDate && f.startDate > f.endDate) { wx.showToast({ title: '开始日期不能大于结束日期', icon: 'none' }); return; }
 
       var data = {
         name: f.name,
-        shortName: f.shortName,
         location: f.location,
+        conferenceType: f.conferenceType,
+        rank: f.rank,
+        organizer: f.organizer,
         deadline: f.deadline ? formatTime(f.deadline + ' 00:00:00') : null,
-        notificationDate: f.notificationDate ? formatTime(f.notificationDate + ' 00:00:00') : null,
         startDate: f.startDate ? formatTime(f.startDate + ' 00:00:00') : null,
+        endDate: f.endDate ? formatTime(f.endDate + ' 00:00:00') : null,
         url: f.url,
         note: f.note,
         status: f.status,
-        timeline: tlSave,
         updateTime: formatTime()
       };
 

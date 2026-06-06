@@ -102,7 +102,7 @@ class OpenAIProvider extends BaseProvider {
     super({
       id: 'openai',
       name: 'OpenAI',
-      defaultModel: 'gpt-4o',
+      defaultModel: 'gpt-4.1-mini',
       baseURL: 'https://api.openai.com',
       authType: 'Bearer',
       supportsStream: true,
@@ -132,7 +132,7 @@ class KimiProvider extends BaseProvider {
     super({
       id: 'kimi',
       name: 'Kimi',
-      defaultModel: 'moonshot-v1-8k',
+      defaultModel: 'kimi-k2.6',
       baseURL: 'https://api.moonshot.cn',
       authType: 'Bearer',
       supportsStream: true,
@@ -220,8 +220,9 @@ function validateMessages(messages) {
     if (!m.role || typeof m.role !== 'string') {
       return `messages[${i}].role 必填`;
     }
-    if (!m.content || typeof m.content !== 'string') {
-      return `messages[${i}].content 必填`;
+    // 支持字符串 content（文本）或数组 content（多模态：图片识别等）
+    if (!m.content || (typeof m.content !== 'string' && !Array.isArray(m.content))) {
+      return `messages[${i}].content 必填（字符串或多模态数组）`;
     }
   }
   return null;
@@ -247,6 +248,23 @@ async function chatSync(provider, model, messages, params) {
       timeout: params.timeout || p.getTimeout(false)
     });
 
+    // 调试：打印第三方 API 原始返回
+    console.log('[aiChat] ' + provider + ' 原始响应: ' + JSON.stringify({
+      model: res.data.model,
+      object: res.data.object,
+      choices: res.data.choices && res.data.choices.map(function(c) {
+        return {
+          index: c.index,
+          finish_reason: c.finish_reason,
+          content_type: c.message ? typeof c.message.content : 'N/A',
+          content_len: c.message ? (c.message.content ? String(c.message.content).length : 0) : 0,
+          content_preview: c.message ? String(c.message.content || '').substring(0, 200) : 'NO_MESSAGE'
+        };
+      }),
+      usage: res.data.usage,
+      // 兜底：如果 choices 不存在，打印顶层 keys
+      top_keys: Object.keys(res.data)
+    }));
     const content = p.parseResponse(res.data);
     if (!content) throw new Error('AI 返回格式异常，未能提取内容');
 
@@ -292,6 +310,60 @@ async function chatStream(provider, model, messages, params) {
   return res.data;
 }
 
+// ==================== 图片预处理 ====================
+
+/**
+ * 将外部图片 URL 转为 base64 data URL
+ * 兼容不支持远程 URL 的模型 API（如 Kimi 多模态）
+ */
+async function urlToBase64(imageUrl) {
+  const response = await axios.get(imageUrl, {
+    responseType: 'arraybuffer',
+    timeout: 30000
+  });
+  const contentType = response.headers['content-type'] || 'image/jpeg';
+  const base64 = Buffer.from(response.data).toString('base64');
+  return `data:${contentType};base64,${base64}`;
+}
+
+/**
+ * 预处理 messages：将 image_url 中的外部 URL 转为 base64
+ */
+async function preprocessMessages(messages) {
+  const processed = [];
+  for (const msg of messages) {
+    if (typeof msg.content === 'string') {
+      processed.push(msg);
+      continue;
+    }
+    // content 是数组（多模态）
+    const content = [];
+    for (const part of msg.content) {
+      if (part.type === 'image_url' && part.image_url && part.image_url.url) {
+        const imgUrl = part.image_url.url;
+        // 已是 base64 data URL 则跳过
+        if (imgUrl.startsWith('data:')) {
+          content.push(part);
+          continue;
+        }
+        try {
+          console.log('[aiChat] 下载图片: ' + imgUrl.substring(0, 80) + '...');
+          const base64Url = await urlToBase64(imgUrl);
+          console.log('[aiChat] 图片转换完成, 大小: ' + base64Url.length + ' chars');
+          content.push({ type: 'image_url', image_url: { url: base64Url } });
+        } catch (e) {
+          console.error('[aiChat] 图片下载失败，保留原始URL:', e.message);
+          content.push(part); // 回退：保留原始 URL
+        }
+      } else {
+        content.push(part);
+      }
+    }
+    processed.push({ ...msg, content });
+  }
+  return processed;
+}
+
 // ==================== 入口 ====================
 
 async function chat(event) {
@@ -303,12 +375,15 @@ async function chat(event) {
   const err = validateMessages(messages);
   if (err) throw new Error('messages 格式错误: ' + err);
 
+  // 多模态场景：将外部图片 URL 转为 base64（兼容 Kimi 等不支持远程 URL 的模型）
+  const processedMessages = await preprocessMessages(messages);
+
   const params = { apiKey: event.apiKey, baseURL, temperature, maxTokens, topP, stop, timeout };
   const isStream = stream === true || stream === 'true';
 
   return isStream
-    ? await chatStream(provider, model, messages, params)
-    : await chatSync(provider, model, messages, params);
+    ? await chatStream(provider, model, processedMessages, params)
+    : await chatSync(provider, model, processedMessages, params);
 }
 
 function listProviders() {

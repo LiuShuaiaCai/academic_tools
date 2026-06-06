@@ -1,7 +1,7 @@
 {
-  "name": "aiService",
+  "name": "fileService",
   "version": "1.0.0",
-  "description": "AI 审稿服务云函数（多模型支持）",
+  "description": "文件处理服务（文本提取、图片链接等）",
   "main": "index.js",
   "scripts": { "test": "echo \"Error: no test specified\" && exit 1" },
   "author": "",

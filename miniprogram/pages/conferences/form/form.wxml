@@ -10,123 +10,99 @@
 
       <!-- 1. 会议名称 -->
       <view class="form-group">
-        <view class="form-label">会议名称 <text class="required">*</text></view>
+        <view class="form-label"><text class="form-label-icon">📋</text> 会议名称 <text class="required">*</text></view>
         <input class="form-input" placeholder="例：International Conference on..." bindinput="onFormInput" data-field="name" value="{{form.name}}"/>
       </view>
 
-      <!-- 2. 简称 -->
+      <!-- 2. 会议官网 -->
       <view class="form-group">
-        <view class="form-label">简称</view>
-        <input class="form-input" placeholder="例：CVPR, ICCV, AAAI" bindinput="onFormInput" data-field="shortName" value="{{form.shortName}}"/>
+        <view class="form-label"><text class="form-label-icon">🔗</text> 会议官网 <text class="required">*</text></view>
+        <input class="form-input" placeholder="https://..." bindinput="onFormInput" data-field="url" value="{{form.url}}"/>
       </view>
 
-      <!-- 3. 举办地点 -->
+      <!-- 3. 会议类型 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📍</text> 举办地点</view>
-        <input class="form-input" placeholder="城市/国家" bindinput="onFormInput" data-field="location" value="{{form.location}}"/>
-      </view>
-
-      <!-- 4. 论文截稿日期 -->
-      <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📄</text> 论文截稿日期 <text class="required">*</text></view>
-        <picker mode="date" value="{{form.deadline}}" bindchange="onDeadlineChange">
-          <view class="form-picker {{form.deadline ? '' : 'placeholder'}}">
-            <view class="cal-icon"></view>
-            <text style="flex:1">{{form.deadline || '请选择截稿日期'}}</text>
+        <view class="form-label"><text class="form-label-icon">📡</text> 会议类型 <text class="required">*</text></view>
+        <picker mode="selector" range="{{conferenceTypeLabels}}" bindchange="onConferenceTypeChange">
+          <view class="form-picker {{form.conferenceType ? '' : 'placeholder'}}">
+            <text style="flex:1">{{form.conferenceTypeLabel || '请选择会议类型'}}</text>
             <text class="picker-arrow">›</text>
           </view>
         </picker>
       </view>
 
-      <!-- 5. 录用通知日期 -->
+      <!-- 4. 会议地点 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📬</text> 录用通知日期</view>
-        <picker mode="date" value="{{form.notificationDate}}" bindchange="onNotifyChange">
-          <view class="form-picker {{form.notificationDate ? '' : 'placeholder'}}">
-            <view class="cal-icon"></view>
-            <text style="flex:1">{{form.notificationDate || '请选择通知日期'}}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
+        <view class="form-label"><text class="form-label-icon">📍</text> 会议地点 <text class="required">*</text></view>
+        <input class="form-input" placeholder="城市，国家" bindinput="onFormInput" data-field="location" value="{{form.location}}"/>
       </view>
 
-      <!-- 6. 会议开始日期 -->
+      <!-- 5. 会议开始日期 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">🎤</text> 会议开始日期</view>
+        <view class="form-label"><text class="form-label-icon">🎤</text> 会议开始日期 <text class="required">*</text></view>
         <picker mode="date" value="{{form.startDate}}" bindchange="onStartChange">
           <view class="form-picker {{form.startDate ? '' : 'placeholder'}}">
-            <view class="cal-icon"></view>
             <text style="flex:1">{{form.startDate || '请选择会议日期'}}</text>
             <text class="picker-arrow">›</text>
           </view>
         </picker>
       </view>
 
-      <!-- 7. 状态 -->
+      <!-- 6. 会议截止日期 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">🏷</text> 状态</view>
+        <view class="form-label"><text class="form-label-icon">🏁</text> 会议截止日期</view>
+        <picker mode="date" value="{{form.endDate}}" bindchange="onEndChange">
+          <view class="form-picker {{form.endDate ? '' : 'placeholder'}}">
+            <text style="flex:1">{{form.endDate || '请选择截止日期'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 7. 会议截稿日期 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">📄</text> 会议截稿日期</view>
+        <picker mode="date" value="{{form.deadline}}" bindchange="onDeadlineChange">
+          <view class="form-picker {{form.deadline ? '' : 'placeholder'}}">
+            <text style="flex:1">{{form.deadline || '请选择截稿日期'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 8. 参会状态 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">🏷</text> 参会状态</view>
+        <picker mode="selector" range="{{statusLabels}}" bindchange="onStatusChange">
+          <view class="form-picker {{form.status ? '' : 'placeholder'}}">
+            <text style="flex:1">{{form.statusLabel || '请选择参会状态'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 9. 会议等级 -->
+      <view class="form-group">
+        <view class="form-label"><text class="form-label-icon">🏆</text> 会议等级</view>
         <view class="radio-group">
-          <view class="radio-item {{form.status === 'pending' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="pending">待截稿</view>
-          <view class="radio-item {{form.status === 'registered' ? 'active' : ''}}" bindtap="onSelectStatus" data-status="registered">已报名</view>
+          <view class="radio-item {{form.rank === 'CCF-A' ? 'active' : ''}}" bindtap="onSelectRank" data-rank="CCF-A">CCF-A</view>
+          <view class="radio-item {{form.rank === 'CCF-B' ? 'active' : ''}}" bindtap="onSelectRank" data-rank="CCF-B">CCF-B</view>
+          <view class="radio-item {{form.rank === 'CCF-C' ? 'active' : ''}}" bindtap="onSelectRank" data-rank="CCF-C">CCF-C</view>
+          <view class="radio-item {{form.rank === 'SCI' ? 'active' : ''}}" bindtap="onSelectRank" data-rank="SCI">SCI</view>
+          <view class="radio-item {{form.rank === 'EI' ? 'active' : ''}}" bindtap="onSelectRank" data-rank="EI">EI</view>
         </view>
       </view>
 
-      <!-- 8. 会议官网 -->
+      <!-- 10. 举办单位 -->
       <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">🔗</text> 会议官网</view>
-        <input class="form-input" placeholder="https://..." bindinput="onFormInput" data-field="url" value="{{form.url}}"/>
+        <view class="form-label"><text class="form-label-icon">🏛</text> 举办单位</view>
+        <input class="form-input" placeholder="大学、学会、机构..." bindinput="onFormInput" data-field="organizer" value="{{form.organizer}}"/>
       </view>
 
-      <!-- 9. 备注 -->
+      <!-- 11. 备注 -->
       <view class="form-group">
         <view class="form-label"><text class="form-label-icon">📝</text> 备注</view>
         <textarea class="form-textarea" placeholder="备注信息..." bindinput="onFormInput" data-field="note" value="{{form.note}}"></textarea>
-      </view>
-
-      <!-- 10. 处理时间线 -->
-      <view class="form-group">
-        <view class="form-label"><text class="form-label-icon">📅</text> 处理时间线</view>
-
-        <view class="tl-add-row">
-          <picker class="tl-date-picker" mode="date" value="{{form.tlNewDate}}" data-field="tlNewDate" bindchange="onFormInput">
-            <view class="tl-picker-box">
-              <view class="cal-icon cal-icon-sm"></view>
-              <text class="tl-picker-text {{form.tlNewDate ? '' : 'tl-placeholder'}}">{{form.tlNewDate || '选择日期'}}</text>
-              <text class="tl-picker-text tl-arrow">▼</text>
-            </view>
-          </picker>
-          <picker class="tl-event-picker" range="{{tlEventOptions}}" range-key="label" value="{{form.tlNewEventIdx}}" data-field="tlNewEventIdx" bindchange="onFormInput">
-            <view class="tl-picker-box">
-              <text class="tl-picker-text {{form.tlNewEventIdx>=0 ? '' : 'tl-placeholder'}}">{{form.tlNewEventIdx>=0 ? tlEventOptions[form.tlNewEventIdx].label : '选择事件'}}</text>
-              <text class="tl-picker-text tl-arrow">▼</text>
-            </view>
-          </picker>
-        </view>
-        <view class="tl-remark-row">
-          <input class="tl-remark-input" placeholder="备注（选填）" value="{{form.tlNewRemark}}" data-field="tlNewRemark" bindinput="onFormInput"/>
-          <view class="tl-add-btn" bindtap="addTimelineItem">
-            <text class="tl-add-text">添加</text>
-          </view>
-        </view>
-
-        <!-- 已有时间线事件列表 -->
-        <view class="tl-list" wx:if="{{form.timelineList.length > 0}}">
-          <view class="tl-item-card" wx:for="{{form.timelineList}}" wx:key="index">
-            <view class="tl-card-left">
-              <view class="tl-card-dot" style="background:{{item.dotColor}}"></view>
-            </view>
-            <view class="tl-card-content">
-              <view class="tl-card-top">
-                <text class="tl-card-date">{{item.date}}</text>
-                <text class="tl-card-event" style="color:{{item.dotColor}}">{{item.event}}</text>
-              </view>
-              <text class="tl-card-remark" wx:if="{{item.remark}}">{{item.remark}}</text>
-            </view>
-            <view class="tl-card-del" data-i="{{index}}" catchtap="removeTimelineItem">
-              <text>×</text>
-            </view>
-          </view>
-        </view>
       </view>
 
     </scroll-view>

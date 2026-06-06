@@ -21,23 +21,46 @@ Page({
     loadingMore: false,
     searchLoading: false,
     // 快速筛选
-    quickFilter: '',
+    quickFilter: 'all',
     totalCount: 0,
-    pendingCount: 0,
-    nearCount: 0,
-    registeredCount: 0,
-    // 高级筛选
+    activeCount: 0,
+    urgentCount: 0,
+    // 稿件筛选（原高级筛选）
     showAdvanced: false,
-    advStatus: '',
+    // 会议类型
+    advConferenceType: '',
+    advConferenceTypeLabel: '',
+    advConferenceTypeIndex: -1,
+    advConferenceTypeOptions: [
+      { value: 'offline', label: '线下' },
+      { value: 'online', label: '线上' }
+    ],
+    // 会议地点
     advLocation: '',
+    // 会议开始日期
+    advStartDateFrom: '',
+    advStartDateTo: '',
+    // 会议截止日期
+    advEndDateFrom: '',
+    advEndDateTo: '',
+    // 会议截稿日期
     advDeadlineFrom: '',
     advDeadlineTo: '',
-    advStatusIndex: -1,
-    advLocationIndex: -1,
+    // 参会状态
+    advStatus: '',
     advStatusLabel: '',
-    advLocationLabel: '',
-    advStatusOptions: [],
-    advLocationOptions: [],
+    advStatusIndex: -1,
+    advStatusOptions: [
+      { value: 'submitted', label: '已投稿' },
+      { value: 'accepted', label: '已录用' },
+      { value: 'registered', label: '已报名' }
+    ],
+    // 会议等级
+    advRank: '',
+    advRankIndex: -1,
+    advRankOptions: ['CCF-A', 'CCF-B', 'CCF-C', 'SCI', 'EI'],
+    // 举办单位
+    advOrganizer: '',
     // 首页跳转
     targetId: '',
     targetTitle: '',
@@ -77,9 +100,8 @@ Page({
       if (res.result && res.result.success) {
         that.setData({
           totalCount: res.result.total,
-          pendingCount: res.result.pending,
-          nearCount: res.result.near,
-          registeredCount: res.result.registered
+          activeCount: res.result.active,
+          urgentCount: res.result.urgent
         });
       } else {
         console.warn('[会议] loadStats 返回不成功:', res.result);
@@ -90,7 +112,7 @@ Page({
   },
 
   /* ======== 数据加载（服务端分页 + 模糊搜索，按 deadline 升序）======= */
-  loadList: function(isLoadMore) {
+  loadList: async function(isLoadMore) {
     if (this.data.loadingMore) return;
     var that = this;
     var page = isLoadMore ? this.data.page + 1 : 0;
@@ -100,102 +122,94 @@ Page({
     this.setData({ loadingMore: true });
     if (!isLoadMore) this.setData({ searchLoading: true });
 
-    var db = wx.cloud.database();
-    var _ = db.command;
+    try {
+      var db = wx.cloud.database();
+      var _ = db.command;
 
-    // 构建"基础条件"（搜索 + 高级筛选，不含 quickFilter）
-    var baseConditions = [{ deleteTime: null }];
-    var kw = (this.data.searchKeyword || '').trim();
-    if (kw) {
-      var reg = db.RegExp({ regexp: kw, options: 'i' });
-      baseConditions.push(_.or([
-        { name: reg },
-        { shortName: reg },
-        { location: reg }
-      ]));
-    }
-    // 高级筛选条件
-    var advStatus = this.data.advStatus;
-    var advLocation = this.data.advLocation;
-    var advFrom = this.data.advDeadlineFrom;
-    var advTo = this.data.advDeadlineTo;
-    if (advStatus) baseConditions.push({ status: advStatus });
-    if (advLocation) baseConditions.push({ location: advLocation });
-    if (advFrom) baseConditions.push({ deadline: _.gte(advFrom + ' 00:00:00') });
-    if (advTo) baseConditions.push({ deadline: _.lte(advTo + ' 23:59:59') });
-
-    // 构建"列表条件"（基础条件 + quickFilter）
-    var listConditions = baseConditions.slice();
-    var qf = this.data.quickFilter;
-    if (qf && qf !== 'all') {
-      var now = new Date();
-      if (qf === 'pending') {
-        // 待截稿：deadline >= 今天
-        var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        listConditions.push({ deadline: _.gte(todayStr + ' 00:00:00') });
-      } else if (qf === 'near') {
-        // 急需处理：deadline 在 0-3 天内
-        var fromStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        var toDate = new Date(now);
-        toDate.setDate(now.getDate() + 3);
-        var toStr = toDate.getFullYear() + '-' + String(toDate.getMonth() + 1).padStart(2, '0') + '-' + String(toDate.getDate()).padStart(2, '0');
-        listConditions.push({ deadline: _.gte(fromStr + ' 00:00:00') });
-        listConditions.push({ deadline: _.lte(toStr + ' 23:59:59') });
-      } else if (qf === 'registered') {
-        // 已报名：deadline < 今天
-        var todayStr2 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        listConditions.push({ deadline: _.lt(todayStr2 + ' 00:00:00') });
+      // 构建"基础条件"（搜索 + 稿件筛选，不含 quickFilter）
+      var baseConditions = [{ deleteTime: null }];
+      var kw = (this.data.searchKeyword || '').trim();
+      if (kw) {
+        var reg = db.RegExp({ regexp: kw, options: 'i' });
+        baseConditions.push(_.or([
+          { name: reg },
+          { location: reg }
+        ]));
       }
-    }
+      // 稿件筛选条件
+      var advStatus = this.data.advStatus;
+      var advLocation = this.data.advLocation;
+      var advOrganizer = this.data.advOrganizer;
+      var advConferenceType = this.data.advConferenceType;
+      var advRank = this.data.advRank;
+      var advDeadlineFrom = this.data.advDeadlineFrom;
+      var advDeadlineTo = this.data.advDeadlineTo;
+      var advStartDateFrom = this.data.advStartDateFrom;
+      var advStartDateTo = this.data.advStartDateTo;
+      var advEndDateFrom = this.data.advEndDateFrom;
+      var advEndDateTo = this.data.advEndDateTo;
+      if (advStatus) baseConditions.push({ status: advStatus });
+      if (advLocation) {
+        var locReg = db.RegExp({ regexp: advLocation, options: 'i' });
+        baseConditions.push({ location: locReg });
+      }
+      if (advOrganizer) {
+        var orgReg = db.RegExp({ regexp: advOrganizer, options: 'i' });
+        baseConditions.push({ organizer: orgReg });
+      }
+      if (advConferenceType) baseConditions.push({ conferenceType: advConferenceType });
+      if (advRank) baseConditions.push({ rank: advRank });
+      if (advDeadlineFrom) baseConditions.push({ deadline: _.gte(advDeadlineFrom + ' 00:00:00') });
+      if (advDeadlineTo) baseConditions.push({ deadline: _.lte(advDeadlineTo + ' 23:59:59') });
+      if (advStartDateFrom) baseConditions.push({ startDate: _.gte(advStartDateFrom + ' 00:00:00') });
+      if (advStartDateTo) baseConditions.push({ startDate: _.lte(advStartDateTo + ' 23:59:59') });
+      if (advEndDateFrom) baseConditions.push({ endDate: _.gte(advEndDateFrom + ' 00:00:00') });
+      if (advEndDateTo) baseConditions.push({ endDate: _.lte(advEndDateTo + ' 23:59:59') });
 
-    var whereForList = listConditions.length === 1 ? listConditions[0] : _.and(listConditions);
-    var whereForOptions = baseConditions.length === 1 ? baseConditions[0] : _.and(baseConditions);
+      // 构建"列表条件"（基础条件 + quickFilter）
+      var listConditions = baseConditions.slice();
+      var qf = this.data.quickFilter;
+      if (qf && qf !== 'all') {
+        var now = new Date();
+        var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        if (qf === 'active') {
+          // 进行中：startDate <= today <= endDate
+          listConditions.push({ startDate: _.lte(todayStr + ' 23:59:59') });
+          listConditions.push({ endDate: _.gte(todayStr + ' 00:00:00') });
+        } else if (qf === 'urgent') {
+          // 急需处理：status='registered' 且 startDate 在 0-3 天内
+          var toDate = new Date(now);
+          toDate.setDate(now.getDate() + 3);
+          var toStr = toDate.getFullYear() + '-' + String(toDate.getMonth() + 1).padStart(2, '0') + '-' + String(toDate.getDate()).padStart(2, '0');
+          listConditions.push({ status: 'registered' });
+          listConditions.push({ startDate: _.gte(todayStr + ' 00:00:00') });
+          listConditions.push({ startDate: _.lte(toStr + ' 23:59:59') });
+        }
+      }
 
-    // 两个查询并行：列表数据（含 quickFilter）+ 选项数据（不含 quickFilter）
-    var listQuery = db.collection('conferences')
-      .where(whereForList)
-      .orderBy('deadline', 'asc')
-      .skip(skip)
-      .limit(pageSize)
-      .get();
+      var whereForList = listConditions.length === 1 ? listConditions[0] : _.and(listConditions);
 
-    var queries = [listQuery];
-    if (that.data.quickFilter) {
-      var optionsQuery = db.collection('conferences')
-        .where(whereForOptions)
-        .limit(1000)
+      // 查询列表数据
+      var listRes = await db.collection('conferences')
+        .where(whereForList)
+        .orderBy('deadline', 'asc')
+        .skip(skip)
+        .limit(pageSize)
         .get();
-      queries.push(optionsQuery);
-    }
-
-    Promise.all(queries).then(function(results) {
-      var listRes = results[0];
-      var optionsRes = results[1];
 
       var rawData = Array.isArray(listRes.data) ? listRes.data : [];
       var newItems = rawData.map(function(item) { return formatUtil.formatItem(item); });
 
       var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
       var hasMore = newItems.length >= pageSize;
-      var extra = {};
 
-      // 构建高级筛选选项：优先用"不含 quickFilter"的选项数据
-      if (!isLoadMore) {
-        if (optionsRes && optionsRes.data) {
-          var optionsData = Array.isArray(optionsRes.data) ? optionsRes.data : [];
-          var optionsItems = optionsData.map(function(item) { return formatUtil.formatItem(item); });
-          extra = formatUtil.buildAdvOptions(optionsItems, that.data);
-        } else {
-          extra = formatUtil.buildAdvOptions(list, that.data);
-        }
-      }
-
-      extra.list = list;
-      extra.page = isLoadMore ? page : 0;
-      extra.hasMore = hasMore;
-      extra.loadingMore = false;
-      extra.searchLoading = false;
-      that.setData(extra, function() {
+      that.setData({
+        list: list,
+        page: isLoadMore ? page : 0,
+        hasMore: hasMore,
+        loadingMore: false,
+        searchLoading: false
+      }, function() {
         that.applyFilter();
         // 处理首页跳转：用 targetId 精确定位
         if (that.data.targetId) {
@@ -218,11 +232,11 @@ Page({
       });
       // 每次加载完成后更新统计
       if (!isLoadMore) that.loadStats();
-    }).catch(function(e) {
+    } catch (e) {
       console.error('[会议] 加载失败', e);
       that.setData({ loadingMore: false, searchLoading: false });
       if (!isLoadMore) that.setData({ list: [], filteredList: [] });
-    });
+    }
   },
 
   /* ======== 通过 ID 精确定位（首页跳转时只显示这一个）======= */
@@ -276,103 +290,171 @@ Page({
   onTipFilter: function(e) {
     var type = e.currentTarget.dataset.filter;
     this.setData({
-      quickFilter: type === this.data.quickFilter ? '' : type,
+      quickFilter: type === this.data.quickFilter ? 'all' : type,
       page: 0,
       hasMore: true,
-      // 关闭高级筛选面板，清空高级筛选条件（互斥）
+      // 关闭稿件筛选面板，清空稿件筛选条件（互斥）
       showAdvanced: false,
-      advStatus: '',
+      advConferenceType: '', advConferenceTypeLabel: '',
       advLocation: '',
-      advDeadlineFrom: '',
-      advDeadlineTo: '',
-      advStatusIndex: -1,
-      advLocationIndex: -1,
-      advStatusLabel: '',
-      advLocationLabel: ''
+      advStartDateFrom: '', advStartDateTo: '',
+      advEndDateFrom: '', advEndDateTo: '',
+      advDeadlineFrom: '', advDeadlineTo: '',
+      advStatus: '', advStatusLabel: '',
+      advRank: '',
+      advOrganizer: ''
     });
     this.loadList(false);
   },
 
-  // 高级筛选
+  // 稿件筛选
   toggleAdvanced: function() {
     var opening = !this.data.showAdvanced;
     this.setData({
       showAdvanced: opening,
-      // 展开高级筛选时，取消快速筛选选中
-      quickFilter: opening ? '' : this.data.quickFilter
+      // 展开稿件筛选时，取消快速筛选选中
+      quickFilter: opening ? 'all' : this.data.quickFilter
     });
   },
 
+  // 会议类型
+  onAdvConferenceTypeChange: function(e) {
+    var idx = parseInt(e.detail.value);
+    var opt = this.data.advConferenceTypeOptions[idx] || {};
+    this.setData({
+      advConferenceType: opt.value || '',
+      advConferenceTypeLabel: opt.label || '',
+      advConferenceTypeIndex: idx,
+      quickFilter: 'all', page: 0, hasMore: true
+    });
+    this.loadList(false);
+  },
+
+  // 会议地点（input）
+  onAdvLocationInput: function(e) {
+    this.setData({ advLocation: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+  },
+  onAdvLocationConfirm: function() {
+    this.loadList(false);
+  },
+
+  // 会议开始日期
+  onAdvStartDateFromChange: function(e) {
+    this.setData({ advStartDateFrom: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  onAdvStartDateToChange: function(e) {
+    this.setData({ advStartDateTo: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  // 会议截止日期
+  onAdvEndDateFromChange: function(e) {
+    this.setData({ advEndDateFrom: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  onAdvEndDateToChange: function(e) {
+    this.setData({ advEndDateTo: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  // 会议截稿日期
+  onAdvDeadlineFromChange: function(e) {
+    this.setData({ advDeadlineFrom: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  onAdvDeadlineToChange: function(e) {
+    this.setData({ advDeadlineTo: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+
+  // 参会状态
   onAdvStatusChange: function(e) {
     var idx = parseInt(e.detail.value);
     var opt = this.data.advStatusOptions[idx] || {};
     this.setData({
-      advStatusIndex: idx,
       advStatus: opt.value || '',
       advStatusLabel: opt.label || '',
-      quickFilter: '',
-      page: 0,
-      hasMore: true
+      advStatusIndex: idx,
+      quickFilter: 'all', page: 0, hasMore: true
     });
     this.loadList(false);
   },
 
-  onAdvLocationChange: function(e) {
+  // 会议等级
+  onAdvRankChange: function(e) {
     var idx = parseInt(e.detail.value);
-    var opt = this.data.advLocationOptions[idx] || {};
-    this.setData({
-      advLocationIndex: idx,
-      advLocation: opt.value || '',
-      advLocationLabel: opt.label || '',
-      quickFilter: '',
-      page: 0,
-      hasMore: true
-    });
+    var rank = this.data.advRankOptions[idx] || '';
+    this.setData({ advRank: rank, advRankIndex: idx, quickFilter: 'all', page: 0, hasMore: true });
     this.loadList(false);
   },
 
-  onAdvDeadlineFromChange: function(e) {
-    this.setData({ advDeadlineFrom: e.detail.value, quickFilter: '', page: 0, hasMore: true });
+  // 举办单位（input）
+  onAdvOrganizerInput: function(e) {
+    this.setData({ advOrganizer: e.detail.value, quickFilter: 'all', page: 0, hasMore: true });
+  },
+  onAdvOrganizerConfirm: function() {
     this.loadList(false);
   },
 
-  onAdvDeadlineToChange: function(e) {
-    this.setData({ advDeadlineTo: e.detail.value, quickFilter: '', page: 0, hasMore: true });
+  // 清空单个字段
+  clearAdvConferenceType: function() {
+    this.setData({ advConferenceType: '', advConferenceTypeLabel: '', advConferenceTypeIndex: -1, quickFilter: 'all', page: 0, hasMore: true });
     this.loadList(false);
   },
-
-  clearAdvStatus: function() {
-    this.setData({ advStatus: '', advStatusIndex: -1, advStatusLabel: '', quickFilter: '', page: 0, hasMore: true });
-    this.loadList(false);
-  },
-
   clearAdvLocation: function() {
-    this.setData({ advLocation: '', advLocationIndex: -1, advLocationLabel: '', quickFilter: '', page: 0, hasMore: true });
+    this.setData({ advLocation: '', quickFilter: 'all', page: 0, hasMore: true });
     this.loadList(false);
   },
-
+  clearAdvStartDateFrom: function() {
+    this.setData({ advStartDateFrom: '', quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  clearAdvStartDateTo: function() {
+    this.setData({ advStartDateTo: '', quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  clearAdvEndDateFrom: function() {
+    this.setData({ advEndDateFrom: '', quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  clearAdvEndDateTo: function() {
+    this.setData({ advEndDateTo: '', quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
   clearAdvDeadlineFrom: function() {
-    this.setData({ advDeadlineFrom: '', quickFilter: '', page: 0, hasMore: true });
+    this.setData({ advDeadlineFrom: '', quickFilter: 'all', page: 0, hasMore: true });
     this.loadList(false);
   },
-
   clearAdvDeadlineTo: function() {
-    this.setData({ advDeadlineTo: '', quickFilter: '', page: 0, hasMore: true });
+    this.setData({ advDeadlineTo: '', quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  clearAdvStatus: function() {
+    this.setData({ advStatus: '', advStatusLabel: '', advStatusIndex: -1, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  clearAdvRank: function() {
+    this.setData({ advRank: '', advRankIndex: -1, quickFilter: 'all', page: 0, hasMore: true });
+    this.loadList(false);
+  },
+  clearAdvOrganizer: function() {
+    this.setData({ advOrganizer: '', quickFilter: 'all', page: 0, hasMore: true });
     this.loadList(false);
   },
 
+  // 重置全部
   resetAdvanced: function() {
     this.setData({
-      advStatus: '',
+      advConferenceType: '', advConferenceTypeLabel: '', advConferenceTypeIndex: -1,
       advLocation: '',
-      advDeadlineFrom: '',
-      advDeadlineTo: '',
-      advStatusIndex: -1,
-      advLocationIndex: -1,
-      advStatusLabel: '',
-      advLocationLabel: '',
-      page: 0,
-      hasMore: true
+      advStartDateFrom: '', advStartDateTo: '',
+      advEndDateFrom: '', advEndDateTo: '',
+      advDeadlineFrom: '', advDeadlineTo: '',
+      advStatus: '', advStatusLabel: '', advStatusIndex: -1,
+      advRank: '', advRankIndex: -1,
+      advOrganizer: '',
+      page: 0, hasMore: true
     });
     this.loadList(false);
   },
@@ -400,7 +482,7 @@ Page({
   },
 
   onFormSave: function() {
-    this.setData({ showForm: false, isEdit: false, editId: '', quickFilter: '', page: 0, hasMore: true });
+    this.setData({ showForm: false, isEdit: false, editId: '', quickFilter: 'all', page: 0, hasMore: true });
     this.loadList();
   },
 

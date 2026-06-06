@@ -4,62 +4,125 @@
   <view class="search-bar">
     <view class="search-input-wrap">
       <text class="search-icon">🔍</text>
-      <input class="search-input" placeholder="搜索会议名称、简称、地点..." bindinput="onSearch" value="{{searchKeyword}}"/>
+      <input class="search-input" placeholder="搜索会议名称、地点..." bindinput="onSearch" value="{{searchKeyword}}"/>
       <view class="search-clear" wx:if="{{searchKeyword}}" bindtap="clearSearch">✕</view>
     </view>
   </view>
 
-  <!-- 提示栏 + 高级筛选 -->
+  <!-- 快速筛选 -->
   <view class="filter-tips">
     <view class="tip-btn tip-all {{quickFilter === 'all' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="all">全部 {{totalCount}}</view>
-    <view class="tip-btn tip-pending {{quickFilter === 'pending' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="pending">待截稿 {{pendingCount}}</view>
-    <view class="tip-btn tip-urgent {{quickFilter === 'near' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="near">急需处理 {{nearCount}}</view>
-    <view class="tip-btn tip-registered {{quickFilter === 'registered' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="registered">已报名 {{registeredCount}}</view>
+    <view class="tip-btn tip-active {{quickFilter === 'active' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="active">进行中 {{activeCount}}</view>
+    <view class="tip-btn tip-urgent {{quickFilter === 'urgent' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="urgent">急需处理 {{urgentCount}}</view>
     <view class="adv-toggle {{showAdvanced ? 'active' : ''}}" bindtap="toggleAdvanced">
-      <text>高级筛选</text>
+      <text>稿件筛选</text>
       <text class="adv-arrow">{{showAdvanced ? '▲' : '▼'}}</text>
     </view>
   </view>
 
-  <!-- 高级筛选面板 -->
+  <!-- 稿件筛选面板 -->
   <view class="adv-panel" wx:if="{{showAdvanced}}">
-    <!-- 状态 -->
+    <!-- 会议类型 -->
     <view class="adv-row">
-      <text class="adv-label">状态</text>
+      <text class="adv-label">会议类型</text>
       <view class="adv-field-wrap">
-        <picker class="adv-picker-wrap" range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
-          <view class="adv-picker-text">{{advStatusLabel || '全部'}}</view>
+        <picker mode="selector" range="{{advConferenceTypeOptions}}" range-key="label" value="{{advConferenceTypeIndex}}" bindchange="onAdvConferenceTypeChange">
+          <view class="adv-picker-text {{advConferenceType ? '' : 'placeholder'}}">{{advConferenceTypeLabel || '请选择'}}</view>
         </picker>
-        <view class="adv-clear" wx:if="{{advStatus}}" bindtap="clearAdvStatus">✕</view>
+        <view class="adv-clear" wx:if="{{advConferenceType}}" bindtap="clearAdvConferenceType">✕</view>
       </view>
     </view>
-    <!-- 地点 -->
+    <!-- 会议地点 -->
     <view class="adv-row">
-      <text class="adv-label">地点</text>
+      <text class="adv-label">会议地点</text>
       <view class="adv-field-wrap">
-        <picker class="adv-picker-wrap" range="{{advLocationOptions}}" range-key="label" value="{{advLocationIndex}}" bindchange="onAdvLocationChange">
-          <view class="adv-picker-text">{{advLocationLabel || '全部'}}</view>
-        </picker>
+        <input class="adv-input" placeholder="输入地点关键词" value="{{advLocation}}" bindinput="onAdvLocationInput" bindconfirm="onAdvLocationConfirm"/>
         <view class="adv-clear" wx:if="{{advLocation}}" bindtap="clearAdvLocation">✕</view>
       </view>
     </view>
-    <!-- 截稿时间区间 -->
+    <!-- 会议开始日期 -->
     <view class="adv-row">
-      <text class="adv-label">截稿时间</text>
+      <text class="adv-label">会议开始日期</text>
       <view class="adv-date-wrap">
         <view class="adv-date-item">
-          <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
-            <view class="adv-picker-text">{{advDeadlineFrom || '起始日期'}}</view>
+          <picker mode="date" value="{{advStartDateFrom}}" bindchange="onAdvStartDateFromChange">
+            <view class="adv-picker-text {{advStartDateFrom ? '' : 'placeholder'}}">{{advStartDateFrom || '起始日期'}}</view>
+          </picker>
+          <view class="adv-clear" wx:if="{{advStartDateFrom}}" bindtap="clearAdvStartDateFrom">✕</view>
+        </view>
+        <text class="adv-sep">~</text>
+        <view class="adv-date-item">
+          <picker mode="date" value="{{advStartDateTo}}" bindchange="onAdvStartDateToChange">
+            <view class="adv-picker-text {{advStartDateTo ? '' : 'placeholder'}}">{{advStartDateTo || '截止日期'}}</view>
+          </picker>
+          <view class="adv-clear" wx:if="{{advStartDateTo}}" bindtap="clearAdvStartDateTo">✕</view>
+        </view>
+      </view>
+    </view>
+    <!-- 会议截止日期 -->
+    <view class="adv-row">
+      <text class="adv-label">会议截止日期</text>
+      <view class="adv-date-wrap">
+        <view class="adv-date-item">
+          <picker mode="date" value="{{advEndDateFrom}}" bindchange="onAdvEndDateFromChange">
+            <view class="adv-picker-text {{advEndDateFrom ? '' : 'placeholder'}}">{{advEndDateFrom || '起始日期'}}</view>
+          </picker>
+          <view class="adv-clear" wx:if="{{advEndDateFrom}}" bindtap="clearAdvEndDateFrom">✕</view>
+        </view>
+        <text class="adv-sep">~</text>
+        <view class="adv-date-item">
+          <picker mode="date" value="{{advEndDateTo}}" bindchange="onAdvEndDateToChange">
+            <view class="adv-picker-text {{advEndDateTo ? '' : 'placeholder'}}">{{advEndDateTo || '截止日期'}}</view>
+          </picker>
+          <view class="adv-clear" wx:if="{{advEndDateTo}}" bindtap="clearAdvEndDateTo">✕</view>
+        </view>
+      </view>
+    </view>
+    <!-- 会议截稿日期 -->
+    <view class="adv-row">
+      <text class="adv-label">会议截稿日期</text>
+      <view class="adv-date-wrap">
+        <view class="adv-date-item">
+          <picker mode="date" value="{{advDeadlineFrom}}" bindchange="onAdvDeadlineFromChange">
+            <view class="adv-picker-text {{advDeadlineFrom ? '' : 'placeholder'}}">{{advDeadlineFrom || '起始日期'}}</view>
           </picker>
           <view class="adv-clear" wx:if="{{advDeadlineFrom}}" bindtap="clearAdvDeadlineFrom">✕</view>
         </view>
         <text class="adv-sep">~</text>
         <view class="adv-date-item">
-          <picker class="adv-picker-wrap" mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
-            <view class="adv-picker-text">{{advDeadlineTo || '截止日期'}}</view>
+          <picker mode="date" value="{{advDeadlineTo}}" bindchange="onAdvDeadlineToChange">
+            <view class="adv-picker-text {{advDeadlineTo ? '' : 'placeholder'}}">{{advDeadlineTo || '截止日期'}}</view>
           </picker>
           <view class="adv-clear" wx:if="{{advDeadlineTo}}" bindtap="clearAdvDeadlineTo">✕</view>
         </view>
+      </view>
+    </view>
+    <!-- 参会状态 -->
+    <view class="adv-row">
+      <text class="adv-label">参会状态</text>
+      <view class="adv-field-wrap">
+        <picker mode="selector" range="{{advStatusOptions}}" range-key="label" value="{{advStatusIndex}}" bindchange="onAdvStatusChange">
+          <view class="adv-picker-text {{advStatus ? '' : 'placeholder'}}">{{advStatusLabel || '请选择'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advStatus}}" bindtap="clearAdvStatus">✕</view>
+      </view>
+    </view>
+    <!-- 会议等级 -->
+    <view class="adv-row">
+      <text class="adv-label">会议等级</text>
+      <view class="adv-field-wrap">
+        <picker mode="selector" range="{{advRankOptions}}" value="{{advRankIndex}}" bindchange="onAdvRankChange">
+          <view class="adv-picker-text {{advRank ? '' : 'placeholder'}}">{{advRank || '请选择'}}</view>
+        </picker>
+        <view class="adv-clear" wx:if="{{advRank}}" bindtap="clearAdvRank">✕</view>
+      </view>
+    </view>
+    <!-- 举办单位 -->
+    <view class="adv-row">
+      <text class="adv-label">举办单位</text>
+      <view class="adv-field-wrap">
+        <input class="adv-input" placeholder="输入举办单位关键词" value="{{advOrganizer}}" bindinput="onAdvOrganizerInput" bindconfirm="onAdvOrganizerConfirm"/>
+        <view class="adv-clear" wx:if="{{advOrganizer}}" bindtap="clearAdvOrganizer">✕</view>
       </view>
     </view>
     <!-- 操作按钮 -->
@@ -86,36 +149,38 @@
       <view class="card-topbar" style="background:{{item.daysLeft < 0 ? '#10B981' : item.daysLeft <= 3 ? '#EF4444' : item.daysLeft <= 14 ? '#F59E0B' : '#3B82F6'}}"></view>
 
       <view class="card-body">
-        <!-- 名称 + 简称 -->
+        <!-- 名称 -->
         <view class="card-title-row">
           <text class="card-title" user-select="true">{{item.name}}</text>
-          <text class="card-short" wx:if="{{item.shortName}}">{{item.shortName}}</text>
         </view>
 
-        <!-- 地点 + 状态 -->
+        <!-- 地点 + 标签 + 状态 -->
         <view class="card-info-row">
           <text class="card-location" wx:if="{{item.location}}" user-select="true">📍 {{item.location}}</text>
-          <text class="card-status {{item.daysLeft < 0 ? 'status-registered' : item.daysLeft <= 14 ? 'status-pending' : 'status-future'}}">{{item.daysLeft < 0 ? '已截稿' : item.daysLeft === 0 ? '今日截稿' : item.daysLeft <= 3 ? '紧急' : item.daysLeft <= 14 ? '待截稿' : '充裕'}}</text>
+          <text wx:if="{{item.conferenceType}}" class="card-tag">{{item.conferenceType === 'online' ? '线上' : '线下'}}</text>
+          <text wx:if="{{item.rank}}" class="card-tag card-tag-rank">{{item.rank}}</text>
+          <text wx:if="{{item.statusLabel}}" class="card-tag card-tag-status">{{item.statusLabel}}</text>
+        </view>
+
+        <!-- 举办单位 -->
+        <view class="card-info-row" wx:if="{{item.organizer}}">
+          <text class="card-location">🏛 {{item.organizer}}</text>
         </view>
 
         <!-- 重要日期 -->
-        <view class="card-dates-row" wx:if="{{item.deadlineLabel || item.startDateLabel}}">
-          <text class="card-date-item {{item.daysLeft !== null && item.daysLeft >= 0 && item.daysLeft <= 3 ? 'urgent' : ''}}" wx:if="{{item.deadlineLabel}}">
+        <view class="card-dates-row" wx:if="{{item.deadlineLabel || item.dateRangeLabel}}">
+          <view class="card-date-item {{item.daysLeft !== null && item.daysLeft >= 0 && item.daysLeft <= 3 ? 'urgent' : ''}}" wx:if="{{item.deadlineLabel}}">
             📄 截稿 {{item.deadlineLabel}}{{item.daysLeft !== null ? (item.daysLeft >= 0 ? ' (' + item.daysLeft + '天)' : ' (已过期)') : ''}}
-          </text>
-          <text class="card-date-item" wx:if="{{item.startDateLabel}}">
-            🎤 开幕 {{item.startDateLabel}}
-          </text>
-        </view>
-
-        <!-- 官网链接 -->
-        <view class="card-url" wx:if="{{item.url}}" catchtap="onOpenConfUrl" data-url="{{item.url}}">
-          <text>🔗 打开官网</text>
+          </view>
+          <view class="card-date-item" wx:if="{{item.dateRangeLabel}}">
+            📅 会议时间 {{item.dateRangeLabel}}
+            <view class="card-timeline-status {{item.timelineStatusLabel === '进行中' ? 'timeline-active' : item.timelineStatusLabel === '已结束' ? 'timeline-ended' : 'timeline-upcoming'}}" wx:if="{{item.timelineStatusLabel}}">{{item.timelineStatusLabel}}</view>
+          </view>
         </view>
 
         <!-- 卡片底部操作 -->
         <view class="card-footer" catchtap="doNothing">
-          <view class="footer-edit footer-btn" catchtap="showEditForm" data-id="{{item._id}}">编辑</view>
+          <view class="footer-edit footer-btn" wx:if="{{item.url}}" catchtap="onOpenConfUrl" data-url="{{item.url}}">🔗 打开官网</view>
           <view class="footer-del footer-btn" catchtap="deleteItem" data-id="{{item._id}}">删除</view>
         </view>
       </view>

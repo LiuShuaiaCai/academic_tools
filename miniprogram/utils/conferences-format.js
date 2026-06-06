@@ -6,37 +6,62 @@ var dbInit = require('./dbInit');
 var parseDate = dbInit.parseDate;
 var config = require('./conferences-config');
 
+function buildDateRangeLabel(startDate, endDate) {
+  if (!startDate && !endDate) return '';
+  var start = startDate ? module.exports.formatDate(parseDate(startDate)) : '';
+  var end = endDate ? module.exports.formatDate(parseDate(endDate)) : '';
+  if (start && end) return start + ' ~ ' + end;
+  return start || end;
+}
+
+function buildTimelineStatusLabel(startDate, endDate) {
+  if (!startDate && !endDate) return '';
+  var now = new Date();
+  var start = startDate ? parseDate(startDate) : null;
+  var end = endDate ? parseDate(endDate) : null;
+  if (start && now < start) return '未开始';
+  if (end && now > end) return '已结束';
+  if (start && now >= start) return '进行中';
+  if (end && now <= end) return '进行中';
+  return '';
+}
+
 function formatItem(item) {
   var now = new Date();
   var d = item.deadline ? parseDate(item.deadline) : null;
   var daysLeft = d ? Math.ceil((d - now) / 86400000) : null;
 
-  // 根据 daysLeft 判断状态
-  var status = 'pending';
+  // 根据 daysLeft 设置默认状态
+  var status = '';
   if (daysLeft !== null) {
     if (daysLeft < 0) {
-      status = 'registered'; // 已报名/已完成
+      status = ''; // 已截止，保留原状态
     } else if (daysLeft > 14) {
-      status = 'pending'; // 超过14天还早
+      status = ''; // 时间充裕
     } else {
-      status = 'pending'; // 14天内，紧急
+      status = 'submitted'; // 14天内，默认已投稿
     }
   }
 
   return {
     _id: item._id,
     name: item.name || '',
-    shortName: item.shortName || '',
     location: item.location || '',
+    conferenceType: item.conferenceType || '',
+    rank: item.rank || '',
+    organizer: item.organizer || '',
     deadline: item.deadline || '',
     deadlineLabel: item.deadline ? this.formatDate(parseDate(item.deadline)) : '',
-    notificationDate: item.notificationDate || '',
-    notificationLabel: item.notificationDate ? this.formatDate(parseDate(item.notificationDate)) : '',
     startDate: item.startDate || '',
     startDateLabel: item.startDate ? this.formatDate(parseDate(item.startDate)) : '',
+    endDate: item.endDate || '',
+    endDateLabel: item.endDate ? this.formatDate(parseDate(item.endDate)) : '',
+    dateRangeLabel: buildDateRangeLabel(item.startDate, item.endDate),
+    timelineStatusLabel: buildTimelineStatusLabel(item.startDate, item.endDate),
     url: item.url || '',
     note: item.note || '',
     status: item.status || status,
+    statusLabel: config.getStatusLabel(item.status) || '',
     createTime: item.createTime,
     updateTime: item.updateTime,
     daysLeft: daysLeft,

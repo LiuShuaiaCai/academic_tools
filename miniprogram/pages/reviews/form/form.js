@@ -5,9 +5,9 @@ var parseDate = dbInit.parseDate;
 var config = require('../../../utils/reviews-config');
 var formatUtil = require('../../../utils/reviews-format');
 var templateData = require('../../../utils/review-templates-data');
-var aiReviewUtil = require('../../../utils/review-ai');
 var creditsUtil = require('../../../utils/credits');
 var reminderCheck = require('../../../utils/reminder-check');
+var aiRecognizer = require('../../../utils/aiRecognizer');
 
 Component({
   properties: {
@@ -57,7 +57,12 @@ Component({
     aiReviewLoading: false,
     showQuotaTip: false,
     showNotePreview: false,
-    notePreviewText: ''
+    notePreviewText: '',
+    emailRecognizing: false,
+    // 智能识别弹窗
+    showRecognizeModal: false,
+    showPasteModal: false,
+    pastedEmailText: ''
   },
 
   lifetimes: {
@@ -641,22 +646,32 @@ Component({
     doAiReview: function(fileID) {
       var that = this;
       that.setData({ aiReviewLoading: true });
+      wx.showLoading({ title: 'AI正在分析稿件...', mask: true });
 
       // Step 1: 云函数提取文本
       wx.cloud.callFunction({
-        name: 'aiService',
+        name: 'fileService',
         data: { action: 'extractText', fileID: fileID },
         success: function(res) {
           var result = res.result;
           if (!result || !result.success) {
+            wx.hideLoading();
             that.setData({ aiReviewLoading: false });
             wx.showToast({ title: (result && result.error) || '提取文本失败', icon: 'none' });
             return;
           }
           // Step 2: 小程序端调用 AI
-          aiReviewUtil.callAIWithText(result.text, result.originalLength).then(function(aiResult) {
+          aiRecognizer.startAiReview(result.text, result.originalLength).then(function(aiResult) {
+            // 防御检查：确保 AI 返回有效结果
+            if (!aiResult || !aiResult.success || !aiResult.text) {
+              wx.hideLoading();
+              that.setData({ aiReviewLoading: false });
+              wx.showToast({ title: 'AI返回结果异常', icon: 'none' });
+              return;
+            }
             // AI调用成功，扣减积分
             creditsUtil.spendCredits('ai_review', 20).then(function(spendResult) {
+              wx.hideLoading();
               that.setData({ aiReviewLoading: false });
 
               var currentNote = that.data.form.note || '';
@@ -672,6 +687,7 @@ Component({
               wx.showToast({ title: 'AI审稿完成', icon: 'success' });
             }).catch(function(err) {
               // 扣积分失败，但AI已成功，告知用户
+              wx.hideLoading();
               that.setData({ aiReviewLoading: false });
               var currentNote = that.data.form.note || '';
               var prefix = '【AI 审稿意见（' + aiResult.modelName + '）】\n';
@@ -686,19 +702,330 @@ Component({
               wx.showToast({ title: 'AI审稿完成（积分扣除失败，请联系管理员）', icon: 'none', duration: 3000 });
             });
           }).catch(function(err) {
+            wx.hideLoading();
             that.setData({ aiReviewLoading: false });
             wx.showToast({ title: 'AI审稿失败: ' + (err.message || '未知错误'), icon: 'none' });
             console.error('[AI Review] 调用失败:', err);
           });
         },
         fail: function() {
+          wx.hideLoading();
           that.setData({ aiReviewLoading: false });
           wx.showToast({ title: '提取文本失败', icon: 'none' });
         }
       });
     },
 
-    // ======== 保存 ========
+    // ======== 智能识别邮件（入口→弹窗选择方式）========
+    recognizeEmail: function() {
+      if (this.data.emailRecognizing) return;
+      this.setData({ showRecognizeModal: true });
+    },
+
+    closeRecognizeModal: function() {
+      this.setData({ showRecognizeModal: false });
+    },
+
+    // 方式一：粘贴邮件文本
+    startRecognizeFromText: function() {
+      this.setData({
+        showRecognizeModal: false,
+        showPasteModal: true,
+        pastedEmailText: ''
+      });
+    },
+
+    closePasteModal: function() {
+      this.setData({ showPasteModal: false, pastedEmailText: '' });
+    },
+
+    onPasteTextInput: function(e) {
+      this.setData({ pastedEmailText: e.detail.value });
+    },
+
+    submitPastedText: function() {
+      var that = this;
+      var text = (that.data.pastedEmailText || '').trim();
+      if (text.length < 20 || that.data.emailRecognizing) {
+        if (!that.data.emailRecognizing) wx.showToast({ title: '请粘贴完整邮件内容', icon: 'none' });
+        return;
+      }
+      // 检查积分
+      creditsUtil.getCreditsInfo().then(function(info) {
+        if (!info.success) {
+          wx.showToast({ title: '获取积分信息失败', icon: 'none' });
+          return;
+        }
+        if (info.credits < 20) {
+          wx.showModal({ title: '积分不足', content: '积分不足20，无法使用智能识别', showCancel: false });
+          return;
+        }
+        that.doTextRecognize(text);
+      });
+    },
+
+    doTextRecognize: function(emailText) {
+      var that = this;
+      that.setData({ emailRecognizing: true });
+      wx.showLoading({ title: 'AI正在识别邮件...', mask: true });
+
+      aiRecognizer.recognizeEmailText(emailText).then(function(result) {
+        if (!result || !result.success) {
+          wx.hideLoading();
+          that.setData({ emailRecognizing: false });
+          wx.showToast({ title: (result && result.error) || '识别失败', icon: 'none' });
+          return;
+        }
+        creditsUtil.spendCredits('email_recognize', 20).then(function() {
+          wx.hideLoading();
+          that.setData({ showPasteModal: false, pastedEmailText: '' });
+          that.fillRecognizedFields(result);
+        }).catch(function() {
+          wx.hideLoading();
+          that.setData({ showPasteModal: false, pastedEmailText: '' });
+          that.fillRecognizedFields(result);
+          wx.showToast({ title: '识别完成（积分扣除异常）', icon: 'none', duration: 2000 });
+        });
+      }).catch(function(err) {
+        wx.hideLoading();
+        that.setData({ emailRecognizing: false });
+        wx.showToast({ title: 'AI识别失败: ' + (err.message || '未知错误'), icon: 'none' });
+      });
+    },
+
+    // 方式二：上传邮件截图
+    startRecognizeFromImage: function() {
+      var that = this;
+      that.setData({ showRecognizeModal: false });
+      // 检查积分
+      creditsUtil.getCreditsInfo().then(function(info) {
+        if (!info.success) {
+          wx.showToast({ title: '获取积分信息失败', icon: 'none' });
+          return;
+        }
+        if (info.credits < 20) {
+          wx.showModal({ title: '积分不足', content: '积分不足20，无法使用智能识别', showCancel: false });
+          return;
+        }
+        that.doChooseAndRecognize();
+      });
+    },
+
+    // 方式三：上传稿件文件（Word/PDF）识别
+    startRecognizeFromFile: function() {
+      var that = this;
+      that.setData({ showRecognizeModal: false });
+      creditsUtil.getCreditsInfo().then(function(info) {
+        if (!info.success) {
+          wx.showToast({ title: '获取积分信息失败', icon: 'none' });
+          return;
+        }
+        if (info.credits < 20) {
+          wx.showModal({ title: '积分不足', content: '积分不足20，无法使用智能识别', showCancel: false });
+          return;
+        }
+        that.chooseAndRecognizeFile();
+      });
+    },
+
+    chooseAndRecognizeFile: function() {
+      var that = this;
+      wx.chooseMessageFile({
+        count: 1,
+        type: 'file',
+        extension: ['pdf', 'doc', 'docx'],
+        success: function(res) {
+          var file = res.tempFiles[0];
+          if (file.size > 50 * 1024 * 1024) {
+            wx.showToast({ title: '文件不能超过50MB', icon: 'none' });
+            return;
+          }
+          that.uploadAndRecognizeFile(file.path, file.name, file.size);
+        }
+      });
+    },
+
+    uploadAndRecognizeFile: function(filePath, fileName, fileSize) {
+      var that = this;
+      that.setData({ emailRecognizing: true });
+      wx.showLoading({ title: '上传并识别中...', mask: true });
+
+      var ext = fileName.split('.').pop().toLowerCase();
+      var cloudPath = 'manuscript-recognize/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.' + ext;
+
+      var uploadTask = wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: filePath,
+        success: function(uploadRes) {
+          // 1. 云函数提取文件文本
+          wx.cloud.callFunction({
+            name: 'fileService',
+            data: { action: 'extractText', fileID: uploadRes.fileID, maxChars: 0 },
+            success: function(callRes) {
+              var extractResult = callRes.result;
+              if (!extractResult || !extractResult.success) {
+                wx.hideLoading();
+                that.setData({ emailRecognizing: false });
+                wx.showToast({ title: (extractResult && extractResult.error) || '文件读取失败', icon: 'none' });
+                return;
+              }
+              // 2. AI 识别文本
+              aiRecognizer.recognizeManuscript(extractResult.text).then(function(result) {
+                if (!result || !result.success) {
+                  wx.hideLoading();
+                  that.setData({ emailRecognizing: false });
+                  wx.showToast({ title: (result && result.error) || 'AI识别失败', icon: 'none' });
+                  return;
+                }
+                creditsUtil.spendCredits('email_recognize', 20).then(function() {
+                  wx.hideLoading();
+                  var fileSizeText = fileSize > 1048576 ? (fileSize / 1048576).toFixed(1) + ' MB' : (fileSize / 1024).toFixed(0) + ' KB';
+                  var updates = {};
+                  updates['form.manuscript'] = {
+                    fileID: uploadRes.fileID,
+                    fileName: fileName,
+                    fileSize: fileSize,
+                    fileSizeText: fileSizeText,
+                    fileType: ext === 'pdf' ? 'pdf' : 'doc',
+                    uploadTime: formatTime()
+                  };
+                  that.setData(updates);
+                  that.fillRecognizedFields(result);
+                }).catch(function() {
+                  wx.hideLoading();
+                  var fileSizeText = fileSize > 1048576 ? (fileSize / 1048576).toFixed(1) + ' MB' : (fileSize / 1024).toFixed(0) + ' KB';
+                  var updates = {};
+                  updates['form.manuscript'] = {
+                    fileID: uploadRes.fileID,
+                    fileName: fileName,
+                    fileSize: fileSize,
+                    fileSizeText: fileSizeText,
+                    fileType: ext === 'pdf' ? 'pdf' : 'doc',
+                    uploadTime: formatTime()
+                  };
+                  that.setData(updates);
+                  that.fillRecognizedFields(result);
+                  wx.showToast({ title: '识别完成（积分扣除异常）', icon: 'none', duration: 2000 });
+                });
+              }).catch(function(err) {
+                wx.hideLoading();
+                that.setData({ emailRecognizing: false });
+                wx.showToast({ title: 'AI识别失败: ' + (err.message || '未知错误'), icon: 'none' });
+              });
+            },
+            fail: function() {
+              wx.hideLoading();
+              that.setData({ emailRecognizing: false });
+              wx.showToast({ title: '调用云函数失败', icon: 'none' });
+            }
+          });
+        },
+        fail: function() {
+          wx.hideLoading();
+          that.setData({ emailRecognizing: false });
+          wx.showToast({ title: '文件上传失败', icon: 'none' });
+        }
+      });
+    },
+
+    doChooseAndRecognize: function() {
+      var that = this;
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        success: function(res) {
+          var tempFilePath = res.tempFiles[0].tempFilePath;
+          that.uploadAndRecognize(tempFilePath);
+        }
+      });
+    },
+
+    uploadAndRecognize: function(filePath) {
+      var that = this;
+      that.setData({ emailRecognizing: true });
+      wx.showLoading({ title: '上传并识别中...', mask: true });
+
+      // 本地文件直接转 base64，省掉 fileService + 云函数下载环节
+      var base64Image;
+      try {
+        var fs = wx.getFileSystemManager();
+        base64Image = 'data:image/jpeg;base64,' + wx.arrayBufferToBase64(fs.readFileSync(filePath));
+      } catch (e) {
+        wx.hideLoading();
+        that.setData({ emailRecognizing: false });
+        wx.showToast({ title: '读取图片失败', icon: 'none' });
+        return;
+      }
+
+      // 上传到云存储（持久化） + AI 识别（并行）
+      var cloudPath = 'email-screenshots/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.jpg';
+      wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: filePath,
+        success: function() {
+          // 上传成功（不做其他处理，仅持久化）
+        },
+        fail: function(err) {
+          console.warn('[form] 图片上传失败（不影响识别）:', err);
+        }
+      });
+
+      // AI 识别直接用 base64，不等上传结果
+      aiRecognizer.recognizeEmailImage(base64Image).then(function(result) {
+        if (!result || !result.success) {
+          wx.hideLoading();
+          that.setData({ emailRecognizing: false });
+          wx.showToast({ title: (result && result.error) || 'AI识别失败', icon: 'none' });
+          return;
+        }
+        creditsUtil.spendCredits('email_recognize', 20).then(function() {
+          wx.hideLoading();
+          that.fillRecognizedFields(result);
+        }).catch(function() {
+          wx.hideLoading();
+          that.fillRecognizedFields(result);
+          wx.showToast({ title: '识别完成（积分扣除异常）', icon: 'none', duration: 2000 });
+        });
+      }).catch(function(err) {
+        wx.hideLoading();
+        that.setData({ emailRecognizing: false });
+        wx.showToast({ title: 'AI识别失败: ' + (err.message || '未知错误'), icon: 'none' });
+      });
+    },
+
+    fillRecognizedFields: function(result) {
+      var that = this;
+      var updates = {};
+      var filledCount = 0;
+      var fields = [
+        { key: 'paperTitle', val: result.paperTitle },
+        { key: 'journal', val: result.journal },
+        { key: 'reviewId', val: result.reviewId },
+        { key: 'invitedDate', val: result.invitedDate },
+        { key: 'deadline', val: result.deadline },
+        { key: 'systemUrl', val: result.systemUrl },
+        { key: 'editorEmail', val: result.editorEmail }
+      ];
+
+      fields.forEach(function(f) {
+        if (f.val && f.val.trim()) {
+          updates['form.' + f.key] = f.val.trim();
+          filledCount++;
+        }
+      });
+
+      updates.emailRecognizing = false;
+
+      if (filledCount > 0) {
+        that.setData(updates);
+        wx.showToast({ title: '已识别 ' + filledCount + ' 项信息', icon: 'success' });
+      } else {
+        that.setData(updates);
+        wx.showToast({ title: '未识别到有效信息', icon: 'none' });
+      }
+    },
     saveForm: function() {
       var that = this;
       var f = this.data.form;
@@ -714,6 +1041,15 @@ Component({
       }).map(function(item) {
         return { date: item.date, event: item.event, remark: item.remark || '', dotColor: item.dotColor || '' };
       });
+
+      // 新增审稿：自动添加「收到邀请」时间线
+      if (!this.data.isEdit && f.invitedDate) {
+        var hasInvited = tlSave.some(function(t) { return t.event === '收到邀请'; });
+        if (!hasInvited) {
+          tlSave.push({ date: f.invitedDate, event: '收到邀请', remark: '系统自动记录', dotColor: '#3B82F6' });
+          tlSave.sort(function(a, b) { return b.date.localeCompare(a.date); });
+        }
+      }
 
       // 判断是否完成：时间线中是否有「审稿完成」事件
       var completed = tlSave.some(function(t){ return t.event === '审稿完成'; });
@@ -733,17 +1069,20 @@ Component({
         editorEmail: f.editorEmail || '',
         note: f.note,
         relatedReviewId: f.relatedReviewId || '',
-        manuscript: f.manuscript && f.manuscript.fileID ? {
+        timeline: tlSave,
+        completed: completed,
+        updateTime: formatTime()
+      };
+      // manuscript: 只在上传了文件时才写入；不传则 CloudBase 不触碰已有值（避免 null 冲突）
+      if (f.manuscript && f.manuscript.fileID) {
+        data.manuscript = {
           fileID: f.manuscript.fileID,
           fileName: f.manuscript.fileName,
           fileSize: f.manuscript.fileSize,
           fileType: f.manuscript.fileType,
           uploadTime: f.manuscript.uploadTime
-        } : null,
-        timeline: tlSave,
-        completed: completed,
-        updateTime: formatTime()
-      };
+        };
+      }
 
       var db = wx.cloud.database();
       wx.showLoading({ title: '保存中...' });

@@ -750,9 +750,9 @@ Page({
       cloudPath: cloudPath,
       filePath: filePath,
       success: function(uploadRes) {
-        // 调用 AI 服务识别
+        // 调用文件服务识别
         wx.cloud.callFunction({
-          name: 'aiService',
+          name: 'fileService',
           data: {
             action: 'ocrImage',
             fileID: uploadRes.fileID

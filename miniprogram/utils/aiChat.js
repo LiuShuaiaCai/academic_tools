@@ -86,47 +86,9 @@ async function listProviders() {
   return res.data;
 }
 
-// 预设模板：学术审稿
-function buildReviewPrompt(paperText, maxChars) {
-  var truncated = paperText;
-  if (truncated.length > maxChars) {
-    truncated = truncated.substring(0, maxChars) + '\n\n[... 稿件内容过长，已截断 ...]';
-  }
-  return '请对以下学术论文进行专业审稿，从以下几个方面给出详细意见：\n\n' +
-    '1. **创新性**：研究的创新点和贡献\n' +
-    '2. **方法论**：实验设计、方法合理性\n' +
-    '3. **结果与分析**：结果的可信度和解释\n' +
-    '4. **写作质量**：结构、语言、参考文献\n' +
-    '5. **改进建议**：具体的修改意见\n' +
-    '6. **总体评价**：推荐接收 / 修改后接收 / 修改后重投 / 拒稿\n\n' +
-    '请用条理清晰的中文输出，每个部分用标题标注。\n\n' +
-    '=== 稿件内容 ===\n' + truncated;
-} 
-
-/**
- * 学术审稿快捷调用
- * @param {string} paperText - 稿件文本
- * @param {string} provider - AI provider（默认 deepseek）
- * @param {string} model - 模型名（可选）
- */
-async function reviewPaper(paperText, provider, model) {
-  const prompt = buildReviewPrompt(paperText, 60000);
-  return await chat({
-    provider: provider || 'deepseek',
-    model: model,
-    messages: [
-      { role: 'system', content: '你是一位经验丰富的学术审稿专家，擅长各个学科领域的论文审稿。你的审稿意见专业、客观、具有建设性。' },
-      { role: 'user', content: prompt }
-    ],
-    temperature: 0.3
-  });
-}
-
 module.exports = {
   chat,
   chatStream,
   listProviders,
-  buildReviewPrompt,
-  reviewPaper,
   callAiChat
 };

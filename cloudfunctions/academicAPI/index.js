@@ -6,6 +6,13 @@ const cloud = require("wx-server-sdk");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+// 把数据库字段（字符串或 Date 对象）安全提取为 YYYY-MM-DD
+function extractDateStr(val) {
+  if (!val) return '';
+  if (val instanceof Date) return val.toISOString().substring(0, 10);
+  return String(val).substring(0, 10);
+}
+
 // 格式化时间 YYYY-MM-DD HH:mm:ss
 function formatTime(date) {
   var d = date ? new Date(date) : new Date();
@@ -294,7 +301,7 @@ async function submissionStats(event) {
     if (!item.completed) {
       incomplete++;
       if (item.deadline) {
-        var dlDateStr = String(item.deadline).substring(0, 10);
+        var dlDateStr = extractDateStr(item.deadline);
         var dlDate = new Date(dlDateStr + 'T00:00:00');
         var todayDate = new Date(todayStr + 'T00:00:00');
         var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
@@ -338,7 +345,7 @@ async function reviewStats(event) {
     if (!item.completed) {
       incomplete++;
       if (item.deadline) {
-        var dlDateStr = String(item.deadline).substring(0, 10);
+        var dlDateStr = extractDateStr(item.deadline);
         var dlDate = new Date(dlDateStr + 'T00:00:00');
         var todayDate = new Date(todayStr + 'T00:00:00');
         var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
@@ -358,6 +365,7 @@ async function conferenceStats(event) {
   // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
   var beijingTime = new Date(now.getTime() + 8 * 3600000);
   var todayStr = beijingTime.getFullYear() + '-' + String(beijingTime.getMonth()+1).padStart(2,'0') + '-' + String(beijingTime.getDate()).padStart(2,'0');
+  var todayDate = new Date(todayStr + 'T00:00:00');
 
   var _ = db.command;
   var keyword = (event.keyword || '').trim();
@@ -376,29 +384,25 @@ async function conferenceStats(event) {
 
   var res = await db.collection('conferences').where(where).limit(1000).get();
   var list = res.data || [];
-  var total = 0, pending = 0, near = 0, registered = 0;
+  var total = 0, active = 0, urgent = 0;
   for (var i = 0; i < list.length; i++) {
     var item = list[i];
     total++;
-    // pending: 待截稿（status = 'pending' 且 deadline 未过）
-    if (item.status === 'pending') {
-      pending++;
+    // active: 进行中（startDate <= today <= endDate）
+    if (item.startDate && item.endDate) {
+      var sd = new Date(extractDateStr(item.startDate) + 'T00:00:00');
+      var ed = new Date(extractDateStr(item.endDate) + 'T00:00:00');
+      if (todayDate >= sd && todayDate <= ed) active++;
     }
-    // near: deadline 3天内
-    if (item.deadline) {
-      var dlDateStr = String(item.deadline).substring(0, 10);
-      var dlDate = new Date(dlDateStr + 'T00:00:00');
-      var todayDate = new Date(todayStr + 'T00:00:00');
-      var days = Math.round((dlDate.getTime() - todayDate.getTime()) / 86400000);
-      if (days >= 0 && days <= 3) near++;
-    }
-    // registered: 已报名
-    if (item.status === 'registered') {
-      registered++;
+    // urgent: 急需处理（status='registered' 且 startDate 在 3天内）
+    if (item.status === 'registered' && item.startDate) {
+      var sd2 = new Date(extractDateStr(item.startDate) + 'T00:00:00');
+      var days2 = Math.round((sd2.getTime() - todayDate.getTime()) / 86400000);
+      if (days2 >= 0 && days2 <= 3) urgent++;
     }
   }
-  console.log('[conferenceStats] keyword=' + keyword + ' total=' + total + ' pending=' + pending + ' near=' + near + ' registered=' + registered);
-  return { success: true, total: total, pending: pending, near: near, registered: registered };
+  console.log('[conferenceStats] keyword=' + keyword + ' total=' + total + ' active=' + active + ' urgent=' + urgent);
+  return { success: true, total: total, active: active, urgent: urgent };
 }
 
 // 修复被错误标记为 completed=true 的投稿（没有终态事件的应改为 false）
@@ -422,7 +426,7 @@ async function fixCompleted() {
   return { success: true, fixed: fixed, total: list.length };
 }
 
-// AI 审稿功能已迁移至独立云函数 aiService（支持多模型：Kimi/DeepSeek 等）
+// AI 审稿功能已迁移至小程序端 aiRecognizer.js
 
 // ==================== 工具函数 ====================
 

@@ -10,7 +10,13 @@
 
       <!-- 基本信息区 -->
       <view class="form-section">
-        <view class="section-label">基本信息</view>
+        <view class="section-label-row">
+          <view class="section-label">基本信息</view>
+          <view class="recognize-btn {{emailRecognizing ? 'recognizing' : ''}}" bindtap="recognizeEmail">
+            <text class="recognize-icon">{{emailRecognizing ? '⏳' : '🔍'}}</text>
+            <text class="recognize-text">{{emailRecognizing ? '识别中...' : '智能识别'}}</text>
+          </view>
+        </view>
 
         <!-- 1. 论文标题* -->
         <view class="form-group">
@@ -428,6 +434,63 @@
     <view class="note-preview-footer">
       <view class="note-preview-copy" bindtap="copyNotePreview">复制全文</view>
       <view class="note-preview-save" bindtap="saveNotePreview">保存</view>
+    </view>
+  </view>
+</view>
+
+<!-- 智能识别 - 方式选择弹窗 -->
+<view class="form-overlay {{showRecognizeModal ? 'active' : ''}}" bindtap="closeRecognizeModal">
+  <view class="form-sheet recognize-method-sheet" catchtap="doNothing">
+    <view class="form-header">
+      <view class="form-title">智能识别</view>
+      <view class="form-close" bindtap="closeRecognizeModal">✕</view>
+    </view>
+    <view class="form-body">
+      <view class="recognize-hint">选择一种方式，AI 自动识别审稿邀请信息（消耗20积分）</view>
+      <view class="recognize-options">
+        <view class="recognize-option-card" bindtap="startRecognizeFromText">
+          <view class="recognize-option-icon">📋</view>
+          <view class="recognize-option-info">
+            <view class="recognize-option-title">粘贴邮件内容</view>
+            <view class="recognize-option-desc">复制邮件全文后粘贴，AI 解析关键字段</view>
+          </view>
+          <text class="recognize-option-arrow">›</text>
+        </view>
+        <view class="recognize-option-card" bindtap="startRecognizeFromImage">
+          <view class="recognize-option-icon">📸</view>
+          <view class="recognize-option-info">
+            <view class="recognize-option-title">上传邮件截图</view>
+            <view class="recognize-option-desc">拍摄或选择邮件截图，AI 自动识别</view>
+          </view>
+          <text class="recognize-option-arrow">›</text>
+        </view>
+        <view class="recognize-option-card" bindtap="startRecognizeFromFile">
+          <view class="recognize-option-icon">📄</view>
+          <view class="recognize-option-info">
+            <view class="recognize-option-title">上传稿件文件</view>
+            <view class="recognize-option-desc">上传 Word/PDF 稿件，AI 解析论文标题等字段</view>
+          </view>
+          <text class="recognize-option-arrow">›</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 智能识别 - 粘贴邮件内容弹窗 -->
+<view class="form-overlay {{showPasteModal ? 'active' : ''}}" bindtap="closePasteModal">
+  <view class="form-sheet paste-sheet" catchtap="doNothing">
+    <view class="form-header">
+      <view class="form-title">粘贴邮件内容</view>
+      <view class="form-close" bindtap="closePasteModal">✕</view>
+    </view>
+    <view class="form-body">
+      <view class="paste-hint">请将审稿邀请邮件的全文内容粘贴到下方，AI 将自动识别关键信息（消耗20积分）</view>
+      <textarea class="paste-textarea" placeholder="在此粘贴邮件全文内容..." value="{{pastedEmailText}}" bindinput="onPasteTextInput" maxlength="5000"></textarea>
+    </view>
+    <view class="form-footer">
+      <button class="btn-cancel" bindtap="closePasteModal">取消</button>
+      <button class="btn-confirm {{emailRecognizing ? 'btn-disabled' : ''}}" bindtap="submitPastedText" disabled="{{emailRecognizing}}">{{emailRecognizing ? '识别中...' : '开始识别'}}</button>
     </view>
   </view>
 </view>
