@@ -177,11 +177,11 @@ Page({
           listConditions.push({ startDate: _.lte(todayStr + ' 23:59:59') });
           listConditions.push({ endDate: _.gte(todayStr + ' 00:00:00') });
         } else if (qf === 'urgent') {
-          // 急需处理：status='registered' 且 startDate 在 0-3 天内
+          // 急需处理：有状态 且 startDate 在 0-3 天内
           var toDate = new Date(now);
           toDate.setDate(now.getDate() + 3);
           var toStr = toDate.getFullYear() + '-' + String(toDate.getMonth() + 1).padStart(2, '0') + '-' + String(toDate.getDate()).padStart(2, '0');
-          listConditions.push({ status: 'registered' });
+          listConditions.push({ status: _.neq(null).and(_.neq('')) });
           listConditions.push({ startDate: _.gte(todayStr + ' 00:00:00') });
           listConditions.push({ startDate: _.lte(toStr + ' 23:59:59') });
         }

@@ -162,14 +162,19 @@ Page({
       db.collection('submissions').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 审稿
       db.collection('reviews').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
-      // 会议
+      // 会议 - deadline
       db.collection('conferences').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      // 会议 - 按开始日期（有状态的）
+      db.collection('conferences').where({
+        status: _.neq(null).and(_.neq('')),
+        startDate: _.gte(startDateStr).and(_.lt(endDateStr))
+      }).get().catch(function() { return { data: [] }; }),
       // 任务 - 按月份字符串筛选（包含已完成，在日历上展示所有事件）
       db.collection('tasks').where({
         date: _.gte(startDateStr).and(_.lt(endDateStr))
       }).get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
-      var subRes = results[0], revRes = results[1], confRes = results[2], taskRes = results[3];
+      var subRes = results[0], revRes = results[1], confRes = results[2], urgentConfRes = results[3], taskRes = results[4];
       var eventDates = {};
       var eventCounts = {};
       var monthEvents = [];
@@ -180,6 +185,8 @@ Page({
       revRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, paperTitle: i.paperTitle, journal: i.journal, type: 'review', typeLabel: '审稿', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
       // 会议（过滤已删除）
       confRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.deadline, deadline: i.deadline, completed: i.completed || false }); });
+      // 会议 - 按开始日期显示（有状态的）
+      urgentConfRes.data.forEach(function(i) { monthEvents.push({ _id: i._id, name: i.name, location: i.location, type: 'conference', typeLabel: '会议', date: i.startDate, deadline: i.startDate, completed: i.completed || false }); });
       // 任务（过滤已删除）
       taskRes.data.filter(function(i) { return !i.deleteTime; }).forEach(function(i) {
         monthEvents.push({

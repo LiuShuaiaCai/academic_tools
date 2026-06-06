@@ -394,8 +394,8 @@ async function conferenceStats(event) {
       var ed = new Date(extractDateStr(item.endDate) + 'T00:00:00');
       if (todayDate >= sd && todayDate <= ed) active++;
     }
-    // urgent: 急需处理（status='registered' 且 startDate 在 3天内）
-    if (item.status === 'registered' && item.startDate) {
+    // urgent: 急需处理（有状态 且 startDate 在 3天内）
+    if (item.status && item.startDate) {
       var sd2 = new Date(extractDateStr(item.startDate) + 'T00:00:00');
       var days2 = Math.round((sd2.getTime() - todayDate.getTime()) / 86400000);
       if (days2 >= 0 && days2 <= 3) urgent++;

@@ -232,10 +232,21 @@ Page({
     future.setDate(future.getDate() + 30);
     var futureStr = future.getFullYear() + '-' + String(future.getMonth() + 1).padStart(2, '0') + '-' + String(future.getDate()).padStart(2, '0') + ' ' + String(future.getHours()).padStart(2, '0') + ':' + String(future.getMinutes()).padStart(2, '0') + ':' + String(future.getSeconds()).padStart(2, '0');
 
+    // 急需处理会议：有状态 且 startDate 在 0-3 天内
+    var todayDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    var urgentDate = new Date(now);
+    urgentDate.setDate(urgentDate.getDate() + 3);
+    var urgentDateStr = urgentDate.getFullYear() + '-' + String(urgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(urgentDate.getDate()).padStart(2, '0');
+
     Promise.all([
       db.collection('submissions').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
       db.collection('reviews').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
-      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; })
+      db.collection('conferences').where({ deleteTime: null, deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
+      db.collection('conferences').where({
+        deleteTime: null,
+        status: _.neq(null).and(_.neq('')),
+        startDate: _.gte(todayDateStr).and(_.lte(urgentDateStr + ' 23:59:59'))
+      }).limit(5).orderBy('startDate', 'asc').get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
       var items = [];
       var i;
@@ -250,6 +261,12 @@ Page({
       for (i = 0; i < results[2].data.length; i++) {
         var c = results[2].data[i];
         items.push({ _id: c._id, title: c.name, type: 'conference', typeLabel: '会议', icon: '🎤', pagePath: '/pages/conferences/conferences', deadline: c.deadline });
+      }
+      // 急需处理的会议（有状态 + startDate 在 0-3 天）
+      for (i = 0; i < results[3].data.length; i++) {
+        var cu = results[3].data[i];
+        // 用 startDate 作为排序日期
+        items.push({ _id: cu._id, title: cu.name, type: 'conference', typeLabel: '会议', icon: '🎤', pagePath: '/pages/conferences/conferences', deadline: cu.startDate });
       }
 
       items.sort(function(a, b) { return new Date(String(a.deadline).replace(' ', 'T')) - new Date(String(b.deadline).replace(' ', 'T')); });
