@@ -387,13 +387,16 @@ async function conferenceStats(event) {
   var total = 0, active = 0, urgent = 0;
   for (var i = 0; i < list.length; i++) {
     var item = list[i];
+    // total: 全部计数，不过滤 completed
     total++;
-    // active: 进行中（startDate <= today <= endDate）
+    // active: 进行中（startDate <= today <= endDate），不过滤 completed
     if (item.startDate && item.endDate) {
       var sd = new Date(extractDateStr(item.startDate) + 'T00:00:00');
       var ed = new Date(extractDateStr(item.endDate) + 'T00:00:00');
       if (todayDate >= sd && todayDate <= ed) active++;
     }
+    // urgent: 急需处理（有状态 且 startDate 在 3天内），排除已完成
+    if (item.completed) continue;
     // urgent: 急需处理（有状态 且 startDate 在 3天内）
     if (item.status && item.startDate) {
       var sd2 = new Date(extractDateStr(item.startDate) + 'T00:00:00');

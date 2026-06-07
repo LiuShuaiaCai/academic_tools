@@ -25,7 +25,7 @@ Page({
     totalCount: 0,
     activeCount: 0,
     urgentCount: 0,
-    // 稿件筛选（原高级筛选）
+    // 高级筛选（原高级筛选）
     showAdvanced: false,
     // 会议类型
     advConferenceType: '',
@@ -136,7 +136,7 @@ Page({
           { location: reg }
         ]));
       }
-      // 稿件筛选条件
+      // 高级筛选条件
       var advStatus = this.data.advStatus;
       var advLocation = this.data.advLocation;
       var advOrganizer = this.data.advOrganizer;
@@ -173,14 +173,15 @@ Page({
         var now = new Date();
         var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
         if (qf === 'active') {
-          // 进行中：startDate <= today <= endDate
+          // 进行中：startDate <= today <= endDate（不过滤 completed）
           listConditions.push({ startDate: _.lte(todayStr + ' 23:59:59') });
           listConditions.push({ endDate: _.gte(todayStr + ' 00:00:00') });
         } else if (qf === 'urgent') {
-          // 急需处理：有状态 且 startDate 在 0-3 天内
+          // 急需处理：有状态 且 startDate 在 0-3 天内（排除已完成）
           var toDate = new Date(now);
           toDate.setDate(now.getDate() + 3);
           var toStr = toDate.getFullYear() + '-' + String(toDate.getMonth() + 1).padStart(2, '0') + '-' + String(toDate.getDate()).padStart(2, '0');
+          listConditions.push({ completed: _.neq(true) });
           listConditions.push({ status: _.neq(null).and(_.neq('')) });
           listConditions.push({ startDate: _.gte(todayStr + ' 00:00:00') });
           listConditions.push({ startDate: _.lte(toStr + ' 23:59:59') });
@@ -293,7 +294,7 @@ Page({
       quickFilter: type === this.data.quickFilter ? 'all' : type,
       page: 0,
       hasMore: true,
-      // 关闭稿件筛选面板，清空稿件筛选条件（互斥）
+      // 关闭高级筛选面板，清空高级筛选条件（互斥）
       showAdvanced: false,
       advConferenceType: '', advConferenceTypeLabel: '',
       advLocation: '',
@@ -307,12 +308,12 @@ Page({
     this.loadList(false);
   },
 
-  // 稿件筛选
+  // 高级筛选
   toggleAdvanced: function() {
     var opening = !this.data.showAdvanced;
     this.setData({
       showAdvanced: opening,
-      // 展开稿件筛选时，取消快速筛选选中
+      // 展开高级筛选时，取消快速筛选选中
       quickFilter: opening ? 'all' : this.data.quickFilter
     });
   },

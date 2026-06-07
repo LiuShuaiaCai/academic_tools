@@ -90,7 +90,7 @@ Page({
     for (var i = 0; i < tools.length; i++) {
       (function(tool) {
         // 非任务型工具：不查 count
-        if (!tool.isTaskType && tool.id !== 'archive') {
+        if (!tool.isTaskType && tool.id !== 'archive' && tool.id !== 'citation') {
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji, color: tool.color,
@@ -101,12 +101,12 @@ Page({
 
         var colName = TASK_COLLECTION_MAP[tool.id];
         if (tool.id === 'archive') colName = 'archives';
+        if (tool.id === 'citation') colName = 'citation_library';
         console.log('[toolbox] 查询工具:', tool.id, '->', colName, 'isTaskType:', tool.isTaskType);
 
         if (colName) {
-          // 总数查询：投稿排除已完成
+          // 总数查询：不过滤 completed，显示全量
           var countWhere = { deleteTime: null };
-          if (tool.id === 'submission') countWhere.completed = false;
           var countPromise = db.collection(colName).where(countWhere).count();
 
           // 紧急数查询（0-3天内截止的未完成项）
@@ -125,10 +125,12 @@ Page({
             urgentPromise = Promise.all([
               db.collection(colName).where({
                 deleteTime: null,
+                completed: _.neq(true),
                 deadline: _.gte(nowStr).and(_.lt(urgentStr))
               }).count(),
               db.collection(colName).where({
                 deleteTime: null,
+                completed: _.neq(true),
                 status: _.neq(null).and(_.neq('')),
                 startDate: _.gte(todayDateStr).and(_.lte(startUrgentDateStr + ' 23:59:59'))
               }).count()
@@ -138,6 +140,7 @@ Page({
           } else if (tool.id === 'review') {
             urgentPromise = db.collection(colName).where({
               deleteTime: null,
+              completed: _.neq(true),
               deadline: _.gte(nowStr).and(_.lt(urgentStr))
             }).count();
           } else {

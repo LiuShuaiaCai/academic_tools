@@ -85,6 +85,9 @@
         <view class="card-stats" wx:elif="{{item.id === 'archive'}}">
           <text>{{item.count}} 份资料</text>
         </view>
+        <view class="card-stats" wx:elif="{{item.id === 'citation'}}">
+          <text>{{item.count}} 篇文献</text>
+        </view>
         <view class="card-urgent-badge" wx:if="{{item.urgent > 0}}">{{item.urgent}}</view>
       </view>
     </view>

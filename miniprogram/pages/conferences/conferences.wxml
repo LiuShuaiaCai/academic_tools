@@ -15,12 +15,12 @@
     <view class="tip-btn tip-active {{quickFilter === 'active' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="active">进行中 {{activeCount}}</view>
     <view class="tip-btn tip-urgent {{quickFilter === 'urgent' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="urgent">急需处理 {{urgentCount}}</view>
     <view class="adv-toggle {{showAdvanced ? 'active' : ''}}" bindtap="toggleAdvanced">
-      <text>稿件筛选</text>
+      <text>高级筛选</text>
       <text class="adv-arrow">{{showAdvanced ? '▲' : '▼'}}</text>
     </view>
   </view>
 
-  <!-- 稿件筛选面板 -->
+  <!-- 高级筛选面板 -->
   <view class="adv-panel" wx:if="{{showAdvanced}}">
     <!-- 会议类型 -->
     <view class="adv-row">
