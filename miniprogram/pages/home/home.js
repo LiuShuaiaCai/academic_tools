@@ -183,6 +183,8 @@ Page({
     // deadline 存的是字符串格式 "2026-05-03 23:53:50"，比较也要用字符串
     var now = new Date();
     var nowStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+    var todayDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    var todayStartStr = todayDateStr + ' 00:00:00';
     var urgentDate = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000); // 4天后（含0-3天）
     var urgentStr = urgentDate.getFullYear() + '-' + String(urgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(urgentDate.getDate()).padStart(2, '0') + ' ' + String(urgentDate.getHours()).padStart(2, '0') + ':' + String(urgentDate.getMinutes()).padStart(2, '0') + ':' + String(urgentDate.getSeconds()).padStart(2, '0');
     var promises = [];
@@ -220,10 +222,9 @@ Page({
               deleteTime: null,
               _openid: that.data.currentOpenid,
               completed: false,
-              deadline: _.gte(nowStr).and(_.lt(urgentStr))
+              deadline: _.gte(todayStartStr).and(_.lt(urgentStr))
             }).count();
           } else if (tool.id === 'conference') {
-            var todayDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
             var startUrgentDate = new Date(now);
             startUrgentDate.setDate(startUrgentDate.getDate() + 3);
             var startUrgentDateStr = startUrgentDate.getFullYear() + '-' + String(startUrgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(startUrgentDate.getDate()).padStart(2, '0');
@@ -232,7 +233,7 @@ Page({
                 deleteTime: null,
                 _openid: that.data.currentOpenid,
                 completed: _.neq(true),
-                deadline: _.gte(nowStr).and(_.lt(urgentStr))
+                deadline: _.gte(todayStartStr).and(_.lt(urgentStr))
               }).count(),
               db.collection(colName).where({
                 deleteTime: null,
@@ -249,7 +250,7 @@ Page({
               deleteTime: null,
               _openid: that.data.currentOpenid,
               completed: _.neq(true),
-              deadline: _.gte(nowStr).and(_.lt(urgentStr))
+              deadline: _.gte(todayStartStr).and(_.lt(urgentStr))
             }).count();
           } else {
             urgentPromise = Promise.resolve({ total: 0 });
@@ -299,21 +300,21 @@ Page({
     var db = wx.cloud.database();
     var _ = db.command;
     var now = new Date();
-    var nowStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+    var todayDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    var todayStartStr = todayDateStr + ' 00:00:00';
     var future = new Date();
     future.setDate(future.getDate() + 30);
     var futureStr = future.getFullYear() + '-' + String(future.getMonth() + 1).padStart(2, '0') + '-' + String(future.getDate()).padStart(2, '0') + ' ' + String(future.getHours()).padStart(2, '0') + ':' + String(future.getMinutes()).padStart(2, '0') + ':' + String(future.getSeconds()).padStart(2, '0');
 
     // 急需处理会议：有状态 且 startDate 在 0-3 天内
-    var todayDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     var urgentDate = new Date(now);
     urgentDate.setDate(urgentDate.getDate() + 3);
     var urgentDateStr = urgentDate.getFullYear() + '-' + String(urgentDate.getMonth() + 1).padStart(2, '0') + '-' + String(urgentDate.getDate()).padStart(2, '0');
 
     Promise.all([
-      db.collection('submissions').where({ deleteTime: null, _openid: that.data.currentOpenid, completed: _.neq(true), deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
-      db.collection('reviews').where({ deleteTime: null, _openid: that.data.currentOpenid, completed: _.neq(true), deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
-      db.collection('conferences').where({ deleteTime: null, _openid: that.data.currentOpenid, completed: _.neq(true), deadline: _.gte(nowStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
+      db.collection('submissions').where({ deleteTime: null, _openid: that.data.currentOpenid, completed: _.neq(true), deadline: _.gte(todayStartStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
+      db.collection('reviews').where({ deleteTime: null, _openid: that.data.currentOpenid, completed: _.neq(true), deadline: _.gte(todayStartStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
+      db.collection('conferences').where({ deleteTime: null, _openid: that.data.currentOpenid, completed: _.neq(true), deadline: _.gte(todayStartStr).and(_.lte(futureStr)) }).limit(5).orderBy('deadline', 'asc').get().catch(function() { return { data: [] }; }),
       db.collection('conferences').where({
         deleteTime: null,
         _openid: that.data.currentOpenid,
