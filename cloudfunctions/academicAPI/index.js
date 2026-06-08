@@ -271,6 +271,9 @@ async function saveUserTools(event) {
 // 投稿统计（支持搜索关键词过滤）
 // 参数: event.keyword - 可选，搜索关键词，匹配 title/journal/coauthors/tags
 async function submissionStats(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
   var now = new Date();
   // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
   var beijingTime = new Date(now.getTime() + 8 * 3600000);
@@ -280,7 +283,7 @@ async function submissionStats(event) {
   var keyword = (event.keyword || '').trim();
 
   // 构建查询条件
-  var conditions = [{ deleteTime: null }];
+  var conditions = [{ deleteTime: null, _openid: openid }];
   if (keyword) {
     var reg = db.RegExp({ regexp: keyword, options: 'i' });
     conditions.push(_.or([
@@ -317,6 +320,9 @@ async function submissionStats(event) {
 // 审稿统计（支持搜索关键词过滤）
 // 参数: event.keyword - 可选，搜索关键词，匹配 paperTitle/journal
 async function reviewStats(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
   var now = new Date();
   // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
   var beijingTime = new Date(now.getTime() + 8 * 3600000);
@@ -326,7 +332,7 @@ async function reviewStats(event) {
   var keyword = (event.keyword || '').trim();
 
   // 构建查询条件
-  var conditions = [{ deleteTime: null }];
+  var conditions = [{ deleteTime: null, _openid: openid }];
   if (keyword) {
     var reg = db.RegExp({ regexp: keyword, options: 'i' });
     conditions.push(_.or([
@@ -361,6 +367,9 @@ async function reviewStats(event) {
 // 会议统计（支持搜索关键词过滤）
 // 参数: event.keyword - 可选，搜索关键词，匹配 name/shortName/location
 async function conferenceStats(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
   var now = new Date();
   // 云函数在 UTC+0 运行，需要转北京时间（UTC+8）来计算"今天"日期
   var beijingTime = new Date(now.getTime() + 8 * 3600000);
@@ -371,7 +380,7 @@ async function conferenceStats(event) {
   var keyword = (event.keyword || '').trim();
 
   // 构建查询条件
-  var conditions = [{ deleteTime: null }];
+  var conditions = [{ deleteTime: null, _openid: openid }];
   if (keyword) {
     var reg = db.RegExp({ regexp: keyword, options: 'i' });
     conditions.push(_.or([

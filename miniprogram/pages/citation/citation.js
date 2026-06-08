@@ -192,10 +192,24 @@ Page({
     // 表格弹窗
     showTableModal: false,
     tableModalTitle: '',
-    tableModalData: []
+    tableModalData: [],
+
+    // 当前用户
+    currentOpenid: ''
   },
 
   onLoad: function() {
+    var that = this;
+    // 获取当前用户 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      var openid = res.result && res.result.openid ? res.result.openid : '';
+      that.setData({ currentOpenid: openid });
+    }).catch(function(err) {
+      console.error('[citation] 获取用户标识失败', err);
+    });
     // 检测平台：真机(ios/android)使用 canvas2d，模拟器(windows/mac)使用 inScrollView
     var systemInfo = wx.getSystemInfoSync();
     var platform = systemInfo.platform;
@@ -579,8 +593,14 @@ Page({
   // 加载文献库
   loadLibrary: function() {
     var that = this;
+    var openid = that.data.currentOpenid;
+    if (!openid) {
+      that.setData({ library: [] });
+      return;
+    }
     const db = wx.cloud.database();
     db.collection('citation_library')
+      .where({ _openid: openid })
       .orderBy('addTime', 'desc')
       .get({
         success: function(res) {
@@ -597,6 +617,7 @@ Page({
   deleteFromLibrary: function(e) {
     var that = this;
     var id = e.currentTarget.dataset.id;
+    var openid = that.data.currentOpenid;
 
     wx.showModal({
       title: '确认删除',
@@ -604,7 +625,7 @@ Page({
       success: function(res) {
         if (res.confirm) {
           const db = wx.cloud.database();
-          db.collection('citation_library').doc(id).remove({
+          db.collection('citation_library').where({ _id: id, _openid: openid }).remove({
             success: function() {
               var library = that.data.library.filter(function(item) {
                 return item._id !== id;

@@ -62,16 +62,27 @@ Component({
     // 智能识别弹窗
     showRecognizeModal: false,
     showPasteModal: false,
-    pastedEmailText: ''
+    pastedEmailText: '',
+
+    currentOpenid: ''
   },
 
   lifetimes: {
     attached: function() {
-      if (this.data.isEdit && this.data.editId) {
-        this.loadEditData(this.data.editId);
-      }
-      this.loadRelatedReviews(this.data.editId || null);
-      this.initTemplates();
+      var that = this;
+      // 先获取 openid
+      wx.cloud.callFunction({
+        name: 'academicAPI',
+        data: { action: 'getUserId' }
+      }).then(function(res) {
+        var openid = res.result && res.result.openid ? res.result.openid : '';
+        that.setData({ currentOpenid: openid }, function() {
+          that._initAfterOpenid();
+        });
+      }).catch(function(err) {
+        console.error('[reviews-form] 获取用户标识失败', err);
+        that._initAfterOpenid();
+      });
     }
   },
 
@@ -91,6 +102,14 @@ Component({
   },
 
   methods: {
+    _initAfterOpenid: function() {
+      if (this.data.isEdit && this.data.editId) {
+        this.loadEditData(this.data.editId);
+      }
+      this.loadRelatedReviews(this.data.editId || null);
+      this.initTemplates();
+    },
+
     initTemplates: function() {
       var templates = templateData.TEMPLATES.map(function(t, idx) {
         return Object.assign({}, t, { _index: idx });
@@ -130,9 +149,11 @@ Component({
 
     loadEditData: function(id) {
       var that = this;
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
       this.loadRelatedReviews(id);
-      wx.cloud.database().collection('reviews').doc(id).get().then(function(res) {
-        var item = res.data;
+      wx.cloud.database().collection('reviews').where({ _id: id, _openid: openid }).get().then(function(res) {
+        var item = (res.data && res.data.length > 0) ? res.data[0] : null;
         if (!item) return;
 
         // 时间线
@@ -224,7 +245,9 @@ Component({
     // 加载关联审稿列表（同一稿件多轮审稿）
     loadRelatedReviews: function(excludeId) {
       var that = this;
-      wx.cloud.database().collection('reviews').where({ deleteTime: null })
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
+      wx.cloud.database().collection('reviews').where({ deleteTime: null, _openid: openid })
         .orderBy('updateTime', 'desc').limit(50).get()
         .then(function(res) {
           var opts = [{ _id: '', title: '不关联' }];
@@ -1137,6 +1160,7 @@ Component({
       var that = this;
       var ds = e.currentTarget.dataset;
       var id = ds.id || '';
+      var openid = that.data.currentOpenid;
       // 先设置弹窗可见 + 基本信息
       this.setData({
         showDecisionModal: true,
@@ -1146,12 +1170,13 @@ Component({
         decision: ds.decision || ''
       });
       // 从数据库查询 note 和 manuscript，回显到 form
-      if (id) {
-        wx.cloud.database().collection('reviews').doc(id).field({ note: true, manuscript: true }).get().then(function(res) {
-          if (res.data) {
+      if (id && openid) {
+        wx.cloud.database().collection('reviews').where({ _id: id, _openid: openid }).field({ note: true, manuscript: true }).get().then(function(res) {
+          if (res.data && res.data.length > 0) {
+            var item = res.data[0];
             var updates = {};
-            if (res.data.note !== undefined) updates['form.note'] = res.data.note || '';
-            if (res.data.manuscript !== undefined) updates['form.manuscript'] = res.data.manuscript || { fileID: '', fileName: '', fileSize: 0, fileSizeText: '', fileType: '', uploadTime: '' };
+            if (item.note !== undefined) updates['form.note'] = item.note || '';
+            if (item.manuscript !== undefined) updates['form.manuscript'] = item.manuscript || { fileID: '', fileName: '', fileSize: 0, fileSizeText: '', fileType: '', uploadTime: '' };
             that.setData(updates);
           }
         });
@@ -1172,7 +1197,9 @@ Component({
       var decision = this.data.decision;
       var note = this.data.form.note || '';
       var manuscript = this.data.form.manuscript || null;
+      var openid = that.data.currentOpenid;
       if (!decision) { wx.showToast({ title: '请选择审稿决定', icon: 'none' }); return; }
+      if (!openid) { wx.showToast({ title: '用户信息获取中，请稍后重试', icon: 'none' }); return; }
       var updateData = {
         decision: decision,
         note: note,
@@ -1183,7 +1210,7 @@ Component({
         updateData.manuscript = manuscript;
       }
       wx.showLoading({ title: '提交中...' });
-      wx.cloud.database().collection('reviews').doc(decisionId).update({ data: updateData })
+      wx.cloud.database().collection('reviews').where({ _id: decisionId, _openid: openid }).update({ data: updateData })
         .then(function() {
           wx.hideLoading();
           wx.showToast({ title: '决定已提交', icon: 'success' });

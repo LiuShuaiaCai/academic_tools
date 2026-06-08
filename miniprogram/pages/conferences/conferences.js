@@ -65,21 +65,43 @@ Page({
     targetId: '',
     targetTitle: '',
     pendingAutoEdit: false,
-    isTargetMode: false
+    isTargetMode: false,
+    currentOpenid: '' // 当前用户的 openid
   },
 
   onLoad: function(options) {
-    if (options && options.targetId) {
-      this.setData({
-        targetId: options.targetId,
-        targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-        pendingAutoEdit: options.autoEdit === 'true',
-        isTargetMode: true
-      });
-      this.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
-    } else {
-      this.loadList();
-    }
+    var that = this;
+    // 获取当前用户的 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      that.setData({ currentOpenid: res.result.openid });
+      if (options && options.targetId) {
+        that.setData({
+          targetId: options.targetId,
+          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+          pendingAutoEdit: options.autoEdit === 'true',
+          isTargetMode: true
+        });
+        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+      } else {
+        that.loadList();
+      }
+    }).catch(function() {
+      // 获取 openid 失败，仍然加载列表
+      if (options && options.targetId) {
+        that.setData({
+          targetId: options.targetId,
+          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+          pendingAutoEdit: options.autoEdit === 'true',
+          isTargetMode: true
+        });
+        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+      } else {
+        that.loadList();
+      }
+    });
   },
 
   onShow: function() {
@@ -127,7 +149,8 @@ Page({
       var _ = db.command;
 
       // 构建"基础条件"（搜索 + 稿件筛选，不含 quickFilter）
-      var baseConditions = [{ deleteTime: null }];
+      var openid = that.data.currentOpenid;
+      var baseConditions = [{ deleteTime: null, _openid: openid }];
       var kw = (this.data.searchKeyword || '').trim();
       if (kw) {
         var reg = db.RegExp({ regexp: kw, options: 'i' });
@@ -243,10 +266,13 @@ Page({
   /* ======== 通过 ID 精确定位（首页跳转时只显示这一个）======= */
   locateById: function(id, title) {
     var that = this;
-    wx.cloud.database().collection('conferences').doc(id).get().then(function(res) {
-      if (res.data) {
-        var item = formatUtil.formatItem(res.data);
-        var list = [item];
+    var openid = that.data.currentOpenid;
+    if (!openid) return;
+    wx.cloud.database().collection('conferences').where({ _id: id, _openid: openid }).get().then(function(res) {
+      var item = (res.data && res.data.length > 0) ? res.data[0] : null;
+      if (item) {
+        var formatted = formatUtil.formatItem(item);
+        var list = [formatted];
         if (title) that.setData({ searchKeyword: title });
         var shouldAutoEdit = that.data.pendingAutoEdit;
         that.setData({

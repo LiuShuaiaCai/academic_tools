@@ -16,11 +16,22 @@ Page({
     pendingShare: null, // { fileId, fileName } 供 onShareAppMessage 使用
     autoOpening: false, // 是否正在自动打开分享的文件
     autoOpenFileName: '', // 自动打开时显示的文件名
-    autoOpenTip: ''        // 自动打开时的提示文字
+    autoOpenTip: '',        // 自动打开时的提示文字
+    currentOpenid: '' // 当前用户的 openid
   },
 
   onLoad: function(options) {
-    this.loadAll();
+    var that = this;
+    // 获取当前用户的 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      that.setData({ currentOpenid: res.result.openid });
+      that.loadAll();
+    }).catch(function() {
+      that.loadAll();
+    });
     wx.showShareMenu({ withShareTicket: true });
     // 通过分享卡片打开，携带了 fileId 参数 → 自动触发下载
     if (options && options.fileId) {
@@ -48,7 +59,7 @@ Page({
     // 并行加载分类和文件
     Promise.all([
       db.collection('archive_categories').where({ deleteTime: null }).orderBy('order', 'asc').get().catch(function() { return { data: [] }; }),
-      db.collection('archives').where({ deleteTime: null }).orderBy('createTime', 'desc').get().catch(function() { return { data: [] }; })
+      db.collection('archives').where({ deleteTime: null, _openid: that.data.currentOpenid }).orderBy('createTime', 'desc').get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
       var cats = results[0].data || [];
       // 构建 id→name 映射

@@ -17,11 +17,23 @@ Component({
     files: [],
     uploading: false,
     showManage: false,
-    newCatName: ''
+    newCatName: '',
+    currentOpenid: ''
   },
 
   lifetimes: {
-    ready: function() {}
+    attached: function() {
+      var that = this;
+      wx.cloud.callFunction({
+        name: 'academicAPI',
+        data: { action: 'getUserId' }
+      }).then(function(res) {
+        var openid = res.result && res.result.openid ? res.result.openid : '';
+        that.setData({ currentOpenid: openid });
+      }).catch(function(err) {
+        console.error('[archive-form] 获取用户标识失败', err);
+      });
+    }
   },
 
   methods: {
@@ -36,8 +48,10 @@ Component({
     loadCategories: function() {
       var that = this;
       var db = wx.cloud.database();
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
       db.collection('archive_categories')
-        .where({ deleteTime: null })
+        .where({ deleteTime: null, _openid: openid })
         .orderBy('order', 'asc')
         .get()
         .then(function(res) {
@@ -53,9 +67,11 @@ Component({
     loadCategoriesWithDataCheck: function() {
       var that = this;
       var db = wx.cloud.database();
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
 
       db.collection('archive_categories')
-        .where({ deleteTime: null })
+        .where({ deleteTime: null, _openid: openid })
         .orderBy('order', 'asc')
         .get()
         .then(function(res) {
@@ -66,7 +82,7 @@ Component({
 
           var promises = cats.map(function(c) {
             return db.collection('archives')
-              .where({ category: c._id, deleteTime: null })
+              .where({ category: c._id, deleteTime: null, _openid: openid })
               .count()
               .then(function(cntRes) {
                 return {
@@ -256,7 +272,12 @@ Component({
       }
 
       var db = wx.cloud.database();
-      db.collection('archives').where({ deleteTime: null }).count().then(function(cntRes) {
+      var openid = this.data.currentOpenid;
+      if (!openid) {
+        wx.showToast({ title: '用户信息获取中，请稍后重试', icon: 'none' });
+        return;
+      }
+      db.collection('archives').where({ deleteTime: null, _openid: openid }).count().then(function(cntRes) {
         if (cntRes.total + files.length > 20) {
           wx.showToast({ title: '上传后总数将超过20个', icon: 'none' });
           return;

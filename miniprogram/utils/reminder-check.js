@@ -8,8 +8,19 @@
  */
 function checkAndShowTip(ctx) {
   return new Promise(function (resolve, reject) {
-    var db = wx.cloud.database();
-    db.collection('user_settings').get().then(function (res) {
+    // 先获取 openid，再查询当前用户的设置
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(userRes) {
+      var openid = (userRes.result && userRes.result.openid) ? userRes.result.openid : '';
+      if (!openid) {
+        reject(new Error('无法获取用户标识'));
+        return;
+      }
+      var db = wx.cloud.database();
+      return db.collection('user_settings').where({ _openid: openid }).get();
+    }).then(function (res) {
       var us = (res.data && res.data.length > 0) ? res.data[0] : null;
       var msgRemind = us ? us.msgRemind !== false : true; // 无记录默认开启
       var quota = us ? (us.reminderQuota || 0) : 0;

@@ -11,13 +11,27 @@ Page({
     avatar: '🎓',
     nickname: '我的学术空间',
     isWechatAvatar: false,
-    profileCompleted: false
+    profileCompleted: false,
+    currentOpenid: ''
   },
 
   onLoad: function () {
+    var that = this;
     var role = wx.getStorageSync('userRole') || 'researcher';
     this.setData({ userRole: role });
-    this.loadStats();
+    // 先获取 openid，再加载统计
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      var openid = res.result && res.result.openid ? res.result.openid : '';
+      that.setData({ currentOpenid: openid }, function() {
+        that.loadStats();
+      });
+    }).catch(function(err) {
+      console.error('[profile] 获取用户标识失败', err);
+      that.loadStats();
+    });
   },
 
   onShow: function () {
@@ -224,7 +238,7 @@ Page({
       var countPromises = tools.map(function(tool) {
         var colName = TASK_COLLECTION_MAP[tool.id];
         if (!colName) return Promise.resolve({ total: 0 });
-        return db.collection(colName).where({ deleteTime: null }).count().catch(function() { return { total: 0 }; });
+        return db.collection(colName).where({ deleteTime: null, _openid: self.data.currentOpenid }).count().catch(function() { return { total: 0 }; });
       });
       return Promise.all(countPromises).then(function(results) {
         var statItems = [];

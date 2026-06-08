@@ -23,22 +23,44 @@ Page({
     filterTabs: config.getStatusOptions(),
     // 首页跳转带来的待处理参数
     targetId:'', targetTitle:'', pendingAutoEdit:false,
-    isTargetMode:false  // 是否只显示目标稿件
+    isTargetMode:false,  // 是否只显示目标稿件
+    currentOpenid: '' // 当前用户的 openid
   },
 
   onLoad:function(options){
-    if(options && options.targetId){
-      // 首页跳转：只定位目标稿件，不加载完整列表
-      this.setData({
-        targetId: options.targetId,
-        targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-        pendingAutoEdit: options.autoEdit === 'true',
-        isTargetMode: true
-      });
-      this.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
-    } else {
-      this.loadList();
-    }
+    var that = this;
+    // 获取当前用户的 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      that.setData({ currentOpenid: res.result.openid });
+      if(options && options.targetId){
+        // 首页跳转：只定位目标稿件，不加载完整列表
+        that.setData({
+          targetId: options.targetId,
+          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+          pendingAutoEdit: options.autoEdit === 'true',
+          isTargetMode: true
+        });
+        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+      } else {
+        that.loadList();
+      }
+    }).catch(function() {
+      // 获取 openid 失败，仍然加载列表
+      if(options && options.targetId){
+        that.setData({
+          targetId: options.targetId,
+          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+          pendingAutoEdit: options.autoEdit === 'true',
+          isTargetMode: true
+        });
+        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+      } else {
+        that.loadList();
+      }
+    });
   },
   onShow:function(){
     // 只有没有待处理参数时才刷新列表，避免重复加载
@@ -60,7 +82,8 @@ Page({
     var _ = db.command;
 
     // 构建"基础条件"（搜索 + 高级筛选，不含 quickFilter）
-    var baseConditions = [{ deleteTime: null }];
+    var openid = this.data.currentOpenid;
+    var baseConditions = [{ deleteTime: null, _openid: openid }];
     var kw = (this.data.searchKeyword || '').trim();
     if(kw){
       var reg = db.RegExp({ regexp: kw, options: 'i' });
@@ -118,6 +141,7 @@ Page({
     var whereForOptions = baseConditions.length === 1 ? baseConditions[0] : _.and(baseConditions);
 
     // 两个查询并行：列表数据（含 quickFilter）+ 选项数据（不含 quickFilter）
+    // _openid 已在 baseConditions 中声明
     var listQuery = db.collection('submissions')
       .where(whereForList)
       .orderBy('deadline', 'asc')
@@ -155,9 +179,9 @@ Page({
         return;
       }
 
-      // 批量查询关联作品
+      // 批量查询关联作品（仅当前用户）
       db.collection('submissions')
-        .where({ _id: _.in(relatedIds), deleteTime:null })
+        .where({ _id: _.in(relatedIds), deleteTime:null, _openid: that.data.currentOpenid })
         .get()
         .then(function(relRes){
           (relRes.data || []).forEach(function(rel){
@@ -235,11 +259,14 @@ Page({
   locateById:function(id, title){
     var that = this;
     var db = wx.cloud.database();
-    db.collection('submissions').doc(id).get().then(function(res){
-      if(res.data){
+    var openid = that.data.currentOpenid;
+    if (!openid) return;
+    db.collection('submissions').where({ _id: id, _openid: openid }).get().then(function(res){
+      var item = (res.data && res.data.length > 0) ? res.data[0] : null;
+      if(item){
         // 只显示这一个稿件
-        var item = formatUtil.formatItem(res.data);
-        var list = [item];
+        var formatted = formatUtil.formatItem(item);
+        var list = [formatted];
         if(title) that.setData({ searchKeyword: title });
         var shouldAutoEdit = that.data.pendingAutoEdit;
         that.setData({
@@ -557,9 +584,14 @@ Page({
     var currentlyCompleted = e.currentTarget.dataset.completed;
     var newCompleted = !currentlyCompleted;
     var db = wx.cloud.database();
+    var openid = that.data.currentOpenid;
+    if (!openid) {
+      wx.showToast({ title: '用户信息获取中，请稍后重试', icon: 'none' });
+      return;
+    }
 
     wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask:true });
-    db.collection('submissions').doc(id).update({
+    db.collection('submissions').where({ _id: id, _openid: openid }).update({
       data:{ completed: newCompleted }
     }).then(function(){
       wx.hideLoading();

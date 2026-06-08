@@ -32,14 +32,26 @@ Component({
     conferenceTypeValues: ['', 'offline', 'online'],
     statusLabels: ['请选择', '已投稿', '已录用', '已报名'],
     statusValues: ['', 'submitted', 'accepted', 'registered'],
-    showQuotaTip: false
+    showQuotaTip: false,
+    currentOpenid: ''
   },
 
   lifetimes: {
     attached: function() {
-      if (this.data.isEdit && this.data.editId) {
-        this.loadEditData(this.data.editId);
-      }
+      var that = this;
+      // 先获取 openid
+      wx.cloud.callFunction({
+        name: 'academicAPI',
+        data: { action: 'getUserId' }
+      }).then(function(res) {
+        var openid = res.result && res.result.openid ? res.result.openid : '';
+        that.setData({ currentOpenid: openid }, function() {
+          that._initAfterOpenid();
+        });
+      }).catch(function(err) {
+        console.error('[conferences-form] 获取用户标识失败', err);
+        that._initAfterOpenid();
+      });
     }
   },
 
@@ -59,6 +71,12 @@ Component({
   },
 
   methods: {
+    _initAfterOpenid: function() {
+      if (this.data.isEdit && this.data.editId) {
+        this.loadEditData(this.data.editId);
+      }
+    },
+
     resetForm: function() {
       this.setData({
         form: {
@@ -81,8 +99,10 @@ Component({
 
     loadEditData: function(id) {
       var that = this;
-      wx.cloud.database().collection('conferences').doc(id).get().then(function(res) {
-        var item = res.data;
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
+      wx.cloud.database().collection('conferences').where({ _id: id, _openid: openid }).get().then(function(res) {
+        var item = (res.data && res.data.length > 0) ? res.data[0] : null;
         if (!item) return;
 
         that.setData({

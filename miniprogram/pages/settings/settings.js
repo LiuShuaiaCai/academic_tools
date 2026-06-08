@@ -7,12 +7,33 @@ Page({
       { key: 'soundFeedback', title: '音效反馈', desc: '操作完成播放提示音', value: false }
     ],
     reminderQuota: 0,
-    loadingQuota: false
+    loadingQuota: false,
+    currentOpenid: ''
   },
 
   onLoad: function () {
+    var that = this;
     this.loadSettings();
-    this.loadUserSettings();
+    // 先从云函数获取 openid，防止 storage 为空时查询全部数据
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      var openid = res.result && res.result.openid ? res.result.openid : '';
+      that.setData({ currentOpenid: openid });
+      // 同步到 storage 供其他工具使用
+      if (openid) {
+        wx.setStorageSync('openid', openid);
+      }
+      that.loadUserSettings();
+    }).catch(function(err) {
+      console.error('[settings] 获取用户标识失败', err);
+      // 回退：尝试从 storage 读取
+      var fallbackOpenid = wx.getStorageSync('openid') || '';
+      that.setData({ currentOpenid: fallbackOpenid }, function() {
+        that.loadUserSettings();
+      });
+    });
   },
 
   // ========== 加载本地设置 ==========
@@ -36,10 +57,9 @@ Page({
   loadUserSettings: function () {
     var that = this;
     var db = wx.cloud.database();
-    // 显式带上 _openid 条件，避免权限或数据问题
-    var openid = wx.getStorageSync('openid') || '';
-    var query = openid ? { _openid: openid } : {};
-    db.collection('user_settings').where(query).get().then(function (res) {
+    var openid = that.data.currentOpenid;
+    if (!openid) return;
+    db.collection('user_settings').where({ _openid: openid }).get().then(function (res) {
       if (res.data && res.data.length > 0) {
         var us = res.data[0];
         that.setData({ reminderQuota: us.reminderQuota || 0 });
@@ -85,9 +105,12 @@ Page({
     // 同步到云端
     var db = wx.cloud.database();
     var that = this;
-    var openid = wx.getStorageSync('openid') || '';
-    var query = openid ? { _openid: openid } : {};
-    db.collection('user_settings').where(query).get().then(function (res) {
+    var openid = that.data.currentOpenid;
+    if (!openid) {
+      wx.showToast({ title: '用户信息获取中，请稍后重试', icon: 'none' });
+      return;
+    }
+    db.collection('user_settings').where({ _openid: openid }).get().then(function (res) {
       var saveData = {
         msgRemind: data.msgRemind,
         emailRemind: data.emailRemind,
@@ -141,9 +164,12 @@ Page({
   syncQuotaToCloud: function (quota) {
     var that = this;
     var db = wx.cloud.database();
-    var openid = wx.getStorageSync('openid') || '';
-    var query = openid ? { _openid: openid } : {};
-    db.collection('user_settings').where(query).get().then(function (res) {
+    var openid = that.data.currentOpenid;
+    if (!openid) {
+      console.error('[settings] 无法同步额度：缺少 openid');
+      return;
+    }
+    db.collection('user_settings').where({ _openid: openid }).get().then(function (res) {
       if (res.data && res.data.length > 0) {
         return db.collection('user_settings').doc(res.data[0]._id).update({
           data: { reminderQuota: quota, updateTime: db.serverDate() }

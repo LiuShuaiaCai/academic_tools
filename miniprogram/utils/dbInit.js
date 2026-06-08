@@ -50,9 +50,16 @@ function softDelete(collection, docId) {
 }
 
 // 获取带软删除过滤的查询引用
-function query(collection) {
+// extraWhere: 额外的过滤条件（如 { _openid: openid }）
+function query(collection, extraWhere) {
   var db = wx.cloud.database();
-  return db.collection(collection).where({ deleteTime: notDeleted(db) });
+  var where = { deleteTime: notDeleted(db) };
+  if (extraWhere) {
+    for (var key in extraWhere) {
+      where[key] = extraWhere[key];
+    }
+  }
+  return db.collection(collection).where(where);
 }
 
 module.exports = {

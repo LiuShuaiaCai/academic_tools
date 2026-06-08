@@ -13,11 +13,22 @@ Page({
     enabledCount: 0,
     totalCount: 0,
     totalUrgent: 0,
-    loading: true
+    loading: true,
+    currentOpenid: '' // 当前用户的 openid
   },
 
   onLoad: function() {
-    this.loadTools();
+    var that = this;
+    // 获取当前用户的 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      that.setData({ currentOpenid: res.result.openid });
+      that.loadTools();
+    }).catch(function() {
+      that.loadTools();
+    });
   },
 
   onShow: function() {
@@ -105,8 +116,8 @@ Page({
         console.log('[toolbox] 查询工具:', tool.id, '->', colName, 'isTaskType:', tool.isTaskType);
 
         if (colName) {
-          // 总数查询：不过滤 completed，显示全量
-          var countWhere = { deleteTime: null };
+          // 总数查询：不过滤 completed，显示全量（仅当前用户）
+          var countWhere = { deleteTime: null, _openid: that.data.currentOpenid };
           var countPromise = db.collection(colName).where(countWhere).count();
 
           // 紧急数查询（0-3天内截止的未完成项）
@@ -114,6 +125,7 @@ Page({
           if (tool.id === 'submission') {
             urgentPromise = db.collection(colName).where({
               deleteTime: null,
+              _openid: that.data.currentOpenid,
               completed: false,
               deadline: _.gte(nowStr).and(_.lt(urgentStr))
             }).count();
@@ -125,11 +137,13 @@ Page({
             urgentPromise = Promise.all([
               db.collection(colName).where({
                 deleteTime: null,
+                _openid: that.data.currentOpenid,
                 completed: _.neq(true),
                 deadline: _.gte(nowStr).and(_.lt(urgentStr))
               }).count(),
               db.collection(colName).where({
                 deleteTime: null,
+                _openid: that.data.currentOpenid,
                 completed: _.neq(true),
                 status: _.neq(null).and(_.neq('')),
                 startDate: _.gte(todayDateStr).and(_.lte(startUrgentDateStr + ' 23:59:59'))
@@ -140,6 +154,7 @@ Page({
           } else if (tool.id === 'review') {
             urgentPromise = db.collection(colName).where({
               deleteTime: null,
+              _openid: that.data.currentOpenid,
               completed: _.neq(true),
               deadline: _.gte(nowStr).and(_.lt(urgentStr))
             }).count();

@@ -33,18 +33,26 @@ Component({
     tlEventOptions: config.TL_EVENT_OPTIONS,
     relatedWorkOptions:[],
     showQuotaTip: false,
-    sectionOpen: { basic:true, author:false, track:false, tag:false, note:false }
+    sectionOpen: { basic:true, author:false, track:false, tag:false, note:false },
+    currentOpenid: ''
   },
 
   lifetimes: {
     attached: function() {
-      var opts = config.getStatusOptions();
-      var roleOpts = [{ value:'', label:'请选择' }].concat(config.ROLE_OPTIONS);
-      this.setData({ statusOptions: opts, roleOptions: roleOpts });
-      if (this.data.isEdit && this.data.editId) {
-        this.loadEditData(this.data.editId);
-      }
-      this.loadRelatedWorks(this.data.editId || null);
+      var that = this;
+      // 先获取 openid
+      wx.cloud.callFunction({
+        name: 'academicAPI',
+        data: { action: 'getUserId' }
+      }).then(function(res) {
+        var openid = res.result && res.result.openid ? res.result.openid : '';
+        that.setData({ currentOpenid: openid }, function() {
+          that._initAfterOpenid();
+        });
+      }).catch(function(err) {
+        console.error('[submissions-form] 获取用户标识失败', err);
+        that._initAfterOpenid();
+      });
     }
   },
 
@@ -64,6 +72,16 @@ Component({
   },
 
   methods: {
+    _initAfterOpenid: function() {
+      var opts = config.getStatusOptions();
+      var roleOpts = [{ value:'', label:'请选择' }].concat(config.ROLE_OPTIONS);
+      this.setData({ statusOptions: opts, roleOptions: roleOpts });
+      if (this.data.isEdit && this.data.editId) {
+        this.loadEditData(this.data.editId);
+      }
+      this.loadRelatedWorks(this.data.editId || null);
+    },
+
     resetForm: function() {
       this.setData({
         form: {
@@ -83,11 +101,13 @@ Component({
 
     loadEditData: function(id) {
       var that = this;
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
       // 先清空表单，避免编辑不同稿件时闪旧数据
       // this.resetForm();
       this.loadRelatedWorks(id);
-      wx.cloud.database().collection('submissions').doc(id).get().then(function(res){
-        var item = res.data;
+      wx.cloud.database().collection('submissions').where({ _id: id, _openid: openid }).get().then(function(res){
+        var item = (res.data && res.data.length > 0) ? res.data[0] : null;
         if(!item) return;
         var tlList = (item.timeline||[]).map(function(t){
           return { date:t.date||'', event:t.event||'', remark:t.remark||'', dotColor:t.dotColor||'' };
@@ -135,7 +155,9 @@ Component({
 
     loadRelatedWorks: function(excludeId) {
       var that = this;
-      wx.cloud.database().collection('submissions').where({ deleteTime:null }).orderBy('updateTime','desc').limit(50).get()
+      var openid = that.data.currentOpenid;
+      if (!openid) return;
+      wx.cloud.database().collection('submissions').where({ deleteTime:null, _openid: openid }).orderBy('updateTime','desc').limit(50).get()
         .then(function(res){
           var opts = [{ _id:'', title:'不关联' }];
           (res.data||[]).forEach(function(item){

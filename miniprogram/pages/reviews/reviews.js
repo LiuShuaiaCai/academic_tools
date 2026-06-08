@@ -24,21 +24,43 @@ Page({
     advStatusLabel:'', advJournalLabel:'',
     advStatusOptions:[], advJournalOptions:[],
     // 首页跳转
-    targetId:'', targetTitle:'', pendingAutoEdit:false, isTargetMode:false
+    targetId:'', targetTitle:'', pendingAutoEdit:false, isTargetMode:false,
+    currentOpenid: '' // 当前用户的 openid
   },
 
   onLoad:function(options){
-    if(options && options.targetId){
-      this.setData({
-        targetId: options.targetId,
-        targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-        pendingAutoEdit: options.autoEdit === 'true',
-        isTargetMode: true
-      });
-      this.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
-    } else {
-      this.loadList();
-    }
+    var that = this;
+    // 获取当前用户的 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      that.setData({ currentOpenid: res.result.openid });
+      if(options && options.targetId){
+        that.setData({
+          targetId: options.targetId,
+          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+          pendingAutoEdit: options.autoEdit === 'true',
+          isTargetMode: true
+        });
+        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+      } else {
+        that.loadList();
+      }
+    }).catch(function() {
+      // 获取 openid 失败，仍然加载列表
+      if(options && options.targetId){
+        that.setData({
+          targetId: options.targetId,
+          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+          pendingAutoEdit: options.autoEdit === 'true',
+          isTargetMode: true
+        });
+        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+      } else {
+        that.loadList();
+      }
+    });
   },
   onShow:function(){
     if(!this.data.targetId && !this.data.isTargetMode) this.loadList();
@@ -85,7 +107,8 @@ Page({
     var _ = db.command;
 
     // 构建"基础条件"（搜索 + 高级筛选，不含 quickFilter）
-    var baseConditions = [{ deleteTime: null }];
+    var openid = that.data.currentOpenid;
+    var baseConditions = [{ deleteTime: null, _openid: openid }];
     var kw = (this.data.searchKeyword || '').trim();
     if(kw){
       var reg = db.RegExp({ regexp: kw, options: 'i' });
@@ -213,10 +236,13 @@ Page({
   /* ======== 通过 ID 精确定位（首页跳转时只显示这一个）======= */
   locateById:function(id, title){
     var that = this;
-    wx.cloud.database().collection('reviews').doc(id).get().then(function(res){
-      if(res.data){
-        var item = formatUtil.formatItem(res.data);
-        var list = [item];
+    var openid = that.data.currentOpenid;
+    if (!openid) return;
+    wx.cloud.database().collection('reviews').where({ _id: id, _openid: openid }).get().then(function(res){
+      var item = (res.data && res.data.length > 0) ? res.data[0] : null;
+      if(item){
+        var formatted = formatUtil.formatItem(item);
+        var list = [formatted];
         if(title) that.setData({ searchKeyword: title });
         var shouldAutoEdit = that.data.pendingAutoEdit;
         that.setData({
@@ -418,9 +444,14 @@ Page({
       var currentlyCompleted = !!dataset.completed;
       var newCompleted = !currentlyCompleted;
       var db = wx.cloud.database();
+      var openid = that.data.currentOpenid;
+      if (!openid) {
+        wx.showToast({ title: '用户信息获取中，请稍后重试', icon: 'none' });
+        return;
+      }
 
       wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask:true });
-      db.collection('reviews').doc(id).update({
+      db.collection('reviews').where({ _id: id, _openid: openid }).update({
         data:{ completed: newCompleted }
       }).then(function(){
         wx.hideLoading();

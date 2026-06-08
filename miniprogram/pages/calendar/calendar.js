@@ -10,6 +10,7 @@ Page({
     weekRangeLabel: '', // 周视图日期范围标签
     // 加载状态
     isLoading: false,
+    currentOpenid: '', // 当前用户的 openid
     // 任务相关
     tasks: [],
     taskTypes: ['submission', 'review', 'conference', 'task'],
@@ -47,13 +48,23 @@ Page({
   },
 
   onLoad: function() {
+    var that = this;
     var now = new Date();
     this.setData({
       currentYear: now.getFullYear(),
       currentMonth: now.getMonth() + 1,
       selectedDate: this.formatDate(now)
     });
-    this.loadMonthEvents();
+    // 获取当前用户的 openid
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserId' }
+    }).then(function(res) {
+      that.setData({ currentOpenid: res.result.openid });
+      that.loadMonthEvents();
+    }).catch(function() {
+      that.loadMonthEvents();
+    });
   },
 
   onShow: function() {
@@ -169,18 +180,20 @@ Page({
 
     Promise.all([
       // 投稿
-      db.collection('submissions').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('submissions').where({ _openid: that.data.currentOpenid, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 审稿
-      db.collection('reviews').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('reviews').where({ _openid: that.data.currentOpenid, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 会议 - deadline
-      db.collection('conferences').where({ deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
+      db.collection('conferences').where({ _openid: that.data.currentOpenid, deadline: _.gte(startDateStr).and(_.lt(endDateStr)) }).get().catch(function() { return { data: [] }; }),
       // 会议 - 按开始日期显示（只要填写了 startDate 就显示在日历上）
       db.collection('conferences').where({
+        _openid: that.data.currentOpenid,
         deleteTime: null,
         startDate: _.exists(true).and(_.neq('')).and(_.gte(startDateStr)).and(_.lt(endDateStr))
       }).get().catch(function() { return { data: [] }; }),
       // 任务 - 按月份字符串筛选（包含已完成，在日历上展示所有事件）
       db.collection('tasks').where({
+        _openid: that.data.currentOpenid,
         date: _.gte(startDateStr).and(_.lt(endDateStr))
       }).get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
