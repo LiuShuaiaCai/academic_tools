@@ -16,7 +16,8 @@
     "pages/settings/settings",
     "pages/filePreview/filePreview",
     "pages/credits/credits",
-    "pages/editProfile/editProfile"
+    "pages/editProfile/editProfile",
+    "pages/feedback/feedback"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

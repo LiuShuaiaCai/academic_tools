@@ -38,7 +38,7 @@
     </view>
     <view class="quota-card">
       <view class="quota-info">
-        <view class="quota-value">{{reminderQuota}}</view>
+        <view class="quota-value">{{reminderQuota > 0 ? reminderQuota : 0}}</view>
         <view class="quota-unit">次</view>
       </view>
       <view class="quota-btn {{loadingQuota ? 'loading' : ''}}" bindtap="requestSubscribeAuth">

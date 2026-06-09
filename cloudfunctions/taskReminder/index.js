@@ -177,9 +177,12 @@ async function decreaseQuota(openid) {
   try {
     const usRes = await db.collection('user_settings').where({ _openid: openid }).get();
     if (usRes.data && usRes.data.length > 0) {
-      await db.collection('user_settings').doc(usRes.data[0]._id).update({
-        data: { reminderQuota: _.inc(-1) }
-      });
+      var current = usRes.data[0].reminderQuota || 0;
+      if (current > 0) {
+        await db.collection('user_settings').doc(usRes.data[0]._id).update({
+          data: { reminderQuota: _.inc(-1) }
+        });
+      }
     }
   } catch (e) {
     console.error('减少额度失败', openid, e);

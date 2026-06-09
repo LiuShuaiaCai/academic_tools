@@ -274,11 +274,7 @@ Page({
 
   // ========== 反馈与关于 ==========
   sendFeedback: function () {
-    wx.showModal({
-      title: '意见反馈',
-      content: '如有问题或建议，请发送邮件至 support@example.com',
-      showCancel: false
-    });
+    wx.navigateTo({ url: '/pages/feedback/feedback' });
   },
 
   showAbout: function () {

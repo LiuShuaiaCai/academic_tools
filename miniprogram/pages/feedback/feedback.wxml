@@ -1,0 +1,85 @@
+<!--pages/feedback/feedback.wxml-->
+<view class="page">
+  <!-- 反馈类型选择 -->
+  <view class="section">
+    <view class="section-title">反馈类型</view>
+    <view class="type-list">
+      <view
+        class="type-card {{selectedType === item.value ? 'type-card-active' : ''}}"
+        wx:for="{{feedbackTypes}}"
+        wx:key="value"
+        bindtap="onTypeChange"
+        data-value="{{item.value}}"
+      >
+        <view class="type-card-icon-wrap {{selectedType === item.value ? 'type-card-icon-active' : ''}}">
+          <text class="type-card-icon">{{item.icon}}</text>
+        </view>
+        <text class="type-card-label">{{item.label}}</text>
+        <view class="type-card-check" wx:if="{{selectedType === item.value}}">
+          <text class="type-card-check-icon">✓</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 反馈内容 -->
+  <view class="section">
+    <view class="section-title">反馈内容</view>
+    <textarea
+      class="content-input"
+      placeholder="请详细描述您遇到的问题或建议，方便我们更好地为您解决..."
+      placeholder-class="placeholder"
+      maxlength="500"
+      bindinput="onContentInput"
+      value="{{content}}"
+    />
+    <view class="char-count">{{content.length}}/500</view>
+  </view>
+
+  <!-- 联系方式 -->
+  <view class="section">
+    <view class="section-title">联系方式（选填）</view>
+    <input
+      class="contact-input"
+      placeholder="邮箱或手机号，方便我们联系您"
+      placeholder-class="placeholder"
+      bindinput="onContactInput"
+      value="{{contact}}"
+    />
+  </view>
+
+  <!-- 图片上传 -->
+  <view class="section">
+    <view class="section-title">上传截图（选填，最多{{maxImages}}张）</view>
+    <view class="image-list">
+      <view class="image-item" wx:for="{{images}}" wx:key="*this">
+        <image class="image-preview" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-index="{{index}}"/>
+        <view class="image-delete" bindtap="deleteImage" data-index="{{index}}">✕</view>
+      </view>
+      <view class="image-add" wx:if="{{images.length < maxImages}}" bindtap="chooseImage">
+        <text class="image-add-icon">+</text>
+        <text class="image-add-text">添加图片</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-wrap">
+    <button
+      class="submit-btn {{submitting ? 'submitting' : ''}}"
+      bindtap="submitFeedback"
+      disabled="{{submitting}}"
+    >
+      <text wx:if="{{!submitting}}">提交反馈</text>
+      <text wx:else>提交中...</text>
+    </button>
+  </view>
+</view>
+
+<!-- Loading 弹窗 -->
+<view class="loading-mask" wx:if="{{showLoading}}">
+  <view class="loading-dialog">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在提交反馈...</text>
+  </view>
+</view>

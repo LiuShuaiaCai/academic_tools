@@ -62,7 +62,9 @@ Page({
     db.collection('user_settings').where({ _openid: openid }).get().then(function (res) {
       if (res.data && res.data.length > 0) {
         var us = res.data[0];
-        that.setData({ reminderQuota: us.reminderQuota || 0 });
+        var quota = us.reminderQuota || 0;
+        if (quota < 0) quota = 0;
+        that.setData({ reminderQuota: quota });
         var saved = wx.getStorageSync('settings') || {};
         saved.reminderQuota = us.reminderQuota || 0;
         saved.msgRemind = us.msgRemind !== false;  // 云端无值时默认 true

@@ -20,7 +20,7 @@ const DEFAULT_TOOLS = [
 ];
 
 // 所有集合
-const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config', 'credits', 'tasks','user_settings'];
+const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config', 'credits', 'tasks','user_settings','feedbacks'];
 
 // 获取北京时间 Date 对象
 function getBeijingTime(date) {
