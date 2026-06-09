@@ -1,9 +1,7 @@
 // utils/citation/crossref.js
-// 调用 Crossref API 获取文献元数据
+// 通过云函数代理调用 Crossref API 获取文献元数据
 
 var openalex = require('./openalex.js');
-
-const CROSSREF_API_BASE = 'https://api.crossref.org/works';
 
 // OpenAlex 相关函数
 var fetchWorkMetaFromOpenAlex = openalex.fetchWorkMetaFromOpenAlex;
@@ -12,26 +10,45 @@ var fetchCitingGroupByOA = openalex.fetchCitingGroupBy;
 var fetchCitingWorksOA = openalex.fetchCitingWorks;
 
 /**
+ * 通过云函数代理调用 Crossref API
+ */
+function callCrossrefProxy(action, params) {
+  return new Promise(function(resolve, reject) {
+    wx.cloud.callFunction({
+      name: 'openAlexProxy',
+      data: {
+        api: 'crossref',
+        action: action,
+        params: params
+      }
+    }).then(function(res) {
+      if (res.result && res.result.success) {
+        resolve(res.result.data);
+      } else {
+        reject(new Error((res.result && res.result.error) || '云函数调用失败'));
+      }
+    }).catch(function(err) {
+      reject(err);
+    });
+  });
+}
+
+/**
  * 通过 DOI 获取文献信息
  * @param {string} doi - 文献 DOI
  * @returns {Promise<object>} 文献信息
  */
 function fetchByDOI(doi) {
   return new Promise(function(resolve, reject) {
-    wx.request({
-      url: CROSSREF_API_BASE + '/' + encodeURIComponent(doi),
-      method: 'GET',
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.message) {
-          var msg = res.data.message;
-          resolve(parseCrossrefWork(msg));
-        } else {
-          reject(new Error('未找到该 DOI 对应的文献'));
-        }
-      },
-      fail: function(err) {
-        reject(new Error('网络请求失败：' + (err.errMsg || '未知错误')));
+    callCrossrefProxy('fetchByDOI', { doi: doi }).then(function(data) {
+      if (data && data.message) {
+        var msg = data.message;
+        resolve(parseCrossrefWork(msg));
+      } else {
+        reject(new Error('未找到该 DOI 对应的文献'));
       }
+    }).catch(function(err) {
+      reject(new Error('网络请求失败：' + (err.message || '未知错误')));
     });
   });
 }
@@ -45,29 +62,19 @@ function fetchByDOI(doi) {
 function searchByTitle(title, rows) {
   rows = rows || 5;
   return new Promise(function(resolve, reject) {
-    wx.request({
-      url: CROSSREF_API_BASE,
-      method: 'GET',
-      data: {
-        query: title,
-        rows: rows,
-        sort: 'relevance'
-      },
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.message) {
-          var items = res.data.message.items || [];
-          var results = [];
-          for (var i = 0; i < items.length; i++) {
-            results.push(parseCrossrefWork(items[i]));
-          }
-          resolve(results);
-        } else {
-          reject(new Error('搜索失败'));
+    callCrossrefProxy('searchByTitle', { title: title, rows: rows }).then(function(data) {
+      if (data && data.message) {
+        var items = data.message.items || [];
+        var results = [];
+        for (var i = 0; i < items.length; i++) {
+          results.push(parseCrossrefWork(items[i]));
         }
-      },
-      fail: function(err) {
-        reject(new Error('网络请求失败：' + (err.errMsg || '未知错误')));
+        resolve(results);
+      } else {
+        reject(new Error('搜索失败'));
       }
+    }).catch(function(err) {
+      reject(new Error('网络请求失败：' + (err.message || '未知错误')));
     });
   });
 }
@@ -181,56 +188,51 @@ function fetchReferences(doi) {
       resolve([]);
       return;
     }
-    wx.request({
-      url: CROSSREF_API_BASE + '/' + encodeURIComponent(doi),
-      method: 'GET',
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.message) {
-          var refs = res.data.message.reference || [];
-          var results = [];
-          var needsOpenAlex = []; // 记录需要从 OpenAlex 获取标题的索引
+    callCrossrefProxy('fetchByDOI', { doi: doi }).then(function(data) {
+      if (data && data.message) {
+        var refs = data.message.reference || [];
+        var results = [];
+        var needsOpenAlex = []; // 记录需要从 OpenAlex 获取标题的索引
 
-          // 第一步：构建基础数据
-          for (var i = 0; i < refs.length; i++) {
-            var r = refs[i];
-            var title = r['article-title'] || r['unstructured'] || '';
-            var refDoi = r.DOI || '';
-            results.push({
-              title: title || '未知标题',
-              authors: r.author || '',
-              year: r.year || '',
-              doi: refDoi,
-              _needsOpenAlex: !title && refDoi // 标记需要从 OpenAlex 获取
-            });
-            if (!title && refDoi) {
-              needsOpenAlex.push(i);
-            }
+        // 第一步：构建基础数据
+        for (var i = 0; i < refs.length; i++) {
+          var r = refs[i];
+          var title = r['article-title'] || r['unstructured'] || '';
+          var refDoi = r.DOI || '';
+          results.push({
+            title: title || '未知标题',
+            authors: r.author || '',
+            year: r.year || '',
+            doi: refDoi,
+            _needsOpenAlex: !title && refDoi // 标记需要从 OpenAlex 获取
+          });
+          if (!title && refDoi) {
+            needsOpenAlex.push(i);
           }
-
-          // 第二步：如果有需要获取的，调用 OpenAlex
-          if (needsOpenAlex.length > 0) {
-            var promises = needsOpenAlex.map(function(idx) {
-              return fetchTitleFromOpenAlex(results[idx].doi).then(function(title) {
-                results[idx].title = title || '未知标题';
-              });
-            });
-            Promise.all(promises).then(function() {
-              // 清理临时字段后返回
-              results.forEach(function(item) {
-                delete item._needsOpenAlex;
-              });
-              resolve(results);
-            });
-          } else {
-            resolve(results);
-          }
-        } else {
-          resolve([]);
         }
-      },
-      fail: function() {
+
+        // 第二步：如果有需要获取的，调用 OpenAlex
+        if (needsOpenAlex.length > 0) {
+          var promises = needsOpenAlex.map(function(idx) {
+            return fetchTitleFromOpenAlex(results[idx].doi).then(function(title) {
+              results[idx].title = title || '未知标题';
+            });
+          });
+          Promise.all(promises).then(function() {
+            // 清理临时字段后返回
+            results.forEach(function(item) {
+              delete item._needsOpenAlex;
+            });
+            resolve(results);
+          });
+        } else {
+          resolve(results);
+        }
+      } else {
         resolve([]);
       }
+    }).catch(function() {
+      resolve([]);
     });
   });
 }

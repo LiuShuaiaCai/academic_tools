@@ -1,5 +1,29 @@
 // utils/citation/openalex.js
-// 调用 OpenAlex API 获取文献元数据
+// 通过云函数代理调用 OpenAlex API 获取文献元数据
+
+/**
+ * 通过云函数代理调用 OpenAlex API
+ */
+function callOpenAlexProxy(action, params) {
+  return new Promise(function(resolve, reject) {
+    wx.cloud.callFunction({
+      name: 'openAlexProxy',
+      data: {
+        api: 'openalex',
+        action: action,
+        params: params
+      }
+    }).then(function(res) {
+      if (res.result && res.result.success) {
+        resolve(res.result.data);
+      } else {
+        reject(new Error((res.result && res.result.error) || '云函数调用失败'));
+      }
+    }).catch(function(err) {
+      reject(err);
+    });
+  });
+}
 
 /**
  * 通过 DOI 从 OpenAlex 获取文献元数据（包含被引次数和按年份统计）
@@ -12,29 +36,24 @@ function fetchWorkMetaFromOpenAlex(doi) {
       resolve({ openAlexId: '', citedByCount: 0, countsByYear: [] });
       return;
     }
-    wx.request({
-      url: 'https://api.openalex.org/works/doi:' + encodeURIComponent(doi),
-      method: 'GET',
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.id) {
-          var countsByYear = [];
-          if (res.data.counts_by_year && res.data.counts_by_year.length > 0) {
-            countsByYear = res.data.counts_by_year.map(function(item) {
-              return { year: item.year, count: item.cited_by_count };
-            }).sort(function(a, b) { return a.year - b.year; });
-          }
-          resolve({
-            openAlexId: res.data.id.replace('https://openalex.org/', ''),
-            citedByCount: res.data.cited_by_count || 0,
-            countsByYear: countsByYear
-          });
-        } else {
-          resolve({ openAlexId: '', citedByCount: 0, countsByYear: [] });
+    callOpenAlexProxy('fetchByDOI', { doi: doi }).then(function(data) {
+      if (data && data.id) {
+        var countsByYear = [];
+        if (data.counts_by_year && data.counts_by_year.length > 0) {
+          countsByYear = data.counts_by_year.map(function(item) {
+            return { year: item.year, count: item.cited_by_count };
+          }).sort(function(a, b) { return a.year - b.year; });
         }
-      },
-      fail: function() {
+        resolve({
+          openAlexId: data.id.replace('https://openalex.org/', ''),
+          citedByCount: data.cited_by_count || 0,
+          countsByYear: countsByYear
+        });
+      } else {
         resolve({ openAlexId: '', citedByCount: 0, countsByYear: [] });
       }
+    }).catch(function() {
+      resolve({ openAlexId: '', citedByCount: 0, countsByYear: [] });
     });
   });
 }
@@ -50,19 +69,14 @@ function fetchTitleFromOpenAlex(doi) {
       resolve('');
       return;
     }
-    wx.request({
-      url: 'https://api.openalex.org/works/doi:' + encodeURIComponent(doi),
-      method: 'GET',
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.title) {
-          resolve(res.data.title);
-        } else {
-          resolve('');
-        }
-      },
-      fail: function() {
+    callOpenAlexProxy('fetchByDOI', { doi: doi }).then(function(data) {
+      if (data && data.title) {
+        resolve(data.title);
+      } else {
         resolve('');
       }
+    }).catch(function() {
+      resolve('');
     });
   });
 }
@@ -79,36 +93,26 @@ function fetchCitingGroupBy(openAlexId, groupBy) {
       resolve([]);
       return;
     }
-    wx.request({
-      url: 'https://api.openalex.org/works',
-      method: 'GET',
-      data: {
-        filter: 'cites:' + openAlexId,
-        'per-page': 200,
-        'group_by': groupBy
-      },
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.group_by) {
-          var groups = res.data.group_by;
-          var result = [];
-          for (var i = 0; i < groups.length; i++) {
-            var g = groups[i];
-            var name = g.key_display_name || g.key;
-            if (typeof name === 'object' && name !== null) {
-              name = name.display_name || (name.name || JSON.stringify(name));
-            }
-            if (name && g.count) {
-              result.push({ name: name, count: g.count });
-            }
+    callOpenAlexProxy('fetchCiting', { openAlexId: openAlexId, groupBy: groupBy }).then(function(data) {
+      if (data && data.group_by) {
+        var groups = data.group_by;
+        var result = [];
+        for (var i = 0; i < groups.length; i++) {
+          var g = groups[i];
+          var name = g.key_display_name || g.key;
+          if (typeof name === 'object' && name !== null) {
+            name = name.display_name || (name.name || JSON.stringify(name));
           }
-          result.sort(function(a, b) { return b.count - a.count; });
-          resolve(result);
-        } else {
-          resolve([]);
+          if (name && g.count) {
+            result.push({ name: name, count: g.count });
+          }
         }
-      },
-      fail: function() { resolve([]); }
-    });
+        result.sort(function(a, b) { return b.count - a.count; });
+        resolve(result);
+      } else {
+        resolve([]);
+      }
+    }).catch(function() { resolve([]); });
   });
 }
 
@@ -151,52 +155,41 @@ function fetchCitingWorks(openAlexId, rows, page) {
       resolve({ list: [], nextPage: null, total: 0 });
       return;
     }
-    var requestData = {
-      filter: 'cites:' + openAlexId,
-      'per-page': rows,
-      page: page
-    };
-    wx.request({
-      url: 'https://api.openalex.org/works',
-      method: 'GET',
-      data: requestData,
-      success: function(res) {
-        if (res.statusCode === 200 && res.data && res.data.results) {
-          var items = res.data.results;
-          var results = [];
-          for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            var authors = [];
-            if (item.authorships && item.authorships.length > 0) {
-              for (var j = 0; j < Math.min(item.authorships.length, 5); j++) {
-                var a = item.authorships[j];
-                if (a.author && a.author.display_name) {
-                  authors.push(a.author.display_name);
-                }
+    callOpenAlexProxy('fetchCiting', { openAlexId: openAlexId, perPage: rows, page: page }).then(function(data) {
+      if (data && data.results) {
+        var items = data.results;
+        var results = [];
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          var authors = [];
+          if (item.authorships && item.authorships.length > 0) {
+            for (var j = 0; j < Math.min(item.authorships.length, 5); j++) {
+              var a = item.authorships[j];
+              if (a.author && a.author.display_name) {
+                authors.push(a.author.display_name);
               }
             }
-            results.push({
-              title: item.display_name || '未知标题',
-              authorsStr: authors.join(', '),
-              year: item.publication_year || '',
-              doi: item.doi ? item.doi.replace('https://doi.org/', '') : '',
-              containerTitle: (item.primary_location && item.primary_location.source && item.primary_location.source.display_name) || ''
-            });
           }
-          // 获取分页信息
-          var meta = res.data.meta || {};
-          var total = meta.count || 0;
-          var currentPage = page;
-          var totalPages = Math.ceil(total / rows);
-          // 是否有下一页
-          var nextPage = currentPage < totalPages ? currentPage + 1 : null;
-          resolve({ list: results, nextPage: nextPage, total: total });
-        } else {
-          resolve({ list: [], nextPage: null, total: 0 });
+          results.push({
+            title: item.display_name || '未知标题',
+            authorsStr: authors.join(', '),
+            year: item.publication_year || '',
+            doi: item.doi ? item.doi.replace('https://doi.org/', '') : '',
+            containerTitle: (item.primary_location && item.primary_location.source && item.primary_location.source.display_name) || ''
+          });
         }
-      },
-      fail: function() { resolve({ list: [], nextPage: null, total: 0 }); }
-    });
+        // 获取分页信息
+        var meta = data.meta || {};
+        var total = meta.count || 0;
+        var currentPage = page;
+        var totalPages = Math.ceil(total / rows);
+        // 是否有下一页
+        var nextPage = currentPage < totalPages ? currentPage + 1 : null;
+        resolve({ list: results, nextPage: nextPage, total: total });
+      } else {
+        resolve({ list: [], nextPage: null, total: 0 });
+      }
+    }).catch(function() { resolve({ list: [], nextPage: null, total: 0 }); });
   });
 }
 

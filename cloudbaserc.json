@@ -10,7 +10,7 @@
         {
           "name": "cleanExpiredCredits",
           "type": "timer",
-          "config": "0 0 3 * * * *"
+          "config": "0 0 3 * * *"
         }
       ]
     },
@@ -22,14 +22,19 @@
         {
           "name": "hourlyTaskReminder",
           "type": "timer",
-          "config": "0 0 8-23 * * * *"
+          "config": "0 0 8-23 * * *"
         },
         {
           "name": "dailySummaryReminder",
           "type": "timer",
-          "config": "0 0 7 * * * *"
+          "config": "0 0 7 * * *"
         }
       ]
+    },
+    {
+      "name": "openAlexProxy",
+      "timeout": 30,
+      "memorySize": 256
     }
   ]
 }
