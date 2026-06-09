@@ -417,6 +417,18 @@
   word-break: break-all;
 }
 
+/* 可复制文本样式 */
+.copyable {
+  padding: 4rpx 8rpx;
+  border-radius: 6rpx;
+  background: #eff6ff;
+  transition: background 0.2s;
+}
+
+.copyable:active {
+  background: #dbeafe;
+}
+
 /* 柱状图 */
 .chart-section {
   background: #f9fafb;
@@ -949,6 +961,8 @@
 .citing-works-scroll .ref-list-content,
 .citing-modal-scroll .ref-list-content {
   flex: 1;
+  min-width: 0;
+  padding-right: 16rpx;
 }
 
 /* 被引文献弹窗 */
@@ -1003,8 +1017,9 @@
 }
 
 .citing-modal-scroll {
-  height: 65vh;
-  padding: 20rpx;
+  flex: 1;
+  padding: 20rpx 20rpx 20rpx 20rpx;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 

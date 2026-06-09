@@ -917,6 +917,22 @@ Page({
     }
   },
 
+  // 复制 DOI
+  copyDOI: function(e) {
+    var doi = e.currentTarget.dataset.doi;
+    if (doi) {
+      wx.setClipboardData({
+        data: doi,
+        success: function() {
+          wx.showToast({ title: 'DOI 已复制', icon: 'success' });
+        }
+      });
+    }
+  },
+
+  // 阻止事件冒泡（防止点击弹窗内容时关闭）
+  preventClose: function() {},
+
   // 关闭被引文献弹窗
   closeCitingModal: function() {
     this.setData({ showCitingModal: false });

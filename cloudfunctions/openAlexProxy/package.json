@@ -1,0 +1,9 @@
+{
+  "name": "openAlexProxy",
+  "version": "1.0.0",
+  "description": "代理 OpenAlex 和 Crossref API，解决国内网络访问问题",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

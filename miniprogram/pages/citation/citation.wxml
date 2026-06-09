@@ -7,7 +7,7 @@
 
   <!-- 被引文献弹窗 -->
   <view class="citing-modal" wx:if="{{showCitingModal}}" bindtap="closeCitingModal">
-    <view class="citing-modal-content" catchtap="">
+    <view class="citing-modal-content" catchtap="preventClose">
       <view class="citing-modal-header">
         <text class="citing-modal-title">引用该文献的文献</text>
         <text class="citing-modal-count" wx:if="{{citingWorksTotal > 0}}">（共 {{citingWorksTotal}} 条，已加载 {{citingWorksList.length}} 条）</text>
@@ -35,6 +35,7 @@
               <view class="ref-list-meta" wx:if="{{item.containerTitle}}">
                 <text>{{item.containerTitle}}</text>
               </view>
+              <view class="ref-list-doi copyable" wx:if="{{item.doi}}" bindtap="copyDOI" data-doi="{{item.doi}}">DOI: {{item.doi}}</view>
             </view>
           </view>
         </view>
@@ -129,7 +130,7 @@
         </view>
         <view class="detail-row" wx:if="{{searchResult.doi}}">
           <text class="detail-label">DOI</text>
-          <text class="detail-value">{{searchResult.doi}}</text>
+          <text class="detail-value copyable" bindtap="copyDOI" data-doi="{{searchResult.doi}}">{{searchResult.doi}}</text>
         </view>
         <view class="detail-row" wx:if="{{searchResult.typeLabel}}">
           <text class="detail-label">文献类型</text>
@@ -183,7 +184,7 @@
               <text>{{item.authors}}</text>
               <text wx:if="{{item.year}}"> | {{item.year}}</text>
             </view>
-            <view class="ref-list-doi" wx:if="{{item.doi}}">DOI: {{item.doi}}</view>
+            <view class="ref-list-doi copyable" wx:if="{{item.doi}}" bindtap="copyDOI" data-doi="{{item.doi}}">DOI: {{item.doi}}</view>
           </view>
         </view>
       </view>
