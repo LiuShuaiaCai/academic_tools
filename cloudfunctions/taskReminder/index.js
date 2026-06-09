@@ -120,23 +120,48 @@ async function getAccessToken() {
 
 // ============ 通用工具函数 ============
 
+// 云函数默认 UTC 时区，转北京时间(UTC+8)
+function getBeijingTime() {
+  return new Date(new Date().getTime() + 8 * 60 * 60 * 1000);
+}
+
 function getTodayStr() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const now = getBeijingTime();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
 function getCurrentTimeStr() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const now = getBeijingTime();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  const hours = String(now.getUTCHours()).padStart(2, '0');
+  const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(now.getUTCSeconds()).padStart(2, '0');
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function getBeijingHour() {
+  return (new Date().getUTCHours() + 8) % 24;
+}
+
+// 明天 00:00:00（北京时间）
+function getTomorrowStartStr() {
+  var now = getBeijingTime();
+  now.setUTCDate(now.getUTCDate() + 1);
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return now.getUTCFullYear() + '-' + pad(now.getUTCMonth() + 1) + '-' + pad(now.getUTCDate()) + ' 00:00:00';
+}
+
+// 当前时间 + N 小时（北京时间）
+function getTimePlusHoursStr(hours) {
+  var now = getBeijingTime();
+  now.setUTCHours(now.getUTCHours() + hours);
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return now.getUTCFullYear() + '-' + pad(now.getUTCMonth() + 1) + '-' + pad(now.getUTCDate()) + ' ' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ':' + pad(now.getUTCSeconds());
 }
 
 // 获取关闭了消息提醒的用户 openid 列表
@@ -256,7 +281,7 @@ async function sendSummary(userMap, buildSummaryFn) {
 
 // ============ 模式一：每小时自定义任务汇总 ============
 async function runHourlyTasks(todayStr, disabledOpenids) {
-  const currentHourNum = new Date().getHours();
+  const currentHourNum = getBeijingHour();
 
   // 直接用 reminderHour 精确查询（前端保存时已计算好）
   const whereObj = {
@@ -269,20 +294,26 @@ async function runHourlyTasks(todayStr, disabledOpenids) {
     whereObj._openid = _.nin(disabledOpenids);
   }
 
+  console.log(`[taskReminder] 查询条件:`, JSON.stringify(whereObj));
+
   const res = await db.collection('tasks').where(whereObj).get();
   const items = res.data || [];
+
+  console.log(`[taskReminder] 查到 ${items.length} 条任务`);
+  items.forEach((item, i) => {
+    console.log(`[taskReminder] 任务${i}: _id=${item._id}, title=${item.title}, reminderHour=${item.reminderHour}, reminderSent=${item.reminderSent}`);
+  });
 
   if (items.length === 0) return { count: 0, sent: 0, results: [] };
 
   const userMap = groupByOpenid(items);
-  const currentHour = String(currentHourNum).padStart(2, '0');
-  const currentTime = getCurrentTimeStr();
+  const deadlineTime = getTimePlusHoursStr(3);
 
   const { sentCount, results } = await sendSummary(userMap, function(userItems) {
     return {
       page: '/pages/calendar/daily-tasks/daily-tasks',
-      thing2: `您${currentHour}点有${userItems.length}项待办`,
-      time3: currentTime,
+      thing2: `您近3小时有${userItems.length}项工作待处理`,
+      time3: deadlineTime,
       thing4: '请及时处理',
       character_string5: String(Math.floor(Math.random() * 9000000000) + 1000000000)
     };
@@ -318,7 +349,7 @@ async function runDailySummary(todayStr, disabledOpenids) {
   const confWhere = {
     deleteTime: null,
     completed: false,
-    status: 'registered',
+    // status: 'registered',
     startDate: _.gte(todayStr + ' 00:00:00').and(_.lte(todayStr + ' 23:59:59'))
   };
 
@@ -355,7 +386,7 @@ async function runDailySummary(todayStr, disabledOpenids) {
   const totalCount = Object.values(userMap).reduce((sum, arr) => sum + arr.length, 0);
   if (totalCount === 0) return { count: 0, sent: 0, results: [] };
 
-  const currentTime = getCurrentTimeStr();
+  const tomorrowStart = getTomorrowStartStr();
 
   const { sentCount, results } = await sendSummary(userMap, function(userItems) {
     // 统计各类别数量，组装 thing4
@@ -365,7 +396,7 @@ async function runDailySummary(todayStr, disabledOpenids) {
     }
 
     const parts = [];
-    if (typeCount.task) parts.push(`任务${typeCount.task}项`);
+    if (typeCount.task) parts.push(`工作${typeCount.task}项`);
     if (typeCount.submission) parts.push(`投稿${typeCount.submission}项`);
     if (typeCount.review) parts.push(`审稿${typeCount.review}项`);
     if (typeCount.conference) parts.push(`会议${typeCount.conference}项`);
@@ -378,8 +409,8 @@ async function runDailySummary(todayStr, disabledOpenids) {
 
     return {
       page: '/pages/calendar/daily-tasks/daily-tasks',
-      thing2: `您今日有${userItems.length}项待办`,
-      time3: currentTime,
+      thing2: `您今日有${userItems.length}项工作待处理`,
+      time3: tomorrowStart,
       thing4: thing4 || '暂无待办',
       character_string5: String(Math.floor(Math.random() * 9000000000) + 1000000000)
     };
@@ -396,9 +427,10 @@ exports.main = async (event, context) => {
     const disabledOpenids = await getDisabledOpenids();
 
     console.log(`[taskReminder] 触发器: ${triggerName}, 日期: ${todayStr}`);
+    console.log(`[taskReminder] event:`, JSON.stringify(event));
 
     // hourlyTaskReminder 或手动测试（空 triggerName）
-    if (triggerName === 'hourlyTaskReminder') {
+    if (triggerName === 'hourlyTaskReminder' || triggerName === '') {
       const res = await runHourlyTasks(todayStr, disabledOpenids);
       return {
         success: true,

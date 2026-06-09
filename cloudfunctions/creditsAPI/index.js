@@ -6,11 +6,12 @@ const cloud = require("wx-server-sdk");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-// 格式化时间 YYYY-MM-DD HH:mm:ss
+// 格式化时间 YYYY-MM-DD HH:mm:ss（北京时间）
 function formatTime(date) {
   var d = date ? new Date(date) : new Date();
+  var beijing = new Date(d.getTime() + 8 * 60 * 60 * 1000);
   var pad = function(n) { return String(n).padStart(2, '0'); };
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  return beijing.getUTCFullYear() + '-' + pad(beijing.getUTCMonth() + 1) + '-' + pad(beijing.getUTCDate()) + ' ' + pad(beijing.getUTCHours()) + ':' + pad(beijing.getUTCMinutes()) + ':' + pad(beijing.getUTCSeconds());
 }
 
 // 计算过期时间（当前时间 + 1年，北京时间）

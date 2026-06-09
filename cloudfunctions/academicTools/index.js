@@ -22,11 +22,17 @@ const DEFAULT_TOOLS = [
 // 所有集合
 const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config', 'credits', 'tasks','user_settings'];
 
-// 格式化时间 YYYY-MM-DD HH:mm:ss
-function formatTime(date) {
+// 获取北京时间 Date 对象
+function getBeijingTime(date) {
   var d = date ? new Date(date) : new Date();
+  return new Date(d.getTime() + 8 * 60 * 60 * 1000);
+}
+
+// 格式化时间 YYYY-MM-DD HH:mm:ss（北京时间）
+function formatTime(date) {
+  var d = getBeijingTime(date);
   var pad = function(n) { return String(n).padStart(2, '0'); };
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
 }
 
 // 查询单条记录

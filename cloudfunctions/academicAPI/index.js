@@ -6,18 +6,25 @@ const cloud = require("wx-server-sdk");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-// 把数据库字段（字符串或 Date 对象）安全提取为 YYYY-MM-DD
+// 把数据库字段（字符串或 Date 对象）安全提取为 YYYY-MM-DD（北京时间）
 function extractDateStr(val) {
   if (!val) return '';
-  if (val instanceof Date) return val.toISOString().substring(0, 10);
-  return String(val).substring(0, 10);
+  var d = val instanceof Date ? new Date(val.getTime() + 8 * 60 * 60 * 1000) : new Date(val);
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
 }
 
-// 格式化时间 YYYY-MM-DD HH:mm:ss
-function formatTime(date) {
+// 获取北京时间 Date 对象
+function getBeijingTime(date) {
   var d = date ? new Date(date) : new Date();
+  return new Date(d.getTime() + 8 * 60 * 60 * 1000);
+}
+
+// 格式化时间 YYYY-MM-DD HH:mm:ss（北京时间）
+function formatTime(date) {
+  var d = getBeijingTime(date);
   var pad = function(n) { return String(n).padStart(2, '0'); };
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
 }
 
 // 计算过期时间（当前时间 + 1年）
