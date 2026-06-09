@@ -51,7 +51,7 @@
 
     <!-- 加载骨架屏 -->
     <view wx:if="{{loading}}" class="skeleton-grid">
-      <view class="skeleton-card" wx:for="{{4}}" wx:key="*this">
+      <view class="skeleton-card" wx:for="{{6}}" wx:key="*this">
         <view class="skeleton-icon skeleton-pulse"></view>
         <view class="skeleton-line skeleton-pulse" style="width:60%"></view>
         <view class="skeleton-line skeleton-pulse" style="width:40%;height:20rpx"></view>

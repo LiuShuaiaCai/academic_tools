@@ -5,28 +5,37 @@
     <text>{{customToast.title}}</text>
   </view>
 
-  <!-- 图片预览裁切弹窗 -->
-  <view class="citing-modal" wx:if="{{showCropPreview}}" bindtap="closeCropPreview">
-    <view class="crop-preview-content" catchtap="preventClose">
-      <view class="crop-preview-header">
-        <text class="crop-preview-title">确认图片</text>
+  <!-- 图片裁剪器（全屏） -->
+  <view class="cropper-page" wx:if="{{showCropper}}">
+    <image-cropper
+      id="image-cropper"
+      imgSrc="{{cropImagePath}}"
+      width="{{cropperWidth}}"
+      height="{{cropperHeight}}"
+      min_width="{{120}}"
+      min_height="{{120}}"
+      max_width="{{screenWidth}}"
+      max_height="{{screenHeight}}"
+      disable_ratio="{{cropperLockRatio}}"
+      disable_rotate="{{true}}"
+      limit_move="{{true}}"
+      export_scale="{{3}}"
+      bindload="onCropperLoad"
+      bindimageload="onCropperImageLoad"
+    />
+    <!-- 裁剪比例选择 -->
+    <view class="cropper-toolbar">
+      <view class="cropper-ratio-tabs">
+        <view
+          class="cropper-ratio-tab {{selectedCropScale === index ? 'active' : ''}}"
+          wx:for="{{cropScales}}"
+          wx:key="value"
+          bindtap="onCropScaleChange"
+          data-index="{{index}}">{{item.label}}</view>
       </view>
-      <image class="crop-preview-image" src="{{cropImagePath}}" mode="widthFix" show-menu-by-longpress="{{false}}" />
-      <view class="crop-scale-selector">
-        <text class="crop-scale-label">裁剪比例：</text>
-        <view class="crop-scale-tabs">
-          <view
-            class="crop-scale-tab {{selectedCropScale === index ? 'active' : ''}}"
-            wx:for="{{cropScales}}"
-            wx:key="value"
-            bindtap="onCropScaleChange"
-            data-index="{{index}}">{{item.label}}</view>
-        </view>
-      </view>
-      <view class="crop-preview-actions">
-        <view class="crop-btn crop-btn-reset" bindtap="retakePhoto">重拍</view>
-        <view class="crop-btn crop-btn-original" bindtap="useOriginalImage">使用原图</view>
-        <view class="crop-btn crop-btn-crop" bindtap="cropAndRecognize">裁剪</view>
+      <view class="cropper-actions">
+        <view class="cropper-btn cropper-btn-cancel" bindtap="closeCropper">取消</view>
+        <view class="cropper-btn cropper-btn-confirm" bindtap="confirmCrop">确认裁剪</view>
       </view>
     </view>
   </view>
@@ -125,8 +134,24 @@
   <!-- 错误信息 -->
   <view class="error-msg" wx:if="{{searchError}}">{{searchError}}</view>
 
-  <!-- 加载中 -->
-  <view class="loading" wx:if="{{searching}}">查询中...</view>
+  <!-- 查询加载弹窗 -->
+  <view class="loading-modal" wx:if="{{searching && !searchModalDismissed}}" catchtap="closeSearchModal">
+    <view class="loading-modal-content" catchtap="preventClose">
+      <view class="loading-modal-icon">🔍</view>
+      <text class="loading-modal-text">查询中...</text>
+      <view class="loading-modal-close" bindtap="closeSearchModal">✕</view>
+    </view>
+  </view>
+
+  <!-- OCR 识别弹窗 -->
+  <view class="loading-modal" wx:if="{{showOcrLoading}}" catchtap="closeOcrModal">
+    <view class="loading-modal-content" catchtap="preventClose">
+      <view class="loading-modal-icon">📷</view>
+      <text class="loading-modal-text">识别中...</text>
+      <text class="loading-modal-hint">点击遮罩或 ✕ 可取消</text>
+      <view class="loading-modal-close" bindtap="closeOcrModal">✕</view>
+    </view>
+  </view>
 
   <!-- 搜索结果 -->
   <view class="result-section" wx:if="{{searchResultReady}}">

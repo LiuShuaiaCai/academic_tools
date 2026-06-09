@@ -2,6 +2,7 @@
   "navigationBarTitleText": "文献引用",
   "enablePullDownRefresh": false,
   "usingComponents": {
-    "qiun-wx-ucharts": "/components/qiun-wx-ucharts/index"
+    "qiun-wx-ucharts": "/components/qiun-wx-ucharts/index",
+    "image-cropper": "/components/image-cropper/image-cropper"
   }
 }

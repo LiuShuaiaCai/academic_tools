@@ -74,6 +74,7 @@ Page({
     searchType: 'doi', // doi / title
     searchValue: '',
     searching: false,
+    searchModalDismissed: false, // 用户是否关闭了查询弹窗
     searchResult: null,
     searchResultReady: false, // 搜索结果是否准备就绪（包含OpenAlex数据）
     openAlexAvailable: true, // OpenAlex API 是否可用
@@ -95,17 +96,27 @@ Page({
     citationResult: '',
     bibliographyResult: '',
 
-    // 图片预览裁剪
-    showCropPreview: false,
+    // OCR 识别弹窗
+    showOcrLoading: false,
+    ocrCancelled: false,
+
+    // 图片裁剪器
+    showCropper: false,
     cropImagePath: '',
+    screenWidth: wx.getSystemInfoSync().windowWidth,
+    screenHeight: wx.getSystemInfoSync().windowHeight,
+    cropperWidth: 250,
+    cropperHeight: 250,
+    cropperLockRatio: true,
     cropScales: [
-      { label: '1:1 正方形', value: '1:1' },
-      { label: '2:3 竖长',   value: '2:3' },
-      { label: '3:2 横长',   value: '3:2' },
-      { label: '3:4 竖长',   value: '3:4' },
-      { label: '4:3 横长',   value: '4:3' },
-      { label: '9:16 超竖长', value: '9:16' },
-      { label: '16:9 超横长', value: '16:9' }
+      { label: '自由裁剪', value: 'free' },
+      { label: '1:1 正方', value: '1:1' },
+      { label: '2:3 竖长', value: '2:3' },
+      { label: '3:2 横长', value: '3:2' },
+      { label: '3:4 竖长', value: '3:4' },
+      { label: '4:3 横长', value: '4:3' },
+      { label: '9:16 竖长', value: '9:16' },
+      { label: '16:9 横长', value: '16:9' }
     ],
     selectedCropScale: 0,
 
@@ -276,6 +287,7 @@ Page({
 
     that.setData({
       searching: true,
+      searchModalDismissed: false,
       searchResult: null,
       searchResultReady: false,
       searchError: '',
@@ -484,7 +496,14 @@ Page({
 
     var total = worksData.total || 0;
 
+    // 用列表实际总数同步标签页上的被引次数，保持数据一致
+    var syncSearchResult = this.data.searchResult;
+    if (total > 0 && syncSearchResult) {
+      syncSearchResult = Object.assign({}, syncSearchResult, { citedByCount: total });
+    }
+
     this.setData({
+      searchResult: syncSearchResult,
       citationStats: countsByYear || [],
       citingWorksList: citingWorksList,
       citingWorksNextPage: worksData.nextPage,
@@ -768,69 +787,108 @@ Page({
       sourceType: [sourceType],
       success: function(res) {
         var tempFilePath = res.tempFiles[0].tempFilePath;
-        // 显示预览，让用户选择裁剪或直接识别
+        // 进入裁剪页面，默认自由裁剪
         that.setData({
-          showCropPreview: true,
-          cropImagePath: tempFilePath
+          showCropper: true,
+          cropImagePath: tempFilePath,
+          selectedCropScale: 0,
+          cropperLockRatio: false,
+          cropperWidth: 250,
+          cropperHeight: 250
         });
       }
     });
   },
 
-  // 关闭图片预览
-  closeCropPreview: function() {
-    this.setData({ showCropPreview: false, cropImagePath: '' });
+  // image-cropper 加载完成
+  onCropperLoad: function(e) {
+    this.cropper = e.detail.cropper;
   },
 
-  // 重拍：重新弹出选择菜单
-  retakePhoto: function() {
-    this.setData({ showCropPreview: false, cropImagePath: '' });
-    this.scanDOI();
+  // image-cropper 图片加载完成
+  onCropperImageLoad: function(e) {
+    // 图片加载后重置
+    if (this.cropper) {
+      this.cropper.imgReset();
+    }
+  },
+
+  // 关闭裁剪器
+  closeCropper: function() {
+    this.setData({ showCropper: false, cropImagePath: '' });
   },
 
   // 切换裁剪比例
   onCropScaleChange: function(e) {
-    this.setData({ selectedCropScale: e.currentTarget.dataset.index });
+    var index = e.currentTarget.dataset.index;
+    this.setData({ selectedCropScale: index });
+    var scale = this.data.cropScales[index];
+    if (scale.value === 'free') {
+      this.setData({ cropperLockRatio: false });
+      if (this.cropper) {
+        this.cropper.setCutSize(250, 250);
+      }
+    } else {
+      // 按比例设置裁剪框大小
+      var parts = scale.value.split(':');
+      var ratioW = parseInt(parts[0]);
+      var ratioH = parseInt(parts[1]);
+      var maxDim = 280;
+      var newW, newH;
+      if (ratioW >= ratioH) {
+        newW = maxDim;
+        newH = Math.round(maxDim * ratioH / ratioW);
+      } else {
+        newH = maxDim;
+        newW = Math.round(maxDim * ratioW / ratioH);
+      }
+      this.setData({
+        cropperLockRatio: true,
+        cropperWidth: newW,
+        cropperHeight: newH
+      });
+      if (this.cropper) {
+        this.cropper.setCutSize(newW, newH);
+        this.cropper.setCutCenter();
+      }
+    }
   },
 
-  // 裁剪图片（系统原生）
-  cropAndRecognize: function() {
+  // 确认裁剪
+  confirmCrop: function() {
     var that = this;
-    var path = that.data.cropImagePath;
-    if (!path) {
-      wx.showToast({ title: '图片路径为空', icon: 'none' });
+    if (!this.cropper) {
+      wx.showToast({ title: '裁剪器未就绪', icon: 'none' });
       return;
     }
-    wx.cropImage({
-      src: path,
-      cropScale: that.data.cropScales[that.data.selectedCropScale].value,
-      success: function(cropRes) {
-        that.setData({ showCropPreview: false, cropImagePath: '' });
-        that._ocrImage(cropRes.tempFilePath);
-      },
-      fail: function(err) {
-        wx.showToast({ title: '裁剪失败: ' + (err.errMsg || '未知错误'), icon: 'none', duration: 3000 });
-      }
+    wx.showLoading({ title: '裁剪中...' });
+    this.cropper.getImg(function(res) {
+      wx.hideLoading();
+      that.setData({ showCropper: false, cropImagePath: '' });
+      that._ocrImage(res.url);
     });
   },
 
   // 直接使用原图识别
   useOriginalImage: function() {
     var path = this.data.cropImagePath;
-    this.setData({ showCropPreview: false, cropImagePath: '' });
+    this.setData({ showCropper: false, cropImagePath: '' });
     this._ocrImage(path);
   },
+
+  // ====== 以下旧方法已删除 / 不再使用 ======,
 
   // AI 识别图片中的 DOI/标题
   _ocrImage: function(filePath) {
     var that = this;
-    wx.showLoading({ title: '识别中...', mask: true });
+    that.setData({ showOcrLoading: true, ocrCancelled: false });
 
     var cloudPath = 'ocr/' + Date.now() + '.jpg';
     wx.cloud.uploadFile({
       cloudPath: cloudPath,
       filePath: filePath,
       success: function(uploadRes) {
+        if (that.data.ocrCancelled) return;
         // 获取图片临时链接
         wx.cloud.callFunction({
           name: 'fileService',
@@ -839,9 +897,10 @@ Page({
             fileID: uploadRes.fileID
           },
           success: function(urlRes) {
+            if (that.data.ocrCancelled) return;
             var urlResult = urlRes.result || {};
             if (!urlResult.success || !urlResult.imageUrl) {
-              wx.hideLoading();
+              that.setData({ showOcrLoading: false });
               wx.showToast({ title: '获取图片链接失败', icon: 'none' });
               return;
             }
@@ -863,7 +922,8 @@ Page({
                 maxTokens: 500
               },
               success: function(aiRes) {
-                wx.hideLoading();
+                if (that.data.ocrCancelled) return;
+                that.setData({ showOcrLoading: false });
                 var aiResult = aiRes.result || {};
                 var content = aiResult.content || '';
 
@@ -902,21 +962,24 @@ Page({
                 }
               },
               fail: function(err) {
-                wx.hideLoading();
+                if (that.data.ocrCancelled) return;
+                that.setData({ showOcrLoading: false });
                 console.error('AI识别调用失败', err);
                 wx.showToast({ title: '识别失败，请重试', icon: 'none' });
               }
             });
           },
           fail: function(err) {
-            wx.hideLoading();
+            if (that.data.ocrCancelled) return;
+            that.setData({ showOcrLoading: false });
             console.error('获取图片链接失败', err);
             wx.showToast({ title: '获取图片链接失败', icon: 'none' });
           }
         });
       },
       fail: function(err) {
-        wx.hideLoading();
+        if (that.data.ocrCancelled) return;
+        that.setData({ showOcrLoading: false });
         console.error('上传失败', err);
         wx.showToast({ title: '上传失败', icon: 'none' });
       }
@@ -1042,6 +1105,16 @@ Page({
         }
       });
     }
+  },
+
+  // 关闭查询弹窗（仅隐藏，查询继续进行）
+  closeSearchModal: function() {
+    this.setData({ searchModalDismissed: true });
+  },
+
+  // 关闭 OCR 识别弹窗（取消识别）
+  closeOcrModal: function() {
+    this.setData({ showOcrLoading: false, ocrCancelled: true });
   },
 
   // 阻止事件冒泡（防止点击弹窗内容时关闭）
