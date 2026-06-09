@@ -5,6 +5,32 @@
     <text>{{customToast.title}}</text>
   </view>
 
+  <!-- 图片预览裁切弹窗 -->
+  <view class="citing-modal" wx:if="{{showCropPreview}}" bindtap="closeCropPreview">
+    <view class="crop-preview-content" catchtap="preventClose">
+      <view class="crop-preview-header">
+        <text class="crop-preview-title">确认图片</text>
+      </view>
+      <image class="crop-preview-image" src="{{cropImagePath}}" mode="widthFix" show-menu-by-longpress="{{false}}" />
+      <view class="crop-scale-selector">
+        <text class="crop-scale-label">裁剪比例：</text>
+        <view class="crop-scale-tabs">
+          <view
+            class="crop-scale-tab {{selectedCropScale === index ? 'active' : ''}}"
+            wx:for="{{cropScales}}"
+            wx:key="value"
+            bindtap="onCropScaleChange"
+            data-index="{{index}}">{{item.label}}</view>
+        </view>
+      </view>
+      <view class="crop-preview-actions">
+        <view class="crop-btn crop-btn-reset" bindtap="retakePhoto">重拍</view>
+        <view class="crop-btn crop-btn-original" bindtap="useOriginalImage">使用原图</view>
+        <view class="crop-btn crop-btn-crop" bindtap="cropAndRecognize">裁剪</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 被引文献弹窗 -->
   <view class="citing-modal" wx:if="{{showCitingModal}}" bindtap="closeCitingModal">
     <view class="citing-modal-content" catchtap="preventClose">

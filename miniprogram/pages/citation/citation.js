@@ -95,6 +95,20 @@ Page({
     citationResult: '',
     bibliographyResult: '',
 
+    // 图片预览裁剪
+    showCropPreview: false,
+    cropImagePath: '',
+    cropScales: [
+      { label: '1:1 正方形', value: '1:1' },
+      { label: '2:3 竖长',   value: '2:3' },
+      { label: '3:2 横长',   value: '3:2' },
+      { label: '3:4 竖长',   value: '3:4' },
+      { label: '4:3 横长',   value: '4:3' },
+      { label: '9:16 超竖长', value: '9:16' },
+      { label: '16:9 超横长', value: '16:9' }
+    ],
+    selectedCropScale: 0,
+
     // 标签页
     activeTab: 'basic', // basic / references / cited
 
@@ -709,16 +723,13 @@ Page({
   scanDOI: function() {
     var that = this;
     wx.showActionSheet({
-      itemList: ['扫描二维码/条码', '拍照识别', '从相册选择'],
+      itemList: ['拍照识别', '从相册选择'],
       success: function(res) {
         switch (res.tapIndex) {
           case 0:
-            that._scanCode();
-            break;
-          case 1:
             that._chooseImage('camera');
             break;
-          case 2:
+          case 1:
             that._chooseImage('album');
             break;
         }
@@ -757,9 +768,57 @@ Page({
       sourceType: [sourceType],
       success: function(res) {
         var tempFilePath = res.tempFiles[0].tempFilePath;
-        that._ocrImage(tempFilePath);
+        // 显示预览，让用户选择裁剪或直接识别
+        that.setData({
+          showCropPreview: true,
+          cropImagePath: tempFilePath
+        });
       }
     });
+  },
+
+  // 关闭图片预览
+  closeCropPreview: function() {
+    this.setData({ showCropPreview: false, cropImagePath: '' });
+  },
+
+  // 重拍：重新弹出选择菜单
+  retakePhoto: function() {
+    this.setData({ showCropPreview: false, cropImagePath: '' });
+    this.scanDOI();
+  },
+
+  // 切换裁剪比例
+  onCropScaleChange: function(e) {
+    this.setData({ selectedCropScale: e.currentTarget.dataset.index });
+  },
+
+  // 裁剪图片（系统原生）
+  cropAndRecognize: function() {
+    var that = this;
+    var path = that.data.cropImagePath;
+    if (!path) {
+      wx.showToast({ title: '图片路径为空', icon: 'none' });
+      return;
+    }
+    wx.cropImage({
+      src: path,
+      cropScale: that.data.cropScales[that.data.selectedCropScale].value,
+      success: function(cropRes) {
+        that.setData({ showCropPreview: false, cropImagePath: '' });
+        that._ocrImage(cropRes.tempFilePath);
+      },
+      fail: function(err) {
+        wx.showToast({ title: '裁剪失败: ' + (err.errMsg || '未知错误'), icon: 'none', duration: 3000 });
+      }
+    });
+  },
+
+  // 直接使用原图识别
+  useOriginalImage: function() {
+    var path = this.data.cropImagePath;
+    this.setData({ showCropPreview: false, cropImagePath: '' });
+    this._ocrImage(path);
   },
 
   // AI 识别图片中的 DOI/标题
@@ -767,59 +826,92 @@ Page({
     var that = this;
     wx.showLoading({ title: '识别中...', mask: true });
 
-    // 上传图片到云存储
     var cloudPath = 'ocr/' + Date.now() + '.jpg';
     wx.cloud.uploadFile({
       cloudPath: cloudPath,
       filePath: filePath,
       success: function(uploadRes) {
-        // 调用文件服务识别
+        // 获取图片临时链接
         wx.cloud.callFunction({
           name: 'fileService',
           data: {
-            action: 'ocrImage',
+            action: 'getImageTempURL',
             fileID: uploadRes.fileID
           },
-          success: function(res) {
-            wx.hideLoading();
-            var result = res.result || {};
-            if (!result.success) {
-              wx.showToast({ title: result.error || '识别失败', icon: 'none' });
+          success: function(urlRes) {
+            var urlResult = urlRes.result || {};
+            if (!urlResult.success || !urlResult.imageUrl) {
+              wx.hideLoading();
+              wx.showToast({ title: '获取图片链接失败', icon: 'none' });
               return;
             }
 
-            var doi = result.doi;
-            var title = result.title;
+            // 调用 AI 识别（Kimi 多模态）
+            wx.cloud.callFunction({
+              name: 'aiChat',
+              data: {
+                action: 'chat',
+                provider: 'kimi',
+                model: 'kimi-k2.6',
+                messages: [{
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: '请识别这张图片中的学术文献信息。如果有 DOI（通常以 10. 开头），请给出 DOI；如果没有 DOI，请给出文献标题。只返回 JSON 格式：{"doi": "..."} 或 {"title": "..."}，不要返回其他内容。' },
+                    { type: 'image_url', image_url: { url: urlResult.imageUrl } }
+                  ]
+                }],
+                maxTokens: 500
+              },
+              success: function(aiRes) {
+                wx.hideLoading();
+                var aiResult = aiRes.result || {};
+                var content = aiResult.content || '';
 
-            if (doi) {
-              // 识别到 DOI，用 DOI 搜索
-              that.setData({ searchType: 'doi', searchValue: doi });
-              that.doSearch();
-            } else if (title) {
-              // 没有 DOI 但有标题，用标题搜索
-              wx.showModal({
-                title: '识别到标题',
-                content: title + '\n\n是否用标题搜索？',
-                success: function(r) {
-                  if (r.confirm) {
-                    that.setData({ searchType: 'title', searchValue: title });
+                // 解析 AI 返回的 JSON
+                try {
+                  var parsed = JSON.parse(content);
+                  var doi = parsed.doi;
+                  var title = parsed.title;
+
+                  if (doi) {
+                    that.setData({ searchType: 'doi', searchValue: doi });
                     that.doSearch();
+                  } else if (title) {
+                    wx.showModal({
+                      title: '识别到标题',
+                      content: title + '\n\n是否用标题搜索？',
+                      success: function(r) {
+                        if (r.confirm) {
+                          that.setData({ searchType: 'title', searchValue: title });
+                          that.doSearch();
+                        }
+                      }
+                    });
+                  } else {
+                    that._showOcrNoResult(content);
+                  }
+                } catch (e) {
+                  // JSON 解析失败，尝试从文本中提取
+                  var doiMatch = content.match(/10\.\d{4,}\/[^\s"'\n]+/);
+                  if (doiMatch) {
+                    that.setData({ searchType: 'doi', searchValue: doiMatch[0] });
+                    that.doSearch();
+                  } else {
+                    that._showOcrNoResult(content);
                   }
                 }
-              });
-            } else {
-              // 什么都没识别到
-              wx.showModal({
-                title: '未识别到',
-                content: '未能从图片中识别到 DOI 或标题，请手动输入',
-                showCancel: false
-              });
-            }
+              },
+              fail: function(err) {
+                wx.hideLoading();
+                console.error('AI识别调用失败', err);
+                wx.showToast({ title: '识别失败，请重试', icon: 'none' });
+              }
+            });
           },
           fail: function(err) {
             wx.hideLoading();
-            console.error('AI识别调用失败', err);
-            wx.showToast({ title: '识别失败，请重试', icon: 'none' });
+            console.error('获取图片链接失败', err);
+            wx.showToast({ title: '获取图片链接失败', icon: 'none' });
           }
         });
       },
@@ -829,6 +921,28 @@ Page({
         wx.showToast({ title: '上传失败', icon: 'none' });
       }
     });
+  },
+
+  // 识别无结果处理
+  _showOcrNoResult: function(rawContent) {
+    if (rawContent && rawContent.trim()) {
+      wx.showModal({
+        title: '识别结果',
+        content: rawContent.substring(0, 200) + '\n\n是否用此内容搜索？',
+        success: function(r) {
+          if (r.confirm) {
+            this.setData({ searchType: 'title', searchValue: rawContent.trim().substring(0, 200) });
+            this.doSearch();
+          }
+        }.bind(this)
+      });
+    } else {
+      wx.showModal({
+        title: '未识别到',
+        content: '未能从图片中识别到 DOI 或标题，请手动输入',
+        showCancel: false
+      });
+    }
   },
 
   // 点击饼图/图例查看详情
