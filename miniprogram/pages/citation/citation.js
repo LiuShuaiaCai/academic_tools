@@ -200,22 +200,24 @@ Page({
 
   onLoad: function() {
     var that = this;
-    // 获取当前用户 openid
+    // 检测平台：真机(ios/android)使用 canvas2d，模拟器(windows/mac)使用 inScrollView
+    var systemInfo = wx.getSystemInfoSync();
+    var platform = systemInfo.platform;
+    var useCanvas2d = (platform === 'ios' || platform === 'android');
+    this.setData({ useCanvas2d: useCanvas2d });
+
+    // 获取当前用户 openid，成功后再加载文献库
     wx.cloud.callFunction({
       name: 'academicAPI',
       data: { action: 'getUserId' }
     }).then(function(res) {
       var openid = res.result && res.result.openid ? res.result.openid : '';
       that.setData({ currentOpenid: openid });
+      that.loadLibrary();
     }).catch(function(err) {
       console.error('[citation] 获取用户标识失败', err);
+      that.setData({ library: [] });
     });
-    // 检测平台：真机(ios/android)使用 canvas2d，模拟器(windows/mac)使用 inScrollView
-    var systemInfo = wx.getSystemInfoSync();
-    var platform = systemInfo.platform;
-    var useCanvas2d = (platform === 'ios' || platform === 'android');
-    this.setData({ useCanvas2d: useCanvas2d });
-    this.loadLibrary();
   },
 
   onShow: function() {
