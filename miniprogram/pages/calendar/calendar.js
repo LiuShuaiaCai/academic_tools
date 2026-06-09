@@ -517,8 +517,13 @@ Page({
       return;
     }
     var reminder = null;
-    if (task.reminderEnabled && task.reminderMinutes && task.reminderMinutes.length > 0) {
-      reminder = task.reminderMinutes[0];
+    if (task.reminderEnabled) {
+      var mins = task.reminderMinutes || task.reminderHours;
+      if (mins) {
+        var raw = Array.isArray(mins) ? mins[0] : mins;
+        // 兼容旧数据（分钟）→ 转小时
+        reminder = raw >= 60 ? raw / 60 : raw;
+      }
     }
     this.setData({
       showTaskModal: true,
@@ -688,11 +693,14 @@ Page({
       return;
     }
 
-    var reminderMinutes = [];
     var reminderEnabled = false;
+    var reminderMinutes = null;
+    var reminderHour = null;
     if (this.data.modalReminder !== null) {
-      reminderMinutes = [this.data.modalReminder];
       reminderEnabled = true;
+      var taskHour = parseInt(this.data.modalTime.split(':')[0], 10);
+      reminderMinutes = this.data.modalReminder * 60;
+      reminderHour = taskHour - this.data.modalReminder;
     }
 
     var that = this;
@@ -706,6 +714,8 @@ Page({
           time: this.data.modalTime,
           reminderEnabled: reminderEnabled,
           reminderMinutes: reminderMinutes,
+          reminderHour: reminderHour,
+          reminderSent: false,
           updateTime: new Date()
         }
       }).then(function() {
@@ -724,6 +734,8 @@ Page({
           time: this.data.modalTime,
           reminderEnabled: reminderEnabled,
           reminderMinutes: reminderMinutes,
+          reminderHour: reminderHour,
+          reminderSent: false,
           completed: false,
           completedTime: null,
           createTime: new Date(),

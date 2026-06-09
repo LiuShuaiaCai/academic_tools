@@ -298,9 +298,9 @@
         <view class="form-label">提醒设置</view>
         <view class="reminder-options">
           <view class="reminder-item {{modalReminder === null ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="null">不提醒</view>
-          <view class="reminder-item {{modalReminder === 60 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="60">提前1小时</view>
-          <view class="reminder-item {{modalReminder === 120 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="120">提前2小时</view>
-          <view class="reminder-item {{modalReminder === 180 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="180">提前3小时</view>
+          <view class="reminder-item {{modalReminder === 1 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="1">提前1小时</view>
+          <view class="reminder-item {{modalReminder === 2 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="2">提前2小时</view>
+          <view class="reminder-item {{modalReminder === 3 ? 'active' : ''}}" bindtap="onModalReminderChange" data-value="3">提前3小时</view>
         </view>
       </view>
 
