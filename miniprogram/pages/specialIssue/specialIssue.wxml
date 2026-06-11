@@ -1,0 +1,154 @@
+<!-- pages/specialIssue/specialIssue.wxml V5 -->
+<view class="page">
+
+  <!-- ========== 搜索区域 ========== -->
+  <view class="search-section">
+    <view class="search-header">
+      <view class="search-title">{{i18n('nav.specialIssue')}}</view>
+      <view class="search-subtitle">基于 OpenAlex 学术数据，智能策划特刊方案</view>
+    </view>
+    <view class="search-row">
+      <view class="search-input-wrap">
+        <input
+          class="search-input"
+          placeholder="搜索已有话题..."
+          value="{{keyword}}"
+          bindinput="onKeywordInput"
+          bindconfirm="onSearch"
+          confirm-type="search"
+        />
+      </view>
+      <view class="search-btn" bindtap="onSearch">
+        <text>搜索</text>
+      </view>
+      <view class="create-btn" bindtap="onShowCreateModal">
+        <text>+ 创建话题</text>
+      </view>
+    </view>
+    <view class="credit-bar">
+      <text class="credit-text">💰 余额：{{userCredits}} 积分</text>
+    </view>
+  </view>
+
+  <!-- ========== 任务列表 ========== -->
+  <view class="list-section">
+    <view wx:if="{{loadingList && taskList.length === 0}}" class="loading-state">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:elif="{{taskList.length === 0}}" class="empty-state">
+      <view class="empty-icon">📝</view>
+      <view class="empty-title">暂无话题</view>
+      <view class="empty-desc">点击"创建话题"开始策划</view>
+    </view>
+
+    <block wx:else>
+      <view
+        class="task-card"
+        wx:for="{{taskList}}"
+        wx:key="_id"
+      >
+        <view class="task-header">
+          <view class="task-keyword">🔍 {{item.keyword}}</view>
+          <view class="task-status {{getStatusClass(item.status)}}">
+            {{getStatusLabel(item.status)}}
+          </view>
+        </view>
+
+        <!-- 进度条 -->
+        <view wx:if="{{item.status === 'processing'}}" class="task-progress">
+          <view class="progress-bar">
+            <view class="progress-fill {{getProgressClass(getProgressPercent(item))}}"
+              style="width: {{getProgressPercent(item)}}%"></view>
+          </view>
+          <text class="progress-text">{{getProgressPercent(item)}}%</text>
+        </view>
+
+        <!-- 已完成时显示方案标题预览 -->
+        <view wx:elif="{{item.status === 'completed'}}" class="task-preview">
+          <text class="preview-label">话题：</text>
+          <text class="preview-title">{{item.firstTitle || '查看详情'}}</text>
+        </view>
+
+        <view class="task-footer">
+          <text class="task-time">创建: {{formatTime(item.createdAt)}}</text>
+          <text wx:if="{{item.completedAt}}" class="task-time">完成: {{formatTime(item.completedAt)}}</text>
+          <view class="task-actions">
+            <text wx:if="{{item.status === 'processing'}}" class="task-action" bindtap="onShowProgress" data-taskid="{{item._id}}">进度</text>
+            <text wx:elif="{{item.status === 'completed'}}" class="task-action primary" bindtap="onViewDetail" data-taskid="{{item._id}}">查看详情</text>
+            <text wx:elif="{{item.status === 'failed'}}" class="task-action" bindtap="onViewDetail" data-taskid="{{item._id}}">查看</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 加载更多 -->
+      <view wx:if="{{hasMore}}" class="load-more" bindtap="loadMoreTasks">
+        <text>{{loadingList ? '加载中...' : '加载更多'}}</text>
+      </view>
+    </block>
+  </view>
+
+</view>
+
+<!-- ========== 创建话题弹窗 ========== -->
+<view class="modal-mask" wx:if="{{showCreateModal}}" bindtap="onHideCreateModal"></view>
+<view class="modal-dialog" wx:if="{{showCreateModal}}">
+  <view class="modal-header">
+    <text class="modal-title">📝 创建特刊策划话题</text>
+    <text class="modal-close" bindtap="onHideCreateModal">✕</text>
+  </view>
+  <view class="modal-body">
+    <view class="form-group">
+      <view class="form-label">研究关键词 *</view>
+      <input
+        class="form-input"
+        placeholder="例如：Large Language Models"
+        value="{{createKeyword}}"
+        bindinput="onCreatKeywordInput"
+        maxlength="100"
+      />
+    </view>
+    <view class="form-group">
+      <view class="form-label">附加要求（可选）</view>
+      <textarea
+        class="form-textarea"
+        placeholder="例如：请聚焦中国学者研究成果；客编至少包含2位女性学者"
+        value="{{createConstraints}}"
+        bindinput="onCreatConstraintsInput"
+        maxlength="500"
+      />
+    </view>
+    <view class="form-credit">
+      <text>💰 创建将消耗 30 积分</text>
+      <text>当前余额：{{userCredits}} 积分</text>
+    </view>
+  </view>
+  <view class="modal-footer">
+    <view class="modal-btn cancel" bindtap="onHideCreateModal">取消</view>
+    <view class="modal-btn confirm {{createLoading ? 'disabled' : ''}}" bindtap="onCreateTopicConfirm">
+      {{createLoading ? '创建中...' : '确认创建(30积分)'}}
+    </view>
+  </view>
+</view>
+
+<!-- ========== 进度详情弹窗 ========== -->
+<view class="modal-mask" wx:if="{{showProgressModal}}" bindtap="onHideProgress"></view>
+<view class="modal-dialog" wx:if="{{showProgressModal}}">
+  <view class="modal-header">
+    <text class="modal-title">📊 任务执行进度</text>
+    <text class="modal-close" bindtap="onHideProgress">✕</text>
+  </view>
+  <view class="modal-body">
+    <view class="step-item" wx:for="{{selectedTaskSteps}}" wx:key="key">
+      <text class="step-icon">{{getStepStatusIcon(item.status)}}</text>
+      <text class="step-label">{{item.label}}</text>
+      <text wx:if="{{item.status === 'completed'}}" class="step-status done">已完成</text>
+      <text wx:elif="{{item.status === 'running'}}" class="step-status running">进行中</text>
+      <text wx:else class="step-status pending">未开始</text>
+    </view>
+  </view>
+  <view class="modal-footer">
+    <view class="modal-btn cancel full" bindtap="onHideProgress">关闭</view>
+  </view>
+</view>

@@ -1,0 +1,154 @@
+<!-- pages/specialIssue/detail/detail.wxml V5 -->
+<view class="page">
+
+  <!-- ========== 加载状态 ========== -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">{{progressText || '加载中...'}}</text>
+  </view>
+
+  <!-- ========== 错误状态 ========== -->
+  <view wx:if="{{error && !loading}}" class="error-state">
+    <view class="error-icon">⚠️</view>
+    <view class="error-text">{{error}}</view>
+    <view class="error-retry" bindtap="loadTaskDetail">重试</view>
+  </view>
+
+  <!-- ========== 结果展示 ========== -->
+  <block wx:if="{{hasResult && !loading}}">
+
+    <!-- 积分扣费失败提示 -->
+    <view wx:if="{{!creditsDeducted}}" class="deduct-banner">
+      <text class="deduct-text">⚠️ 积分扣费失败</text>
+      <text class="deduct-retry" bindtap="onRetryDeduct">补扣积分</text>
+    </view>
+
+    <!-- 话题信息卡片 -->
+    <view class="result-card topic-card">
+      <view class="card-header">
+        <view class="card-icon">🎯</view>
+        <view class="card-title">{{i18n('specialIssue.topicTitle')}}</view>
+        <view class="topic-heat-badge">🔥 {{getTopicHeat()}}</view>
+        <text class="content-lang-switch" bindtap="toggleContentLang">
+          {{displayLang === 'zh' ? 'EN' : '中文'}}
+        </text>
+      </view>
+      <view class="topic-title-text">{{getPlanTitle()}}</view>
+
+      <view class="section-label">{{i18n('specialIssue.topicSummary')}}</view>
+      <view class="topic-summary-text">{{getPlanAbstract()}}</view>
+
+      <view class="section-label">{{i18n('specialIssue.keywords')}}</view>
+      <view class="keywords-wrap">
+        <view class="keyword-tag" wx:for="{{getPlanKeywords()}}" wx:key="*this">{{item}}</view>
+      </view>
+    </view>
+
+    <!-- 来源文章卡片 -->
+    <view class="result-card articles-card" wx:if="{{getSourceArticles().length > 0}}">
+      <view class="card-header">
+        <view class="card-icon">📄</view>
+        <view class="card-title">{{i18n('specialIssue.sourceArticles')}}</view>
+        <text class="article-count">({{getSourceArticles().length}})</text>
+      </view>
+      <view class="article-item" wx:for="{{getSourceArticles()}}" wx:key="id">
+        <view class="article-index">{{index + 1}}</view>
+        <view class="article-info">
+          <view class="article-title" bindtap="onTapArticle" data-url="{{item.url}}">{{item.title}}</view>
+          <view class="article-meta">
+            <text class="meta-item">{{item.authors.join(', ')}}</text>
+          </view>
+          <view class="article-meta">
+            <text class="meta-item">{{item.year}}</text>
+            <text class="meta-sep">|</text>
+            <text class="meta-item">{{i18n('specialIssue.citedByCount')}}: {{item.cc}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 推荐客编卡片 -->
+    <view class="result-card editors-card" wx:if="{{getEnrichedEditors().length > 0}}">
+      <view class="card-header">
+        <view class="card-icon">👥</view>
+        <view class="card-title">{{i18n('specialIssue.guestEditors')}}</view>
+        <text class="editor-count">({{getEnrichedEditors().length}} 位)</text>
+      </view>
+      <view class="editor-item" wx:for="{{getEnrichedEditors()}}" wx:key="name">
+        <view class="editor-header">
+          <view class="editor-avatar">{{index + 1}}</view>
+          <view class="editor-main">
+            <view class="editor-name">{{item.name}}</view>
+            <view class="editor-institution">{{item.institution}}</view>
+          </view>
+        </view>
+        <view class="editor-expertise" wx:if="{{item.top.length > 0}}">
+          <text wx:for="{{item.top}}" wx:key="*this">
+            <text class="expertise-tag">{{item}}</text>
+          </text>
+        </view>
+        <view class="editor-metrics">
+          <view class="metric-item">
+            <text class="metric-num">{{formatNumber(item.worksCount)}}</text>
+            <text class="metric-label">{{i18n('specialIssue.worksCount')}}</text>
+          </view>
+          <view class="metric-item">
+            <text class="metric-num">{{formatNumber(item.citedByCount)}}</text>
+            <text class="metric-label">{{i18n('specialIssue.citedByCount')}}</text>
+          </view>
+          <view class="metric-item">
+            <text class="metric-num">{{item.hIndex}}</text>
+            <text class="metric-label">h-index</text>
+          </view>
+        </view>
+
+        <!-- 客编逐年发文柱状图 -->
+        <view wx:if="{{editorChartData['ed_works_' + index]}}" class="editor-chart-section">
+          <view class="chart-subtitle">逐年发文</view>
+          <view class="chart-wrap chart-wrap-sm">
+            <qiun-wx-ucharts
+              type="column"
+              canvasId="edWorks{{index}}"
+              chartData="{{editorChartData['ed_works_' + index]}}"
+              opts="{{editorChartData['ed_works_' + index].opts}}"
+              canvas2d="{{canvas2d}}"
+            />
+          </view>
+        </view>
+
+        <!-- 客编逐年被引柱状图 -->
+        <view wx:if="{{editorChartData['ed_cites_' + index]}}" class="editor-chart-section">
+          <view class="chart-subtitle">逐年被引</view>
+          <view class="chart-wrap chart-wrap-sm">
+            <qiun-wx-ucharts
+              type="column"
+              canvasId="edCites{{index}}"
+              chartData="{{editorChartData['ed_cites_' + index]}}"
+              opts="{{editorChartData['ed_cites_' + index].opts}}"
+              canvas2d="{{canvas2d}}"
+            />
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 操作区域 -->
+    <view class="result-card action-card">
+      <view class="action-row">
+        <view class="action-btn primary" bindtap="onRegenerate">
+          <text>🔄 {{i18n('specialIssue.regenerate')}}</text>
+          <text class="action-hint">💰 消耗 30 积分</text>
+        </view>
+        <view class="action-btn outline" bindtap="copyFullPlan">
+          📋 复制方案
+        </view>
+      </view>
+      <view class="history-row" wx:if="{{regenerateCount > 0}}">
+        <text class="history-text">已重新生成: {{regenerateCount}} 次</text>
+        <text class="history-link" bindtap="onViewHistory">查看历史</text>
+      </view>
+    </view>
+
+  </block>
+
+</view>

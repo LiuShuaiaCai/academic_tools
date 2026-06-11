@@ -35,6 +35,11 @@
       "name": "openAlexProxy",
       "timeout": 30,
       "memorySize": 256
+    },
+    {
+      "name": "specialIssueAgent",
+      "timeout": 120,
+      "memorySize": 1024
     }
   ]
 }

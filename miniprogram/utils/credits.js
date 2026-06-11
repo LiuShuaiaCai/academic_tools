@@ -160,7 +160,8 @@ var CREDIT_COSTS = {
   ai_review: 20,
   new_submission: 5,
   new_review: 5,
-  new_conference: 5
+  new_conference: 5,
+  special_issue: 30
 };
 
 module.exports = {

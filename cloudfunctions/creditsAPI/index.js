@@ -50,7 +50,8 @@ var CREDITS_RULES = {
   new_submission: 0,
   new_review: 0,
   new_conference: 0,
-  complete_profile: 50
+  complete_profile: 50,
+  special_issue: 30
 };
 
 // 学术相关emoji头像
@@ -79,7 +80,8 @@ var ACTION_LABELS = {
   new_submission: '新增投稿',
   new_review: '新增审稿',
   new_conference: '新增会议',
-  complete_profile: '完善资料'
+  complete_profile: '完善资料',
+  special_issue: '特刊策划'
 };
 
 // 获取今日日期字符串 YYYY-MM-DD（北京时间）

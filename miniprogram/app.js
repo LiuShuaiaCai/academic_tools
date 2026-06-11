@@ -3,7 +3,8 @@ App({
   globalData: {
     env: "cloud1-d9gwkfeid5c310b5a",
     firstLaunch: false,
-    userRole: null // researcher / reviewer / editor
+    userRole: null, // researcher / reviewer / editor
+    locale: 'zh'   // 当前语言：zh | en
   },
 
   onLaunch: function (options) {
@@ -46,6 +47,14 @@ App({
     if (!hasOnboarded) {
       this.globalData.firstLaunch = true;
     }
+
+    // 初始化 i18n 语言设置
+    try {
+      var storedLocale = wx.getStorageSync('app_locale');
+      if (storedLocale) {
+        this.globalData.locale = storedLocale;
+      }
+    } catch (e) { /* ignore */ }
   },
 
   // 检查邀请奖励

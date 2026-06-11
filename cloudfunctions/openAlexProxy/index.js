@@ -66,6 +66,41 @@ async function proxyOpenAlex(action, params) {
       queryParams.append('page', params.page);
     }
     url += '?' + queryParams.toString();
+  } else if (action === 'searchWorks' && params.query) {
+    // 搜索论文：支持关键词、年份过滤、排序
+    url = 'https://api.openalex.org/works';
+    const queryParams = new URLSearchParams({
+      search: params.query,
+      'per-page': params.perPage || 50,
+      sort: params.sort || 'cited_by_count:desc'
+    });
+    // 构建 filter 条件
+    const filters = [];
+    if (params.fromYear) {
+      filters.push(`from_publication_date:${params.fromYear}-01-01`);
+    }
+    if (params.type) {
+      filters.push(`type:${params.type}`);
+    }
+    if (filters.length > 0) {
+      queryParams.append('filter', filters.join(','));
+    }
+    if (params.page) {
+      queryParams.append('page', params.page);
+    }
+    url += '?' + queryParams.toString();
+  } else if (action === 'searchAuthors' && params.query) {
+    // 搜索作者：支持关键词搜索，按被引数排序
+    url = 'https://api.openalex.org/authors';
+    const queryParams = new URLSearchParams({
+      search: params.query,
+      'per-page': params.perPage || 20,
+      sort: params.sort || 'cited_by_count:desc'
+    });
+    url += '?' + queryParams.toString();
+  } else if (action === 'getAuthorDetail' && params.authorId) {
+    // 获取学者详情（含 counts_by_year 逐年统计数据）
+    url = `https://api.openalex.org/authors/${params.authorId}`;
   }
   
   try {
