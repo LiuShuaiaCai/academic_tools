@@ -13,6 +13,7 @@ Page({
     signedToday: false,
     continuousDays: 0,
     showSigninModal: false,
+    creditsInfoLoaded: false,  // 积分信息是否已加载完成（防止加载中误弹窗）
     currentOpenid: ''  // 当前用户的 openid
   },
 
@@ -31,14 +32,8 @@ Page({
   },
   onShow: function() { 
     this.loadEnabledTools(); 
+    this.setData({ creditsInfoLoaded: false });
     this.loadCreditsInfo();
-    // 兜底：2 秒后如果还没签也没弹窗，再触发一次检查
-    var that = this;
-    setTimeout(function() {
-      if (!that.data.signedToday && !that.data.showSigninModal) {
-        that.checkSigninModal();
-      }
-    }, 2000);
   },
 
   // 获取北京时间日期字符串 YYYY-MM-DD
@@ -52,6 +47,8 @@ Page({
   },
 
   checkSigninModal: function() {
+    // 积分信息还在加载中，先不弹窗，等加载完再判断
+    if (!this.data.creditsInfoLoaded) return;
     if (this.data.signedToday) return;
     var today = this.getBeijingDateStr();
     var dismissed = false;
@@ -77,7 +74,8 @@ Page({
     try {
       promise = creditsUtil.getCreditsInfo();
     } catch(e) {
-      // 同步异常（如 cloud 未初始化），仍然检查弹窗
+      // 同步异常（如 cloud 未初始化），标记加载完成并检查弹窗
+      that.setData({ creditsInfoLoaded: true });
       that.checkSigninModal();
       return;
     }
@@ -85,11 +83,15 @@ Page({
       if (res.success !== false) {
         that.setData({
           signedToday: res.signedToday || false,
-          continuousDays: res.continuousDays || 0
+          continuousDays: res.continuousDays || 0,
+          creditsInfoLoaded: true
         });
+      } else {
+        that.setData({ creditsInfoLoaded: true });
       }
       that.checkSigninModal();
     }).catch(function() {
+      that.setData({ creditsInfoLoaded: true });
       that.checkSigninModal();
     });
   },

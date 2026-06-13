@@ -1,14 +1,9 @@
 // pages/specialIssue/detail/detail.js
 // V5: 详情页 - 展示方案详情、来源文章、客编图表、重新生成、查看历史
-var i18nUtil = require('../../../utils/i18n.js');
 var creditsUtil = require('../../../utils/credits.js');
 
 Page({
   data: {
-    _lang: 'zh',
-    locale: {},
-    t: null,
-
     taskId: '',
     keyword: '',
     displayLang: 'zh',
@@ -23,6 +18,27 @@ Page({
     completedAt: null,
     createdAt: null,
 
+    // 预处理后的展示数据（避免WXML中调用方法）
+    planTitle: '',
+    planAbstract: '',
+    planKeywords: [],
+    planGuestEditors: [],
+    planTopicHeat: 0,
+    planSourceArticleIds: [],
+    planSourceEditorIds: [],
+
+    // 方向选择面板
+    plans: [],
+    selectedPlanKey: '',
+    showDirectionPanel: false,
+    expandedDirection: '',
+    selectingDirection: false,
+    compareHeights: [],
+
+    // 方向详情弹窗
+    showDetailModal: false,
+    detailModalPlan: null,
+
     // 状态
     loading: true,
     hasResult: false,
@@ -31,13 +47,15 @@ Page({
 
     // 图表
     editorChartData: {},
-    canvas2d: true
+    canvas2d: true,
+
+    // 引用统计弹窗
+    showCiteModal: false,
+    citeModalTitle: '',
+    citeModalData: { years: [], counts: [], heights: [] }
   },
 
   onLoad: function(options) {
-    var ctx = i18nUtil.createI18n(this);
-    this._i18n = ctx;
-
     var taskId = options.taskId || '';
     var keyword = options.keyword || '';
     this.setData({ taskId: taskId, keyword: keyword });
@@ -56,7 +74,6 @@ Page({
   },
 
   onShow: function() {
-    if (this._i18n) this._i18n.refresh();
     // 如果正在轮询中，重新加载
     if (this._pollTimer) {
       this.loadTaskDetail();
@@ -65,10 +82,6 @@ Page({
 
   onUnload: function() {
     this.stopPolling();
-  },
-
-  i18n: function(key, lang) {
-    return i18nUtil.translate(key, lang || this.data.displayLang);
   },
 
   // ---- 加载任务详情 ----
@@ -80,48 +93,170 @@ Page({
       data: { action: 'poll', taskId: that.data.taskId }
     }).then(function(res) {
       var data = res.result && res.result.data;
+      console.log('[detail] poll返回:', JSON.stringify(data));
       if (!data) {
         that.setData({ loading: false, error: '任务不存在' });
         return;
       }
 
+      // 预处理数据
+      var plan = (data.result && data.result.plan) || {};
+      var zh = plan.zh || {};
+      var en = plan.en || {};
+      var langData = zh.title ? zh : (en.title ? en : {});
+
       that.setData({
-        keyword: that.data.keyword || data.constraints ? '' : '', // keep if already set
+        keyword: data.keyword || '',
         createdAt: data.createdAt,
         completedAt: data.completedAt,
         creditsDeducted: data.creditsDeducted,
         regenerateCount: data.regenerateCount || 0,
-        regenerateHistory: data.regenerateHistory || []
+        regenerateHistory: data.regenerateHistory || [],
+        selectedPlanKey: data.selectedPlanKey || '',
+        planTitle: langData.title || '',
+        planAbstract: langData.abstract || '',
+        planKeywords: langData.keywords || [],
+        planGuestEditors: plan.guestEditors || [],
+        planTopicHeat: plan.topicHeat || 0,
+        planSourceArticleIds: plan.sourceArticleIds || [],
+        planSourceEditorIds: plan.sourceEditorIds || []
       });
 
-      if (data.status === 'completed' && data.result) {
+      if (data.status === 'awaiting_selection' && data.result && data.result.plans) {
+        // 趋势分析完成，显示方向选择面板
+        var plans = data.result.plans || [];
+        // 为每个方向预计算论文数 + 趋势指标
+        var allPapers = data.sourcePapers || [];
+        for (var p = 0; p < plans.length; p++) {
+          var ids = plans[p].sourceArticleIds || [];
+          var idSet2 = {};
+          for (var j = 0; j < ids.length; j++) { idSet2[ids[j]] = true; }
+          plans[p]._topicLabel = 'Topic' + (p + 1);
+          plans[p]._matchedPapers = ids.length > 0
+            ? allPapers.filter(function(ap) { return idSet2[ap.id]; })
+            : [];
+          plans[p]._paperCount = plans[p]._matchedPapers.length;
+          // 提取趋势指标（预计算格式化的显示字符串，WXML不支持.toFixed()和算术表达式）
+          plans[p]._avgCitations = typeof plans[p].avgCitations === 'number' ? plans[p].avgCitations : 0;
+          plans[p]._avgFWCI = typeof plans[p].avgFWCI === 'number' ? plans[p].avgFWCI : 0;
+          plans[p]._topJournalRatio = typeof plans[p].topJournalRatio === 'number' ? plans[p].topJournalRatio : 0;
+          plans[p]._hotRecentAvg = typeof plans[p].hotRecentAvg === 'number' ? plans[p].hotRecentAvg : 0;
+          plans[p]._avgCitationsStr = plans[p]._avgCitations.toFixed(1);
+          plans[p]._avgFWCIStr = plans[p]._avgFWCI.toFixed(2);
+          plans[p]._hotRecentAvgStr = plans[p]._hotRecentAvg.toFixed(1);
+          plans[p]._topJournalRatioStr = (plans[p]._topJournalRatio * 100).toFixed(0) + '%';
+          // 根据热度计算颜色（高→红橙黄渐变）
+          var h = plans[p].topicHeat || 0;
+          if (h >= 800) plans[p]._heatColor = 'linear-gradient(135deg, #DC2626, #EF4444)';
+          else if (h >= 600) plans[p]._heatColor = 'linear-gradient(135deg, #EA580C, #F97316)';
+          else if (h >= 400) plans[p]._heatColor = 'linear-gradient(135deg, #CA8A04, #EAB308)';
+          else plans[p]._heatColor = 'linear-gradient(135deg, #2563EB, #3B82F6)';
+          // 汇总方向论文的逐年引用趋势（用于趋势对比图）
+          var yearAgg = {};
+          for (var j = 0; j < ids.length; j++) {
+            var paper = idSet2[ids[j]] ? allPapers.find(function(ap) { return ap.id === ids[j]; }) : null;
+            if (!paper || !paper.citationsByYear) continue;
+            var years = paper.citationsByYear.years || [];
+            var counts = paper.citationsByYear.counts || [];
+            for (var k = 0; k < years.length; k++) {
+              yearAgg[years[k]] = (yearAgg[years[k]] || 0) + counts[k];
+            }
+          }
+          var sortedYears = Object.keys(yearAgg).sort();
+          plans[p]._trendYears = sortedYears;
+          plans[p]._trendCounts = sortedYears.map(function(y) { return yearAgg[y]; });
+          var trendMax = Math.max.apply(null, plans[p]._trendCounts) || 1;
+          plans[p]._trendHeights = plans[p]._trendCounts.map(function(c) {
+            return Math.max(Math.round(c / trendMax * 100), 4);
+          });
+        }
+
+        // 按热度倒序排列
+        plans.sort(function(a, b) { return (b.topicHeat || 0) - (a.topicHeat || 0); });
+
+        // 预计算对比柱状图高度（以最高热值为100%）
+        var maxHeat = 1;
+        for (var p = 0; p < plans.length; p++) {
+          maxHeat = Math.max(maxHeat, plans[p].topicHeat || 0);
+        }
+        var compareHeights = plans.map(function(plan) {
+          return Math.max(Math.round((plan.topicHeat || 0) / maxHeat * 100), 4);
+        });
+
         that.setData({
           loading: false,
-          hasResult: true,
-          result: data.result,
-          sourcePapers: data.sourcePapers || [],
+          hasResult: false,
+          showDirectionPanel: true,
+          plans: plans,
+          compareHeights: compareHeights,
+          sourcePapers: allPapers,
           sourceAuthors: data.sourceAuthors || [],
           error: ''
         });
+        wx.setNavigationBarTitle({ title: '趋势领域分析' });
+        that.stopPolling();
+      } else if (data.status === 'completed' && data.result) {
+        // 按 sourceArticleIds 筛选出与话题真正关联的文章
+        var allPapers = data.sourcePapers || [];
+        var articleIds = plan.sourceArticleIds || [];
+        var idSet = {};
+        for (var i = 0; i < articleIds.length; i++) { idSet[articleIds[i]] = true; }
+        var displayPapers = articleIds.length > 0
+          ? allPapers.filter(function(p) { return idSet[p.id]; })
+          : allPapers;
+
+        that.setData({
+          loading: false,
+          hasResult: true,
+          showDirectionPanel: false,
+          result: data.result,
+          sourcePapers: allPapers,
+          displayPapers: displayPapers,
+          sourceAuthors: data.sourceAuthors || [],
+          error: ''
+        });
+        wx.setNavigationBarTitle({ title: '方案详情' });
         that.buildEditorCharts();
+        that.stopPolling();
       } else if (data.status === 'processing') {
         that.setData({
           loading: true,
+          hasResult: false,
+          showDirectionPanel: false,
           progressText: '任务进行中，请稍候...'
         });
         that.startPolling();
       } else {
         that.setData({
           loading: false,
-          error: data.error || '任务生成失败'
+          hasResult: false,
+          showDirectionPanel: false,
+          error: that.getDisplayError(data.error)
         });
+        that.stopPolling();
       }
     }).catch(function(err) {
+      console.error('[detail] 加载失败:', err);
       that.setData({
         loading: false,
-        error: '加载失败: ' + (err.message || '网络错误')
+        error: that.getDisplayError(err.message || '网络错误')
       });
     });
+  },
+
+  getDisplayError: function(error) {
+    var msg = error || '';
+    if (!msg) return '执行失败，请稍后重试';
+    if (msg.indexOf('429') >= 0 || msg.indexOf('rate_limit') >= 0 || msg.indexOf('TPD') >= 0) {
+      return 'AI 服务今日额度已用完，请稍后重试';
+    }
+    if (msg.indexOf('超时') >= 0 || msg.indexOf('timeout') >= 0 || msg.indexOf('ETIMEDOUT') >= 0) {
+      return 'AI 服务响应超时，请稍后重试';
+    }
+    if (msg.indexOf('Kimi API') >= 0 || msg.indexOf('openai API') >= 0 || msg.indexOf('deepseek API') >= 0 || msg.indexOf('tencent API') >= 0 || msg.indexOf('alibaba API') >= 0 || msg.indexOf('organization') >= 0 || msg.indexOf('project') >= 0) {
+      return 'AI 服务暂时不可用，请稍后重试';
+    }
+    return '执行失败，请稍后重试';
   },
 
   // ---- 轮询 ----
@@ -145,7 +280,14 @@ Page({
 
   toggleContentLang: function() {
     var newLang = this.data.displayLang === 'zh' ? 'en' : 'zh';
-    this.setData({ displayLang: newLang });
+    var plan = this.getPlan();
+    var langData = (plan && plan[newLang]) || {};
+    this.setData({
+      displayLang: newLang,
+      planTitle: langData.title || '',
+      planAbstract: langData.abstract || '',
+      planKeywords: langData.keywords || []
+    });
   },
 
   // ---- 数据读取 ----
@@ -181,6 +323,43 @@ Page({
   getGuestEditors: function() {
     var plan = this.getPlan();
     return (plan && plan.guestEditors) ? plan.guestEditors : [];
+  },
+
+  // ---- 点击被引数：显示年度引用柱状图 ----
+
+  onTapCitations: function(e) {
+    var idx = e.currentTarget.dataset.index;
+    var paper = this.data.sourcePapers[idx];
+    if (!paper || !paper.citationsByYear) return;
+    var years = paper.citationsByYear.years || [];
+    var counts = paper.citationsByYear.counts || [];
+    if (years.length === 0) {
+      wx.showToast({ title: '暂无年度引用数据', icon: 'none' });
+      return;
+    }
+    var maxCount = Math.max.apply(null, counts) || 1;
+    var heights = counts.map(function(c) { return Math.max((c / maxCount) * 80, 4); });
+    this.setData({
+      showCiteModal: true,
+      citeModalTitle: (paper.title || '文章') + ' 的引用趋势',
+      citeModalData: { years: years, counts: counts, heights: heights }
+    });
+  },
+
+  hideCiteModal: function() {
+    this.setData({ showCiteModal: false });
+  },
+
+  onTapDoi: function(e) {
+    var doi = e.currentTarget.dataset.doi;
+    if (!doi) return;
+    var url = 'https://doi.org/' + doi.replace(/^https?:\/\/doi\.org\//, '');
+    wx.setClipboardData({
+      data: url,
+      success: function() {
+        wx.showToast({ title: 'DOI链接已复制', icon: 'none' });
+      }
+    });
   },
 
   getTopicHeat: function() {
@@ -367,6 +546,7 @@ Page({
             result: selected.result,
             hasResult: true
           });
+          wx.setNavigationBarTitle({ title: '方案详情' });
           that.buildEditorCharts();
         }
       });
@@ -413,9 +593,9 @@ Page({
     var editors = plan.guestEditors || [];
 
     var lines = ['=== ' + (d.title || '') + ' ===', '', d.abstract || '', '',
-      this.i18n('specialIssue.topicHeat') + ': ' + (plan.topicHeat || 0), '',
-      this.i18n('specialIssue.keywords') + ': ' + (d.keywords || []).join(', '), '',
-      '--- ' + this.i18n('specialIssue.guestEditors') + ' ---'
+      '话题热度: ' + (plan.topicHeat || 0), '',
+      '关键词: ' + (d.keywords || []).join(', '), '',
+      '--- 推荐客编 ---'
     ];
 
     for (var i = 0; i < editors.length; i++) {
@@ -434,6 +614,96 @@ Page({
     if (!num && num !== 0) return '0';
     if (num >= 10000) return (num / 10000).toFixed(1) + '万';
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  },
+
+  // ---- 方向选择面板 ----
+
+  onExpandDirection: function(e) {
+    var key = e.currentTarget.dataset.key;
+    this.setData({ expandedDirection: key });
+  },
+
+  onCollapseDirection: function() {
+    this.setData({ expandedDirection: '' });
+  },
+
+  // 弹窗显示方向详情
+  onOpenDetail: function(e) {
+    var key = e.currentTarget.dataset.key;
+    var plan = this.data.plans.find(function(p) { return p.key === key; });
+    if (plan) {
+      this.setData({ showDetailModal: true, detailModalPlan: plan });
+    }
+  },
+
+  hideDetailModal: function() {
+    this.setData({ showDetailModal: false, detailModalPlan: null });
+  },
+
+  // 弹窗内直接选择方向
+  onSelectFromModal: function(e) {
+    var key = e.currentTarget.dataset.key;
+    var plan = this.data.detailModalPlan;
+    if (!plan || !key) return;
+    this.hideDetailModal();
+    // 复用 onSelectDirection 逻辑
+    this.onSelectDirection({ currentTarget: { dataset: { key: key } } });
+  },
+
+  stopBubble: function() {},
+
+  onSelectDirection: function(e) {
+    var that = this;
+    var key = e.currentTarget.dataset.key;
+    var plan = that.data.plans.find(function(p) { return p.key === key; });
+    if (!plan) return;
+
+    var zhTitle = (plan.zh && plan.zh.title) || '';
+    wx.showModal({
+      title: '确认选择',
+      content: '选择方向「' + zhTitle + '」生成详细方案？',
+      confirmText: '确认',
+      success: function(res) {
+        if (res.confirm) {
+          that.doSelectDirection(key);
+        }
+      }
+    });
+  },
+
+  doSelectDirection: function(key) {
+    var that = this;
+    that.setData({ selectingDirection: true });
+    wx.showLoading({ title: '启动方案生成...' });
+
+    wx.cloud.callFunction({
+      name: 'specialIssueAgent',
+      data: { action: 'selectDirection', taskId: that.data.taskId, directionKey: key }
+    }).then(function(res) {
+      wx.hideLoading();
+      that.setData({ selectingDirection: false });
+      if (res.result && res.result.success) {
+        // Phase 2 已启动，显示处理中状态并开始轮询
+        wx.showToast({ title: '方案生成中...', icon: 'loading', duration: 2000 });
+        that.setData({
+          loading: true,
+          showDirectionPanel: false,
+          progressText: '正在生成完整方案，请稍候...'
+        });
+        that.startPolling();
+      } else {
+        wx.showToast({ title: res.result && res.result.error || '启动失败', icon: 'none' });
+      }
+    }).catch(function(err) {
+      wx.hideLoading();
+      that.setData({ selectingDirection: false });
+      wx.showToast({ title: '请求失败: ' + (err.message || ''), icon: 'none' });
+    });
+  },
+
+  // 获取方向热度条宽度
+  getHeatBarWidth: function(heat) {
+    return Math.min(heat / 10, 100);
   },
 
   formatTime: function(ts) {

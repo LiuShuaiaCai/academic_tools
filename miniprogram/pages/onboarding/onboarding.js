@@ -9,7 +9,7 @@ var DEFAULT_TOOLS = [
   { id: 'citation',   name: '文献引用', desc: 'GB/T 7714、APA格式化', icon: 'quote-right',  color: 'purple', category: 'ext',  order: 5, comingSoon: true  },
   { id: 'journal',    name: '期刊预警', desc: '预警期刊、假会议检测', icon: 'exclamation-triangle', color: 'red', category: 'ext', order: 6, comingSoon: true },
   { id: 'achievement',name: '成果汇总', desc: '自动汇总论文、导出CV', icon: 'trophy',        color: 'orange', category: 'ext',  order: 7, comingSoon: true  },
-  { id: 'note',       name: '学术笔记', desc: '文献阅读笔记管理',    icon: 'sticky-note',   color: 'green',  category: 'ext',  order: 8, comingSoon: false }
+  { id: 'note',       name: '学术笔记', desc: '文献阅读笔记管理',    icon: 'sticky-note',   color: 'green',  category: 'ext',  order: 8, comingSoon: true  }
 ];
 
 // 按原型定义的角色工具配置
@@ -59,6 +59,7 @@ Page({
     var disabled = [];
     for (var i = 0; i < tools.length; i++) {
       var tool = tools[i];
+      if (tool.comingSoon) continue;  // 未上线工具不展示
       var item = {
         id: tool.id,
         name: tool.name,
@@ -91,9 +92,10 @@ Page({
     var disabledTools = [];
     for (var i = 0; i < DEFAULT_TOOLS.length; i++) {
       var t = DEFAULT_TOOLS[i];
+      if (t.comingSoon) continue;  // 未上线工具不展示
       if (roleEnabled.indexOf(t.id) !== -1) {
         enabledTools.push(t);
-      } else if (t.category === 'core') {
+      } else {
         disabledTools.push(t);
       }
     }

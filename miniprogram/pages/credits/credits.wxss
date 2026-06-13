@@ -115,6 +115,47 @@ page { background: #F6F6F6; }
   background: rgba(255,255,255,0.3);
 }
 
+/* ========== 顶部卡片骨架屏 ========== */
+.header-skeleton .sk-text {
+  background: rgba(255,255,255,0.35);
+  border-radius: 6rpx;
+}
+.header-skeleton .sk-label {
+  width: 120rpx;
+  height: 32rpx;
+}
+.header-skeleton .sk-num {
+  width: 80rpx;
+  height: 56rpx;
+  border-radius: 8rpx;
+  background: rgba(255,255,255,0.35);
+}
+.header-skeleton .sk-btn {
+  width: 180rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
+  background: rgba(255,255,255,0.35);
+  margin: 0 auto;
+}
+.header-skeleton .node-circle {
+  background: rgba(255,255,255,0.35);
+  border: none;
+}
+.header-skeleton .node-circle.big-circle {
+  width: 56rpx;
+  height: 56rpx;
+}
+.header-skeleton .progress-line {
+  background: rgba(255,255,255,0.2);
+}
+.header-skeleton .sk-hint {
+  width: 200rpx;
+  height: 28rpx;
+  border-radius: 6rpx;
+  background: rgba(255,255,255,0.35);
+  margin: 12rpx auto 0;
+}
+
 /* ========== 连续签到进度条 ========== */
 .streak-row {
   margin: 20rpx 0 0;

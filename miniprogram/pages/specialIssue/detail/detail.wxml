@@ -14,119 +14,315 @@
     <view class="error-retry" bindtap="loadTaskDetail">重试</view>
   </view>
 
+  <!-- ========== 方向选择面板 ========== -->
+  <block wx:if="{{showDirectionPanel && !loading}}">
+    <view class="direction-panel">
+      <!-- ===== 趋势多维对比 ===== -->
+      <view class="compare-section" wx:if="{{plans.length > 1}}">
+        <view class="compare-title">📊 方向多维对比</view>
+        <!-- 热度柱状图 -->
+        <view class="compare-chart">
+          <view class="compare-item" wx:for="{{plans}}" wx:key="key" wx:for-index="idx">
+            <view class="compare-label">{{item._topicLabel}}</view>
+            <view class="compare-bar-wrap">
+              <view
+                class="compare-bar compare-bar-{{idx}}"
+                style="width: {{compareHeights[idx] || 0}}%;"
+              ></view>
+            </view>
+            <view class="compare-value">
+              <view class="heat-badge">🔥 {{item.topicHeat || 0}}</view>
+            </view>
+          </view>
+        </view>
+        <!-- 指标表 -->
+        <view class="metrics-table" wx:if="{{plans.length > 0}}">
+          <view class="metrics-table-title">📈 细分指标</view>
+          <view class="metrics-table-row metrics-table-head">
+            <text class="metrics-cell metrics-cell-label">指标</text>
+            <text class="metrics-cell" wx:for="{{plans}}" wx:key="key">{{item._topicLabel}}</text>
+          </view>
+          <view class="metrics-table-row">
+            <text class="metrics-cell metrics-cell-label">📊 均被引</text>
+            <text class="metrics-cell" wx:for="{{plans}}" wx:key="key">{{item._avgCitationsStr}}</text>
+          </view>
+          <view class="metrics-table-row">
+            <text class="metrics-cell metrics-cell-label">📈 FWCI</text>
+            <text class="metrics-cell" wx:for="{{plans}}" wx:key="key">{{item._avgFWCIStr}}</text>
+          </view>
+          <view class="metrics-table-row">
+            <text class="metrics-cell metrics-cell-label">⚡ 近2年引用</text>
+            <text class="metrics-cell" wx:for="{{plans}}" wx:key="key">{{item._hotRecentAvgStr}}</text>
+          </view>
+          <view class="metrics-table-row">
+            <text class="metrics-cell metrics-cell-label">🏆 顶刊占比</text>
+            <text class="metrics-cell" wx:for="{{plans}}" wx:key="key">{{item._topJournalRatioStr}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="direction-list">
+        <view
+          class="direction-card {{expandedDirection === item.key ? 'direction-expanded' : ''}}"
+          wx:for="{{plans}}"
+          wx:key="key"
+          bindtap="onOpenDetail"
+          data-key="{{item.key}}"
+        >
+          <view class="direction-card-main">
+          <view class="direction-card-header">
+            <view class="direction-info" style="flex:1;">
+              <view class="direction-name"><text class="topic-tag">{{item._topicLabel}}</text> {{item.zh.title || item.en.title || '未命名方向'}}</view>
+              <view class="direction-metrics-row">
+                <view class="direction-heat-badge-sm" style="background: {{item._heatColor || '#DC2626'}};">
+                  <text class="heat-num-sm">{{item.topicHeat || 0}}</text>
+                  <text class="heat-label-sm">热度</text>
+                </view>
+                <text class="meta-pill">{{item._paperCount || item.paperCount || 0}}篇</text>
+                <text class="meta-pill meta-cite-pill">均被引 {{item._avgCitationsStr || '--'}}</text>
+                <text class="meta-pill meta-fwci-pill">FWCI {{item._avgFWCIStr || '--'}}</text>
+              </view>
+              <view class="meta-keywords" wx:if="{{item.zh.keywords && item.zh.keywords.length > 0}}">
+                <text class="kw-tag" wx:for="{{item.zh.keywords}}" wx:key="*this" wx:if="{{index < 5}}">{{item}}</text>
+              </view>
+              <view class="meta-keywords" wx:elif="{{item.en.keywords && item.en.keywords.length > 0}}">
+                <text class="kw-tag" wx:for="{{item.en.keywords}}" wx:key="*this" wx:if="{{index < 5}}">{{item}}</text>
+              </view>
+            </view>
+            <view class="direction-select-btn" catchtap="onSelectDirection" data-key="{{item.key}}">
+              选择
+            </view>
+            </view>
+
+            <!-- 展开后的详情 -->
+            <view class="direction-detail" wx:if="{{expandedDirection === item.key}}">
+              <!-- 趋势指标卡片 -->
+              <view class="detail-section">
+                <view class="detail-label">📈 趋势指标</view>
+                <view class="trend-metrics-grid">
+                  <view class="trend-metric-card">
+                    <text class="trend-metric-val">{{item._avgCitationsStr}}</text>
+                    <text class="trend-metric-name">平均被引</text>
+                  </view>
+                  <view class="trend-metric-card">
+                    <text class="trend-metric-val">{{item._avgFWCIStr}}</text>
+                    <text class="trend-metric-name">FWCI 影响力</text>
+                  </view>
+                  <view class="trend-metric-card">
+                    <text class="trend-metric-val">{{item._hotRecentAvgStr}}</text>
+                    <text class="trend-metric-name">近2年平均被引</text>
+                  </view>
+                  <view class="trend-metric-card">
+                    <text class="trend-metric-val">{{item._topJournalRatioStr}}</text>
+                    <text class="trend-metric-name">顶刊占比</text>
+                  </view>
+                </view>
+              </view>
+              <!-- 方向逐年引用趋势 -->
+              <view class="detail-section" wx:if="{{item._trendYears && item._trendYears.length > 0}}">
+                <view class="detail-label">📅 逐年引用趋势（该方向论文合计）</view>
+                <view class="trend-chart">
+                  <view class="trend-bar-wrap" wx:for="{{item._trendYears}}" wx:for-item="y" wx:key="*this" wx:for-index="yi">
+                    <text class="trend-bar-val">{{item._trendCounts[yi]}}</text>
+                    <view class="trend-bar-track">
+                      <view class="trend-bar-fill" style="height: {{item._trendHeights[yi]}}%;"></view>
+                    </view>
+                    <text class="trend-bar-year">{{y}}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="detail-section">
+                <view class="detail-label">描述</view>
+                <view class="detail-text">{{item.zh.abstract || item.en.abstract || '暂无描述'}}</view>
+              </view>
+              <view class="detail-section" wx:if="{{item.zh.keywords && item.zh.keywords.length > 0}}">
+                <view class="detail-label">关键词</view>
+                <view class="detail-keywords">
+                  <text class="detail-keyword-tag" wx:for="{{item.zh.keywords}}" wx:for-item="kw" wx:key="*this">{{kw}}</text>
+                </view>
+              </view>
+              <view class="detail-section" wx:if="{{item._matchedPapers && item._matchedPapers.length > 0}}">
+                <view class="detail-label">依据论文（{{item._matchedPapers.length}}篇）</view>
+                <view class="detail-papers">
+                  <view class="detail-paper-item" wx:for="{{item._matchedPapers}}" wx:for-item="mp" wx:key="id">
+                    <text class="detail-paper-title" bindtap="onTapArticle" data-url="{{mp.url}}">{{mp.title}}</text>
+                    <text class="detail-paper-cite">被引 {{mp.cc}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 重新生成 -->
+      <view class="direction-footer">
+        <view class="action-btn outline" bindtap="onRegenerate">
+          <text>🔄 重新分析</text>
+          <text class="action-hint">（消耗 30 积分）</text>
+        </view>
+      </view>
+    </view>
+  <!-- ========== 方向详情弹窗 ========== -->
+  <view class="detail-modal" wx:if="{{showDetailModal}}" bindtap="hideDetailModal">
+    <view class="detail-modal-content" catchtap="stopBubble">
+      <view class="detail-modal-header">
+        <text class="detail-modal-title" wx:if="{{detailModalPlan}}">
+          <text class="topic-tag">{{detailModalPlan._topicLabel}}</text>
+          {{detailModalPlan.zh.title || detailModalPlan.en.title || '未命名方向'}}
+        </text>
+        <text class="detail-modal-close" bindtap="hideDetailModal">×</text>
+      </view>
+      <scroll-view scroll-y="true" class="detail-modal-body">
+        <block wx:if="{{detailModalPlan}}">
+          <!-- 核心指标 -->
+          <view class="detail-section">
+            <view class="detail-label">📊 核心指标</view>
+            <view class="trend-metrics-grid">
+              <view class="trend-metric-card">
+                <text class="trend-metric-val">{{detailModalPlan.topicHeat || 0}}</text>
+                <text class="trend-metric-name">热度</text>
+              </view>
+              <view class="trend-metric-card">
+                <text class="trend-metric-val">{{detailModalPlan._avgCitationsStr}}</text>
+                <text class="trend-metric-name">平均被引</text>
+              </view>
+              <view class="trend-metric-card">
+                <text class="trend-metric-val">{{detailModalPlan._avgFWCIStr}}</text>
+                <text class="trend-metric-name">FWCI 影响力</text>
+              </view>
+              <view class="trend-metric-card">
+                <text class="trend-metric-val">{{detailModalPlan._hotRecentAvgStr}}</text>
+                <text class="trend-metric-name">近2年平均被引</text>
+              </view>
+              <view class="trend-metric-card">
+                <text class="trend-metric-val">{{detailModalPlan._topJournalRatioStr}}</text>
+                <text class="trend-metric-name">顶刊占比</text>
+              </view>
+              <view class="trend-metric-card">
+                <text class="trend-metric-val">{{detailModalPlan._paperCount || 0}}篇</text>
+                <text class="trend-metric-name">论文数</text>
+              </view>
+            </view>
+          </view>
+          <!-- 逐年引用趋势 -->
+          <view class="detail-section" wx:if="{{detailModalPlan._trendYears && detailModalPlan._trendYears.length > 0}}">
+            <view class="detail-label">📅 逐年引用趋势</view>
+            <view class="trend-chart">
+              <view class="trend-bar-wrap" wx:for="{{detailModalPlan._trendYears}}" wx:for-item="y" wx:key="*this" wx:for-index="yi">
+                <text class="trend-bar-val">{{detailModalPlan._trendCounts[yi]}}</text>
+                <view class="trend-bar-track">
+                  <view class="trend-bar-fill" style="height: {{detailModalPlan._trendHeights[yi]}}%;"></view>
+                </view>
+                <text class="trend-bar-year">{{y}}</text>
+              </view>
+            </view>
+          </view>
+          <!-- 描述 -->
+          <view class="detail-section">
+            <view class="detail-label">📝 描述</view>
+            <view class="detail-text">{{detailModalPlan.zh.abstract || detailModalPlan.en.abstract || '暂无描述'}}</view>
+          </view>
+          <!-- 关键词 -->
+          <view class="detail-section" wx:if="{{detailModalPlan.zh.keywords && detailModalPlan.zh.keywords.length > 0}}">
+            <view class="detail-label">🏷️ 关键词</view>
+            <view class="detail-keywords">
+              <text class="detail-keyword-tag" wx:for="{{detailModalPlan.zh.keywords}}" wx:for-item="kw" wx:key="*this">{{kw}}</text>
+            </view>
+          </view>
+          <view class="detail-section" wx:elif="{{detailModalPlan.en.keywords && detailModalPlan.en.keywords.length > 0}}">
+            <view class="detail-label">🏷️ 关键词</view>
+            <view class="detail-keywords">
+              <text class="detail-keyword-tag" wx:for="{{detailModalPlan.en.keywords}}" wx:for-item="kw" wx:key="*this">{{kw}}</text>
+            </view>
+          </view>
+          <!-- 依据论文 -->
+          <view class="detail-section" wx:if="{{detailModalPlan._matchedPapers && detailModalPlan._matchedPapers.length > 0}}">
+            <view class="detail-label">📄 依据论文（{{detailModalPlan._matchedPapers.length}}篇）</view>
+            <view class="detail-papers">
+              <view class="detail-paper-item" wx:for="{{detailModalPlan._matchedPapers}}" wx:for-item="mp" wx:key="id">
+                <text class="detail-paper-title" bindtap="onTapArticle" data-url="{{mp.url}}">{{mp.title}}</text>
+                <text class="detail-paper-cite">被引 {{mp.cc}}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+      <view class="detail-modal-footer">
+        <view class="action-btn primary" catchtap="onSelectFromModal" data-key="{{detailModalPlan.key}}">
+          选择此方向生成方案
+        </view>
+      </view>
+    </view>
+  </view>
+
+  </block>
+
   <!-- ========== 结果展示 ========== -->
   <block wx:if="{{hasResult && !loading}}">
-
-    <!-- 积分扣费失败提示 -->
-    <view wx:if="{{!creditsDeducted}}" class="deduct-banner">
-      <text class="deduct-text">⚠️ 积分扣费失败</text>
-      <text class="deduct-retry" bindtap="onRetryDeduct">补扣积分</text>
-    </view>
 
     <!-- 话题信息卡片 -->
     <view class="result-card topic-card">
       <view class="card-header">
         <view class="card-icon">🎯</view>
-        <view class="card-title">{{i18n('specialIssue.topicTitle')}}</view>
-        <view class="topic-heat-badge">🔥 {{getTopicHeat()}}</view>
-        <text class="content-lang-switch" bindtap="toggleContentLang">
-          {{displayLang === 'zh' ? 'EN' : '中文'}}
-        </text>
+        <view class="card-title">话题标题</view>
+        <view class="topic-heat-badge">🔥 {{planTopicHeat}}</view>
+        <view class="lang-toggle" bindtap="toggleContentLang">
+          <text class="lang-opt {{displayLang === 'zh' ? 'lang-on' : ''}}">中文</text>
+          <text class="lang-opt {{displayLang === 'en' ? 'lang-on' : ''}}">EN</text>
+        </view>
       </view>
-      <view class="topic-title-text">{{getPlanTitle()}}</view>
+      <view class="topic-title-text">{{planTitle || '(无标题)'}}</view>
 
-      <view class="section-label">{{i18n('specialIssue.topicSummary')}}</view>
-      <view class="topic-summary-text">{{getPlanAbstract()}}</view>
+      <view class="section-label">摘要</view>
+      <view class="topic-summary-text">{{planAbstract || '(无摘要)'}}</view>
 
-      <view class="section-label">{{i18n('specialIssue.keywords')}}</view>
+      <view class="section-label">关键词</view>
       <view class="keywords-wrap">
-        <view class="keyword-tag" wx:for="{{getPlanKeywords()}}" wx:key="*this">{{item}}</view>
+        <view class="keyword-tag" wx:for="{{planKeywords}}" wx:key="*this">{{item}}</view>
+        <text wx:if="{{planKeywords.length === 0}}" class="no-data">暂无关键词</text>
       </view>
     </view>
 
     <!-- 来源文章卡片 -->
-    <view class="result-card articles-card" wx:if="{{getSourceArticles().length > 0}}">
+    <view class="result-card articles-card" wx:if="{{displayPapers.length > 0}}">
       <view class="card-header">
         <view class="card-icon">📄</view>
-        <view class="card-title">{{i18n('specialIssue.sourceArticles')}}</view>
-        <text class="article-count">({{getSourceArticles().length}})</text>
+        <view class="card-title">关联文章</view>
+        <text class="article-count">({{displayPapers.length}})</text>
       </view>
-      <view class="article-item" wx:for="{{getSourceArticles()}}" wx:key="id">
+      <view class="article-item" wx:for="{{displayPapers}}" wx:key="id">
         <view class="article-index">{{index + 1}}</view>
         <view class="article-info">
-          <view class="article-title" bindtap="onTapArticle" data-url="{{item.url}}">{{item.title}}</view>
+          <view class="article-title" bindtap="onTapArticle" data-url="{{item.url}}">{{item.title || '无标题'}}</view>
           <view class="article-meta">
-            <text class="meta-item">{{item.authors.join(', ')}}</text>
+            <text class="meta-item">{{item.authors ? item.authors.join(', ') : ''}}</text>
           </view>
           <view class="article-meta">
             <text class="meta-item">{{item.year}}</text>
             <text class="meta-sep">|</text>
-            <text class="meta-item">{{i18n('specialIssue.citedByCount')}}: {{item.cc}}</text>
+            <text class="meta-item meta-cite" bindtap="onTapCitations" data-index="{{index}}">被引: {{item.cc}}</text>
+          </view>
+          <view class="article-meta" wx:if="{{item.doi}}">
+            <text class="meta-item meta-doi" bindtap="onTapDoi" data-doi="{{item.doi}}">DOI: {{item.doi}}</text>
           </view>
         </view>
       </view>
     </view>
 
     <!-- 推荐客编卡片 -->
-    <view class="result-card editors-card" wx:if="{{getEnrichedEditors().length > 0}}">
+    <view class="result-card editors-card" wx:if="{{planGuestEditors.length > 0}}">
       <view class="card-header">
         <view class="card-icon">👥</view>
-        <view class="card-title">{{i18n('specialIssue.guestEditors')}}</view>
-        <text class="editor-count">({{getEnrichedEditors().length}} 位)</text>
+        <view class="card-title">推荐客编</view>
+        <text class="editor-count">({{planGuestEditors.length}} 位)</text>
       </view>
-      <view class="editor-item" wx:for="{{getEnrichedEditors()}}" wx:key="name">
+      <view class="editor-item" wx:for="{{planGuestEditors}}" wx:key="name">
         <view class="editor-header">
           <view class="editor-avatar">{{index + 1}}</view>
           <view class="editor-main">
             <view class="editor-name">{{item.name}}</view>
             <view class="editor-institution">{{item.institution}}</view>
-          </view>
-        </view>
-        <view class="editor-expertise" wx:if="{{item.top.length > 0}}">
-          <text wx:for="{{item.top}}" wx:key="*this">
-            <text class="expertise-tag">{{item}}</text>
-          </text>
-        </view>
-        <view class="editor-metrics">
-          <view class="metric-item">
-            <text class="metric-num">{{formatNumber(item.worksCount)}}</text>
-            <text class="metric-label">{{i18n('specialIssue.worksCount')}}</text>
-          </view>
-          <view class="metric-item">
-            <text class="metric-num">{{formatNumber(item.citedByCount)}}</text>
-            <text class="metric-label">{{i18n('specialIssue.citedByCount')}}</text>
-          </view>
-          <view class="metric-item">
-            <text class="metric-num">{{item.hIndex}}</text>
-            <text class="metric-label">h-index</text>
-          </view>
-        </view>
-
-        <!-- 客编逐年发文柱状图 -->
-        <view wx:if="{{editorChartData['ed_works_' + index]}}" class="editor-chart-section">
-          <view class="chart-subtitle">逐年发文</view>
-          <view class="chart-wrap chart-wrap-sm">
-            <qiun-wx-ucharts
-              type="column"
-              canvasId="edWorks{{index}}"
-              chartData="{{editorChartData['ed_works_' + index]}}"
-              opts="{{editorChartData['ed_works_' + index].opts}}"
-              canvas2d="{{canvas2d}}"
-            />
-          </view>
-        </view>
-
-        <!-- 客编逐年被引柱状图 -->
-        <view wx:if="{{editorChartData['ed_cites_' + index]}}" class="editor-chart-section">
-          <view class="chart-subtitle">逐年被引</view>
-          <view class="chart-wrap chart-wrap-sm">
-            <qiun-wx-ucharts
-              type="column"
-              canvasId="edCites{{index}}"
-              chartData="{{editorChartData['ed_cites_' + index]}}"
-              opts="{{editorChartData['ed_cites_' + index].opts}}"
-              canvas2d="{{canvas2d}}"
-            />
           </view>
         </view>
       </view>
@@ -136,7 +332,7 @@
     <view class="result-card action-card">
       <view class="action-row">
         <view class="action-btn primary" bindtap="onRegenerate">
-          <text>🔄 {{i18n('specialIssue.regenerate')}}</text>
+          <text>🔄 重新生成</text>
           <text class="action-hint">💰 消耗 30 积分</text>
         </view>
         <view class="action-btn outline" bindtap="copyFullPlan">
@@ -150,5 +346,31 @@
     </view>
 
   </block>
+
+  <!-- 引用统计弹窗 -->
+  <view class="cite-modal" wx:if="{{showCiteModal}}" bindtap="hideCiteModal">
+    <view class="cite-modal-content" catchtap="stopBubble">
+      <view class="cite-modal-header">
+        <text class="cite-modal-title">{{citeModalTitle}}</text>
+        <text class="cite-modal-close" bindtap="hideCiteModal">×</text>
+      </view>
+      <view class="cite-modal-body">
+        <view class="cite-chart" wx:if="{{citeModalData.years.length > 0}}">
+          <view class="cite-chart-bars">
+            <view class="cite-bar-wrap" wx:for="{{citeModalData.years}}" wx:key="*this" wx:for-index="idx">
+              <view class="cite-bar-track">
+                <view class="cite-bar" style="height: {{citeModalData.heights[idx]}}%;"></view>
+              </view>
+              <text class="cite-bar-label">{{item}}</text>
+              <text class="cite-bar-value">{{citeModalData.counts[idx]}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="cite-empty" wx:else>
+          <text>暂无年度引用数据</text>
+        </view>
+      </view>
+    </view>
+  </view>
 
 </view>

@@ -77,11 +77,45 @@ class BaseProvider {
 
   /** 解析响应（子类覆盖） */
   parseResponse(data) {
-    return (
-      data?.choices?.[0]?.message?.content ||
-      data?.choices?.[0]?.text ||
-      ''
-    );
+    const choice = data?.choices?.[0] || {};
+    const message = choice.message || {};
+    const outputContent = data?.output?.choices?.[0]?.message?.content;
+    const candidates = [
+      message.content,
+      choice.text,
+      choice.content,
+      choice.delta?.content,
+      data?.output_text,
+      outputContent
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'string' && value.trim()) return value;
+      if (Array.isArray(value)) {
+        const text = value.map(function(part) {
+          return typeof part === 'string'
+            ? part
+            : (part && (part.text || part.content || part.output_text)) || '';
+        }).join('');
+        if (text.trim()) return text;
+      }
+    }
+
+    const reasoning = message.reasoning_content || message.reasoning || '';
+    if (typeof reasoning === 'string' && reasoning.trim()) {
+      const fenced = reasoning.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      const jsonText = fenced ? fenced[1] : reasoning.substring(reasoning.indexOf('{'), reasoning.lastIndexOf('}') + 1);
+      if (jsonText && jsonText.indexOf('{') >= 0) {
+        try {
+          JSON.parse(jsonText.trim());
+          return jsonText.trim();
+        } catch (e) {
+          // reasoning 中没有完整 JSON，继续按空内容处理
+        }
+      }
+    }
+
+    return '';
   }
 
   /** 解析错误（子类覆盖） */
@@ -117,7 +151,7 @@ class DeepSeekProvider extends BaseProvider {
     super({
       id: 'deepseek',
       name: 'DeepSeek',
-      defaultModel: 'deepseek-v3-0324',
+      defaultModel: 'deepseek-v4-pro',
       baseURL: 'https://api.deepseek.com',
       authType: 'Bearer',
       supportsStream: true,
@@ -183,11 +217,7 @@ class AlibabaProvider extends BaseProvider {
   }
 
   parseResponse(data) {
-    return (
-      data?.choices?.[0]?.message?.content ||
-      data?.output?.choices?.[0]?.message?.content ||
-      ''
-    );
+    return super.parseResponse(data);
   }
 }
 
@@ -253,12 +283,16 @@ async function chatSync(provider, model, messages, params) {
       model: res.data.model,
       object: res.data.object,
       choices: res.data.choices && res.data.choices.map(function(c) {
+        var msg = c.message || {};
         return {
           index: c.index,
           finish_reason: c.finish_reason,
-          content_type: c.message ? typeof c.message.content : 'N/A',
-          content_len: c.message ? (c.message.content ? String(c.message.content).length : 0) : 0,
-          content_preview: c.message ? String(c.message.content || '').substring(0, 200) : 'NO_MESSAGE'
+          message_keys: Object.keys(msg),
+          choice_keys: Object.keys(c),
+          content_type: typeof msg.content,
+          content_len: msg.content ? String(msg.content).length : 0,
+          reasoning_len: msg.reasoning_content ? String(msg.reasoning_content).length : 0,
+          content_preview: String(msg.content || c.text || msg.reasoning_content || '').substring(0, 200)
         };
       }),
       usage: res.data.usage,
@@ -266,7 +300,14 @@ async function chatSync(provider, model, messages, params) {
       top_keys: Object.keys(res.data)
     }));
     const content = p.parseResponse(res.data);
-    if (!content) throw new Error('AI 返回格式异常，未能提取内容');
+    if (!content) {
+      throw new Error('AI 返回格式异常，未能提取内容，响应结构: ' + JSON.stringify({
+        model: res.data.model,
+        top_keys: Object.keys(res.data),
+        choice_keys: res.data.choices && res.data.choices[0] ? Object.keys(res.data.choices[0]) : [],
+        message_keys: res.data.choices && res.data.choices[0] && res.data.choices[0].message ? Object.keys(res.data.choices[0].message) : []
+      }));
+    }
 
     return {
       success: true,
@@ -279,7 +320,7 @@ async function chatSync(provider, model, messages, params) {
   } catch (err) {
     if (err.response) {
       const msg = p.parseError(err.response);
-      throw new Error(`[${provider} API ${err.response.status}] ${msg}`);
+      throw new Error(`[${provider} API ${err.response.status}] ${msg || err.message}`);
     }
     throw new Error(`[${provider}] 请求失败: ${err.message}`);
   }

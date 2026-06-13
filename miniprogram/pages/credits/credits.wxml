@@ -1,7 +1,40 @@
 <!--pages/credits/credits.wxml-->
 <view class="credits-page">
+  <!-- 顶部积分卡片骨架屏（初始加载时显示，防止默认值闪烁） -->
+  <view class="credits-header header-skeleton" wx:if="{{pageLoading}}">
+    <view class="balance-row">
+      <view class="balance-placeholder"></view>
+      <view class="balance-center">
+        <view class="sk-text sk-label skeleton-pulse"></view>
+        <view class="sk-num skeleton-pulse"></view>
+      </view>
+      <view class="balance-placeholder"></view>
+    </view>
+    <view class="signin-area">
+      <view class="sk-btn skeleton-pulse"></view>
+    </view>
+    <view class="streak-row">
+      <view class="streak-progress">
+        <view class="progress-node"><view class="node-circle skeleton-pulse"></view></view>
+        <view class="progress-line"></view>
+        <view class="progress-node"><view class="node-circle skeleton-pulse"></view></view>
+        <view class="progress-line"></view>
+        <view class="progress-node"><view class="node-circle skeleton-pulse"></view></view>
+        <view class="progress-line"></view>
+        <view class="progress-node"><view class="node-circle skeleton-pulse"></view></view>
+        <view class="progress-line"></view>
+        <view class="progress-node"><view class="node-circle skeleton-pulse"></view></view>
+        <view class="progress-line"></view>
+        <view class="progress-node"><view class="node-circle skeleton-pulse"></view></view>
+        <view class="progress-line"></view>
+        <view class="progress-node"><view class="node-circle big-circle skeleton-pulse"></view></view>
+      </view>
+      <view class="sk-hint skeleton-pulse"></view>
+    </view>
+  </view>
+
   <!-- 顶部积分卡片 -->
-  <view class="credits-header">
+  <view class="credits-header" wx:if="{{!pageLoading}}">
     <view class="balance-row">
       <view class="balance-placeholder"></view>
       <view class="balance-center">
@@ -272,16 +305,8 @@
             <text class="rules-modal-value spend">-20</text>
           </view>
           <view class="rules-modal-item">
-            <text class="rules-modal-label">新增投稿</text>
-            <text class="rules-modal-value spend">-5</text>
-          </view>
-          <view class="rules-modal-item">
-            <text class="rules-modal-label">新增审稿</text>
-            <text class="rules-modal-value spend">-5</text>
-          </view>
-          <view class="rules-modal-item">
-            <text class="rules-modal-label">新增会议</text>
-            <text class="rules-modal-value spend">-5</text>
+            <text class="rules-modal-label">特刊策划</text>
+            <text class="rules-modal-value spend">-30</text>
           </view>
         </view>
         <view class="rules-modal-section">

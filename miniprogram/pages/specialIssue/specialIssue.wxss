@@ -1,5 +1,13 @@
 /* pages/specialIssue/specialIssue.wxss V5 */
 
+/* ========== 主题色变量 ========== */
+page {
+  --primary-color: #10B981;
+  --primary-dark: #059669;
+  --primary-light: #ECFDF5;
+  --primary-shadow: rgba(16, 185, 129, 0.4);
+}
+
 /* ========== 基础布局 ========== */
 .page {
   min-height: 100vh;
@@ -10,7 +18,7 @@
 /* ========== 搜索区域 ========== */
 .search-section {
   padding: 32rpx;
-  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
 }
 
 .search-header {
@@ -61,18 +69,26 @@
   text-align: center;
 }
 
-.create-btn {
-  flex-shrink: 0;
-  padding: 0 24rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  background: #FFF;
-  color: #2563EB;
-  font-size: 26rpx;
-  font-weight: 700;
-  border-radius: 12rpx;
-  text-align: center;
-  white-space: nowrap;
+.fab-btn {
+  position: fixed;
+  right: 40rpx;
+  bottom: calc(60rpx + env(safe-area-inset-bottom));
+  width: 100rpx;
+  height: 100rpx;
+  background: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx var(--primary-shadow);
+  z-index: 50;
+}
+
+.fab-icon {
+  color: #FFF;
+  font-size: 48rpx;
+  font-weight: 300;
+  line-height: 1;
 }
 
 .credit-bar {
@@ -93,20 +109,24 @@
 .task-card {
   background: #FFF;
   border-radius: 16rpx;
-  padding: 24rpx;
+  padding: 28rpx;
   margin-bottom: 16rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.task-card:active {
+  background: #F9FAFB;
 }
 
 .task-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12rpx;
+  align-items: center;
+  margin-bottom: 14rpx;
 }
 
 .task-keyword {
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 600;
   color: #1F2937;
   flex: 1;
@@ -118,15 +138,21 @@
 
 .task-status {
   flex-shrink: 0;
-  margin-left: 12rpx;
-  padding: 4rpx 16rpx;
-  font-size: 22rpx;
+  margin-left: 16rpx;
+  padding: 6rpx 20rpx;
+  font-size: 24rpx;
   border-radius: 20rpx;
+  font-weight: 500;
 }
 
 .status-done {
   background: #D1FAE5;
   color: #059669;
+}
+
+.status-select {
+  background: #DBEAFE;
+  color: #2563EB;
 }
 
 .status-ing {
@@ -162,8 +188,8 @@
 }
 
 .bar-start { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
-.bar-half  { background: linear-gradient(90deg, #F59E0B, #3B82F6); }
-.bar-done  { background: #10B981; }
+.bar-half  { background: linear-gradient(90deg, #F59E0B, var(--primary-color)); }
+.bar-done  { background: var(--primary-color); }
 
 .progress-text {
   font-size: 22rpx;
@@ -174,21 +200,48 @@
 
 /* 方案预览 */
 .task-preview {
-  margin-bottom: 12rpx;
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 14rpx;
 }
 
 .preview-label {
-  font-size: 22rpx;
-  color: #9CA3AF;
+  font-size: 26rpx;
+  color: #6B7280;
+  flex-shrink: 0;
+  margin-right: 4rpx;
 }
 
 .preview-title {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: #374151;
+  flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 失败任务预览 + 重新执行按钮 */
+.task-failed {
+  flex-wrap: wrap;
+}
+
+.task-failed .preview-title {
+  display: block;
+  word-break: break-all;
+  -webkit-line-clamp: unset;
+  margin-bottom: 12rpx;
+}
+
+.retry-btn {
+  display: inline-block;
+  padding: 8rpx 24rpx;
+  background: #2563EB;
+  color: #fff;
+  font-size: 22rpx;
+  border-radius: 8rpx;
+  margin-left: auto;
 }
 
 /* 任务底部 */
@@ -201,27 +254,14 @@
 }
 
 .task-time {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #9CA3AF;
 }
 
-.task-actions {
-  display: flex;
-  gap: 16rpx;
-}
-
-.task-action {
+.task-delete {
   font-size: 24rpx;
-  color: #2563EB;
-  font-weight: 500;
-  padding: 6rpx 20rpx;
-  background: #EFF6FF;
-  border-radius: 8rpx;
-}
-
-.task-action.primary {
-  color: #FFF;
-  background: #2563EB;
+  color: #EF4444;
+  padding: 6rpx 16rpx;
 }
 
 /* 加载更多 */
@@ -306,7 +346,7 @@
 }
 
 .modal-btn.confirm {
-  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
   color: #FFF;
 }
 
@@ -401,6 +441,11 @@
   color: #92400E;
 }
 
+.step-status.failed {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
 .step-status.pending {
   background: #F3F4F6;
   color: #9CA3AF;
@@ -418,7 +463,7 @@
   width: 56rpx;
   height: 56rpx;
   border: 3rpx solid #E5E7EB;
-  border-top-color: #2563EB;
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

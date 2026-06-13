@@ -22,7 +22,9 @@ Page({
     trendData: [],
     maxTrendValue: 10,
     // 规则弹窗
-    showRules: false
+    showRules: false,
+    // 页面初始加载状态（防止默认值闪烁）
+    pageLoading: true
   },
 
   onLoad: function() {
@@ -64,11 +66,15 @@ Page({
           credits: res.credits || 0,
           signedToday: res.signedToday || false,
           continuousDays: res.continuousDays || 0,
-          signinDays: res.signinDays || 0
+          signinDays: res.signinDays || 0,
+          pageLoading: false
         });
+      } else {
+        that.setData({ pageLoading: false });
       }
     }).catch(function(e) {
       console.error('[积分] 获取积分信息失败', e);
+      that.setData({ pageLoading: false });
     });
   },
 

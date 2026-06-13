@@ -7,9 +7,9 @@ const http = require('http');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 /**
- * 通用 HTTP 请求函数（支持超时）
+ * 单次 HTTP GET（内部实现）
  */
-function httpGet(url, timeout = 15000) {
+function httpGetOnce(url, timeout) {
   return new Promise((resolve, reject) => {
     const isHttps = url.startsWith('https');
     const client = isHttps ? https : http;
@@ -46,6 +46,27 @@ function httpGet(url, timeout = 15000) {
 }
 
 /**
+ * 带重试的 HTTP GET
+ */
+async function httpGet(url, timeout = 15000, maxRetries = 3) {
+  var lastErr;
+  for (var attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        // 指数退避：2s, 4s
+        await new Promise(function(r) { setTimeout(r, 2000 * Math.pow(2, attempt - 1)); });
+      }
+      var result = await httpGetOnce(url, timeout);
+      return result;
+    } catch (err) {
+      lastErr = err;
+      console.log('[httpGet] 第' + (attempt + 1) + '次失败:', err.message);
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * 代理 OpenAlex API
  */
 async function proxyOpenAlex(action, params) {
@@ -74,6 +95,9 @@ async function proxyOpenAlex(action, params) {
       'per-page': params.perPage || 50,
       sort: params.sort || 'cited_by_count:desc'
     });
+    if (params.select) {
+      queryParams.append('select', params.select);
+    }
     // 构建 filter 条件
     const filters = [];
     if (params.fromYear) {
@@ -89,6 +113,8 @@ async function proxyOpenAlex(action, params) {
       queryParams.append('page', params.page);
     }
     url += '?' + queryParams.toString();
+    // 加 mailto 参数获取优先队列
+    url += '&mailto=liushuaicai66@gmail.com';
   } else if (action === 'searchAuthors' && params.query) {
     // 搜索作者：支持关键词搜索，按被引数排序
     url = 'https://api.openalex.org/authors';
@@ -101,6 +127,11 @@ async function proxyOpenAlex(action, params) {
   } else if (action === 'getAuthorDetail' && params.authorId) {
     // 获取学者详情（含 counts_by_year 逐年统计数据）
     url = `https://api.openalex.org/authors/${params.authorId}`;
+  } else if (action === 'getAuthorsByIds' && params.ids) {
+    // 批量获取学者信息
+    url = 'https://api.openalex.org/authors?filter=openalex_id:' + encodeURIComponent(params.ids)
+      + '&per-page=' + (params.perPage || 50);
+    url += '&mailto=liushuaicai66@gmail.com';
   }
   
   try {

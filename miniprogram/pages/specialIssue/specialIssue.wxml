@@ -3,10 +3,6 @@
 
   <!-- ========== 搜索区域 ========== -->
   <view class="search-section">
-    <view class="search-header">
-      <view class="search-title">{{i18n('nav.specialIssue')}}</view>
-      <view class="search-subtitle">基于 OpenAlex 学术数据，智能策划特刊方案</view>
-    </view>
     <view class="search-row">
       <view class="search-input-wrap">
         <input
@@ -21,13 +17,12 @@
       <view class="search-btn" bindtap="onSearch">
         <text>搜索</text>
       </view>
-      <view class="create-btn" bindtap="onShowCreateModal">
-        <text>+ 创建话题</text>
-      </view>
     </view>
-    <view class="credit-bar">
-      <text class="credit-text">💰 余额：{{userCredits}} 积分</text>
-    </view>
+  </view>
+
+  <!-- 悬浮创建按钮 -->
+  <view class="fab-btn" bindtap="onShowCreateModal">
+    <text class="fab-icon">+</text>
   </view>
 
   <!-- ========== 任务列表 ========== -->
@@ -48,21 +43,32 @@
         class="task-card"
         wx:for="{{taskList}}"
         wx:key="_id"
+        bindtap="onCardTap"
+        data-taskid="{{item._id}}"
       >
         <view class="task-header">
           <view class="task-keyword">🔍 {{item.keyword}}</view>
-          <view class="task-status {{getStatusClass(item.status)}}">
-            {{getStatusLabel(item.status)}}
+          <view
+            class="task-status {{item._statusClass}}"
+            catchtap="onStatusTap"
+            data-taskid="{{item._id}}"
+          >
+            {{item._statusLabel}}
           </view>
         </view>
 
         <!-- 进度条 -->
         <view wx:if="{{item.status === 'processing'}}" class="task-progress">
           <view class="progress-bar">
-            <view class="progress-fill {{getProgressClass(getProgressPercent(item))}}"
-              style="width: {{getProgressPercent(item)}}%"></view>
+            <view class="progress-fill {{item._progressClass}}"
+              style="width: {{item._progressPercent}}%"></view>
           </view>
-          <text class="progress-text">{{getProgressPercent(item)}}%</text>
+          <text class="progress-text">{{item._progressPercent}}%</text>
+        </view>
+
+        <!-- 待选方向时显示首个方向预览 -->
+        <view wx:elif="{{item.status === 'awaiting_selection'}}" class="task-preview">
+          <text class="preview-title">{{item.firstTitle || '查看详情'}}</text>
         </view>
 
         <!-- 已完成时显示方案标题预览 -->
@@ -71,14 +77,17 @@
           <text class="preview-title">{{item.firstTitle || '查看详情'}}</text>
         </view>
 
+        <!-- 失败时显示错误信息和重新执行按钮 -->
+        <view wx:elif="{{item.status === 'failed'}}" class="task-preview task-failed">
+          <text class="preview-label" style="color:#DC2626;">失败</text>
+          <text class="preview-title" style="color:#9CA3AF;">{{item._displayError}}</text>
+          <view class="retry-btn" catchtap="onRetryTask" data-taskid="{{item._id}}">重新执行</view>
+        </view>
+
         <view class="task-footer">
-          <text class="task-time">创建: {{formatTime(item.createdAt)}}</text>
-          <text wx:if="{{item.completedAt}}" class="task-time">完成: {{formatTime(item.completedAt)}}</text>
-          <view class="task-actions">
-            <text wx:if="{{item.status === 'processing'}}" class="task-action" bindtap="onShowProgress" data-taskid="{{item._id}}">进度</text>
-            <text wx:elif="{{item.status === 'completed'}}" class="task-action primary" bindtap="onViewDetail" data-taskid="{{item._id}}">查看详情</text>
-            <text wx:elif="{{item.status === 'failed'}}" class="task-action" bindtap="onViewDetail" data-taskid="{{item._id}}">查看</text>
-          </view>
+          <text class="task-time">创建: {{item._createdTime}}</text>
+          <text wx:if="{{item._completedTime}}" class="task-time">完成: {{item._completedTime}}</text>
+          <text class="task-delete" catchtap="onDeleteTask" data-taskid="{{item._id}}">删除</text>
         </view>
       </view>
 
@@ -121,13 +130,12 @@
     </view>
     <view class="form-credit">
       <text>💰 创建将消耗 30 积分</text>
-      <text>当前余额：{{userCredits}} 积分</text>
     </view>
   </view>
   <view class="modal-footer">
     <view class="modal-btn cancel" bindtap="onHideCreateModal">取消</view>
     <view class="modal-btn confirm {{createLoading ? 'disabled' : ''}}" bindtap="onCreateTopicConfirm">
-      {{createLoading ? '创建中...' : '确认创建(30积分)'}}
+      {{createLoading ? '创建中...' : '确认创建'}}
     </view>
   </view>
 </view>
@@ -145,6 +153,7 @@
       <text class="step-label">{{item.label}}</text>
       <text wx:if="{{item.status === 'completed'}}" class="step-status done">已完成</text>
       <text wx:elif="{{item.status === 'running'}}" class="step-status running">进行中</text>
+      <text wx:elif="{{item.status === 'failed'}}" class="step-status failed">失败</text>
       <text wx:else class="step-status pending">未开始</text>
     </view>
   </view>

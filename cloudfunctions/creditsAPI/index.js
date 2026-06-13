@@ -169,9 +169,9 @@ async function initCredits(event) {
 }
 
 // 获取积分信息（余额 + 签到状态）
-async function getCreditsInfo() {
+async function getCreditsInfo(event) {
   var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
+  var openid = (event && event._openid) || wxContext.OPENID;
 
   var config = await findRecord('user_config', { _openid: openid });
   var todayStr = getTodayStr();
@@ -196,6 +196,14 @@ async function getCreditsInfo() {
     continuousDays = 0;
   }
 
+  // 如果 config.credits 与实时计算不一致，自动修正
+  if (config && config.credits !== validCredits) {
+    console.log('[getCreditsInfo] 积分不一致，自动修正: config.credits=' + config.credits + ' → validCredits=' + validCredits);
+    await db.collection('user_config').doc(config._id).update({
+      data: { credits: validCredits, updateTime: formatTime() }
+    });
+  }
+
   return {
     success: true,
     credits: validCredits,
@@ -205,7 +213,8 @@ async function getCreditsInfo() {
   };
 }
 
-// 计算有效积分（使用 remainPoints：Σ(remainPoints) - Σ(spend)）
+// 计算有效积分
+// remainPoints 已反映消费扣减和过期清零，直接累加即可，无需再减 spend/expire
 async function calculateValidCredits(openid) {
   var nowWithTime = getBeijingDateStr() + ' 23:59:59';
 
@@ -223,48 +232,18 @@ async function calculateValidCredits(openid) {
     })
     .get();
 
-  // 计算有效收入：Σ(remainPoints)，排除已过期的
+  // 计算有效积分：Σ(remainPoints)，排除已过期的
+  // remainPoints 在 spendCredits 扣减时已减少，在 cleanExpiredCredits 清零时已归零
   var totalEarn = 0;
   for (var i = 0; i < earnRes.data.length; i++) {
     var item = earnRes.data[i];
-    // 永久有效或未过期
     if (!item.expireTime || item.expireTime >= nowWithTime) {
-      // 使用 remainPoints，如果没有则用原始 points（兼容旧数据）
       var remain = item.remainPoints !== undefined ? item.remainPoints : (item.points || 0);
       totalEarn += remain;
     }
   }
 
-  // 查询所有支出积分
-  var spendRes = await db.collection('credits')
-    .where({
-      _openid: openid,
-      deleteTime: null,
-      type: 'spend'
-    })
-    .get();
-
-  // 计算总支出
-  var totalSpend = 0;
-  for (var j = 0; j < spendRes.data.length; j++) {
-    totalSpend += spendRes.data[j].points || 0;
-  }
-
-  // 查询所有清零记录（已过期清理）
-  var expireRes = await db.collection('credits')
-    .where({
-      _openid: openid,
-      deleteTime: null,
-      type: 'expire'
-    })
-    .get();
-
-  var totalExpire = 0;
-  for (var k = 0; k < expireRes.data.length; k++) {
-    totalExpire += Math.abs(expireRes.data[k].points || 0);
-  }
-
-  return Math.max(0, totalEarn - totalSpend - totalExpire);
+  return Math.max(0, totalEarn);
 }
 
 // 执行签到
@@ -898,7 +877,7 @@ async function cleanAllExpiredCredits() {
 // 消耗积分（优先扣减快过期的积分）
 async function spendCredits(event) {
   var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
+  var openid = event._openid || wxContext.OPENID;
   var action = event.actionType || event.spendAction || '';
   var points = event.points;
   var description = event.description;
