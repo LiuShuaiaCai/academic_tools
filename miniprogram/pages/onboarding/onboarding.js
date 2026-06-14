@@ -6,7 +6,8 @@ var DEFAULT_TOOLS = [
   { id: 'review',     name: '审稿任务', desc: '管理审稿deadline',   icon: 'glasses',       color: 'red',    category: 'core', order: 2, comingSoon: false },
   { id: 'conference', name: '学术会议', desc: '跟踪会议截稿日期',    icon: 'calendar-alt',  color: 'green',  category: 'core', order: 3, comingSoon: false },
   { id: 'archive',    name: '资料归档', desc: '统一管理附件文件',    icon: 'folder-open',   color: 'orange', category: 'core', order: 4, comingSoon: false },
-  { id: 'citation',   name: '文献引用', desc: 'GB/T 7714、APA格式化', icon: 'quote-right',  color: 'purple', category: 'ext',  order: 5, comingSoon: true  },
+  { id: 'specialIssue', name: '特刊策划', desc: 'AI辅助策划特刊选题方案', icon: 'lightbulb', color: 'purple', category: 'core', order: 5, comingSoon: false },
+  { id: 'citation',   name: '文献引用', desc: 'GB/T 7714、APA格式化', icon: 'quote-right',  color: 'purple', category: 'ext',  order: 6, comingSoon: true  },
   { id: 'journal',    name: '期刊预警', desc: '预警期刊、假会议检测', icon: 'exclamation-triangle', color: 'red', category: 'ext', order: 6, comingSoon: true },
   { id: 'achievement',name: '成果汇总', desc: '自动汇总论文、导出CV', icon: 'trophy',        color: 'orange', category: 'ext',  order: 7, comingSoon: true  },
   { id: 'note',       name: '学术笔记', desc: '文献阅读笔记管理',    icon: 'sticky-note',   color: 'green',  category: 'ext',  order: 8, comingSoon: true  }
@@ -15,7 +16,14 @@ var DEFAULT_TOOLS = [
 // 按原型定义的角色工具配置
 var ROLE_CONFIG = {
   researcher: ['submission', 'review', 'conference', 'archive'],
-  editor: ['conference', 'archive']
+  editor: ['specialIssue', 'conference', 'archive']
+};
+
+// 图标名称到 emoji 的映射
+var ICON_EMOJI_MAP = {
+  'paper-plane': '📄', 'glasses': '👓', 'calendar-alt': '📅',
+  'folder-open': '📁', 'lightbulb': '💡', 'quote-right': '📝',
+  'exclamation-triangle': '⚠️', 'trophy': '🏆', 'sticky-note': '📌'
 };
 
 Page({
@@ -23,8 +31,8 @@ Page({
     step: 1,
     selectedRole: '',
     roleOptions: [
-      { id: 'researcher', name: '科研人员', desc: '以投稿论文、参加学术会议为主', icon: '🎓', color: 'blue' },
-      { id: 'editor', name: '学术编辑', desc: '统筹稿件、管理会议', icon: '💼', color: 'orange' }
+      { id: 'researcher', name: '科研人员', desc: '以投稿、审稿论文，参加学术会议为主', icon: '🎓', color: 'blue' },
+      { id: 'editor', name: '学术编辑', desc: '以统筹稿件、策划特刊为主', icon: '💼', color: 'orange' }
     ],
     enabledTools: [],
     disabledTools: []
@@ -64,7 +72,7 @@ Page({
         id: tool.id,
         name: tool.name,
         desc: tool.desc,
-        icon: tool.icon,
+        iconEmoji: ICON_EMOJI_MAP[tool.icon] || '🔧',
         color: tool.color,
         category: tool.category,
         comingSoon: tool.comingSoon
@@ -93,10 +101,19 @@ Page({
     for (var i = 0; i < DEFAULT_TOOLS.length; i++) {
       var t = DEFAULT_TOOLS[i];
       if (t.comingSoon) continue;  // 未上线工具不展示
+      var toolItem = {
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        iconEmoji: ICON_EMOJI_MAP[t.icon] || '🔧',
+        color: t.color,
+        category: t.category,
+        comingSoon: t.comingSoon
+      };
       if (roleEnabled.indexOf(t.id) !== -1) {
-        enabledTools.push(t);
+        enabledTools.push(toolItem);
       } else {
-        disabledTools.push(t);
+        disabledTools.push(toolItem);
       }
     }
     this.setData({ step: 2, enabledTools: enabledTools, disabledTools: disabledTools });
@@ -109,8 +126,13 @@ Page({
   skipOnboarding: function() {
     var coreTools = [];
     for (var i = 0; i < DEFAULT_TOOLS.length; i++) {
-      if (DEFAULT_TOOLS[i].category === 'core') {
-        coreTools.push(DEFAULT_TOOLS[i]);
+      var t = DEFAULT_TOOLS[i];
+      if (t.category === 'core' && !t.comingSoon) {
+        coreTools.push({
+          id: t.id, name: t.name, desc: t.desc,
+          iconEmoji: ICON_EMOJI_MAP[t.icon] || '🔧',
+          color: t.color, category: t.category, comingSoon: t.comingSoon
+        });
       }
     }
     this.setData({
