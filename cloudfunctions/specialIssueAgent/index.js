@@ -325,7 +325,7 @@ function validateSourceRefs(json, sourcePapers, sourceAuthors) {
 
 function getProviderQueue(options) {
   options = options || {};
-  var raw = options.provider || process.env.SPECIAL_ISSUE_AI_PROVIDER || 'deepseek,kimi';
+  var raw = options.provider || process.env.SPECIAL_ISSUE_AI_PROVIDER || 'kimi,deepseek';
   if (Array.isArray(raw)) return raw;
   return String(raw).split(',').map(function(p) { return p.trim(); }).filter(Boolean);
 }

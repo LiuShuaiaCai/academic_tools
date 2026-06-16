@@ -1,6 +1,10 @@
 /* pages/specialIssue/specialIssue.wxss V5 */
 
-/* 主题色由 JS 动态注入 CSS 变量到根 view，此处不硬编码 */
+/* 主题色 CSS 变量（页面根节点生效） */
+page {
+  --primary-color: #2D7FF9;
+  --primary-dark: #1A5EC4;
+}
 
 /* ========== 基础布局 ========== */
 .page {
