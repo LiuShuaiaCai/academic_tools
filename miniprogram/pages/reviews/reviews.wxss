@@ -114,7 +114,7 @@ page { background: #F6F6F6; }
 .card-link-text { vertical-align: middle; }
 
 .card-footer { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 24rpx; border-top: 1rpx solid #F3F4F6; }
-.footer-btn { font-size: 24rpx; color: #2563eb; padding: 8rpx 16rpx 8rpx 0; }
+.footer-btn { font-size: 24rpx; color: var(--primary-color, #2563eb); padding: 8rpx 16rpx 8rpx 0; }
 .footer-del { font-size: 24rpx; color: #EF4444; padding: 8rpx 16rpx; }
 
 /* ========== 空状态 ========== */
@@ -153,9 +153,9 @@ page { background: #F6F6F6; }
 .fab {
   position: fixed; right: 40rpx; bottom: 160rpx;
   width: 96rpx; height: 96rpx; border-radius: 50%;
-  background: #2563eb; color: #fff; font-size: 60rpx;
+  background: var(--primary-color, #2563eb); color: #fff; font-size: 60rpx;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(37,99,235,0.4); z-index: 100;
+  box-shadow: 0 8rpx 24rpx var(--primary-shadow, rgba(37,99,235,0.4)); z-index: 100;
 }
 
 .doNothing {}

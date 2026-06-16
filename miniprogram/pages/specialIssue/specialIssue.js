@@ -1,6 +1,7 @@
 // pages/specialIssue/specialIssue.js
 // V5: 列表页 - 搜索框 + 创建按钮 + 任务列表
 var creditsUtil = require('../../utils/credits.js');
+var theme = require('../../utils/theme.js');
 
 Page({
   data: {
@@ -27,13 +28,24 @@ Page({
     selectedTaskId: '',
 
     // 积分
-    userCredits: 0
+    userCredits: 0,
+
+    // 主题色（由 loadToolTheme 从 DB 加载，fallback=blue）
+    theme: {}
   },
 
   onLoad: function() {
+    this.loadToolTheme();
     this.loadCredits();
     this.loadTaskList(false);
     this.startListPolling();
+  },
+
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('specialIssue').then(function(t) {
+      that.setData({ theme: t });
+    });
   },
 
   onShow: function() {

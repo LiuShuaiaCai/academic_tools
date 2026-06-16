@@ -26,12 +26,9 @@ Page({
     var that = this;
     that.setData({ loading: true });
 
-    // 通过云函数获取工具定义
-    wx.cloud.callFunction({
-      name: 'academicAPI',
-      data: { action: 'getAllTools' }
-    }).then(function(res) {
-      var toolDefs = res.result;
+    // 通过缓存获取工具定义
+    var toolCache = require('../../utils/toolCache.js');
+    toolCache.getAllTools().then(function(toolDefs) {
       if (!toolDefs || toolDefs.length === 0) {
         that.setData({ coreTools: [], extTools: [], loading: false });
         return null;

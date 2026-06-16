@@ -12,6 +12,8 @@ const _ = db.command;
 
 var TASK_COLLECTION = 'special_issue_tasks';
 var TEMPLATE_COLLECTION = 'special_issue_templates';
+var DIRECTION_COLLECTION = 'special_issue_directions';
+var SCHEME_COLLECTION = 'special_issue_schemes';
 
 // ==================== Phase 1 系统提示词（只生成方向） ====================
 var PHASE1_SYSTEM_PROMPT = '# 角色\n' +
@@ -253,12 +255,18 @@ function simplifyAuthorsWithYearly(rawAuthors) {
   if (!Array.isArray(rawAuthors)) return [];
   return rawAuthors.map(function(a) {
     var cby = a.counts_by_year || [];
-    var years = [], worksByYear = [], citationsByYear = [];
-    for (var i = 0; i < cby.length; i++) {
-      years.push(cby[i].year);
-      worksByYear.push(cby[i].works_count || 0);
-      citationsByYear.push(cby[i].cited_by_count || 0);
-    }
+    var affs = a.affiliations || [];
+    var affList = affs.map(function(af) {
+      var inst = af.institution || {};
+      return {
+        id: inst.id ? inst.id.split('/').pop() : '',
+        ror: inst.ror || '',
+        displayName: inst.display_name || '',
+        countryCode: inst.country_code || '',
+        type: inst.type || '',
+        years: af.years || []
+      };
+    });
     return {
       id: (a.id || '').split('/').pop(),
       n: a.display_name || '',
@@ -268,8 +276,8 @@ function simplifyAuthorsWithYearly(rawAuthors) {
       h: (a.summary_stats && a.summary_stats.h_index) || 0,
       i10: (a.summary_stats && a.summary_stats.i10_index) || 0,
       top: (a.topics || []).slice(0, 3).map(function(t) { return t.display_name || ''; }),
-      worksByYear: { years: years, counts: worksByYear },
-      citationsByYear: { years: years, counts: citationsByYear }
+      countsByYear: cby,
+      affiliations: affList
     };
   });
 }
@@ -331,7 +339,7 @@ function getModelForProvider(provider, options) {
 
 async function callLLM(messages, options) {
   options = options || {};
-  var timeout = options.timeout || 50000;
+  var timeout = options.timeout || 55000;
   var maxTokens = options.maxTokens || 8192;
   var providers = getProviderQueue(options);
   var errors = [];
@@ -356,7 +364,7 @@ async function callLLM(messages, options) {
       var res = await cloud.callFunction({
         name: 'aiChat',
         data: data,
-        timeout: timeout + 10000
+        timeout: timeout + 15000
       });
       var result = res.result || {};
       if (result.success && result.content) {
@@ -624,6 +632,40 @@ async function updateStepStatus(taskId, steps, stepKey, status) {
   } catch (e) { /* 忽略 */ }
 }
 
+// ==================== Scheme 进度更新辅助 ====================
+async function updateSchemeProgress(schemeId, progress, taskId) {
+  try {
+    var data = { progress: progress, updatedAt: Date.now() };
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({ data: data });
+    if (taskId) {
+      await db.collection(TASK_COLLECTION).doc(taskId).update({
+        data: { schemeProgress: progress, updatedAt: Date.now() }
+      });
+    }
+  } catch (e) { /* 忽略 */ }
+}
+
+async function updateSchemeStepStatus(schemeId, steps, stepKey, status, taskId) {
+  for (var i = 0; i < steps.length; i++) {
+    if (steps[i].key === stepKey) {
+      steps[i].status = status;
+      if (status === 'running') steps[i].startedAt = Date.now();
+      if (status === 'completed') steps[i].completedAt = Date.now();
+      break;
+    }
+  }
+  try {
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
+      data: { steps: steps, updatedAt: Date.now() }
+    });
+    if (taskId) {
+      await db.collection(TASK_COLLECTION).doc(taskId).update({
+        data: { schemeSteps: steps, updatedAt: Date.now() }
+      });
+    }
+  } catch (e) { /* 忽略 */ }
+}
+
 async function deductCredits(taskId, points, openid) {
   try {
     var res = await cloud.callFunction({
@@ -856,16 +898,44 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
     }
   });
 
+  // ===== 同时写入 special_issue_directions（拆分存储，不被覆盖） =====
+  for (var dp = 0; dp < (resultData.plans || []).length; dp++) {
+    var dPlan = resultData.plans[dp];
+    try {
+      var dirId = taskId + '_' + dPlan.key;
+      await db.collection(DIRECTION_COLLECTION).doc(dirId).set({
+        data: {
+          taskId: taskId,
+          _openid: openid,
+          key: dPlan.key,
+          zh: dPlan.zh || {},
+          en: dPlan.en || {},
+          searchKeywords: dPlan.searchKeywords || [],
+          topicHeat: dPlan.topicHeat || 0,
+          avgCitations: dPlan.avgCitations || 0,
+          avgFWCI: dPlan.avgFWCI || 0,
+          topJournalRatio: dPlan.topJournalRatio || 0,
+          hotRecentAvg: dPlan.hotRecentAvg || 0,
+          paperCount: dPlan.paperCount || 0,
+          sourceArticleIds: dPlan.sourceArticleIds || [],
+          createdAt: completedAt
+        }
+      });
+    } catch (e) {
+      console.error('[Phase1] 写入方向失败, key:', dPlan.key, e.message);
+    }
+  }
+
 }
 
 // ==================== doPhase2Pipeline（Phase 2：方案生成） ====================
 
-async function doPhase2Pipeline(taskId, keyword, constraints, selectedDirection, openid) {
+async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selectedDirection, openid) {
   var steps = initPhase2Steps();
 
   // ===== Step 1: 按方向关键词重新搜索论文（20篇，按被引量降序）=====
-  await updateTaskProgress(taskId, 'phase2_searching');
-  await updateStepStatus(taskId, steps, 'search_papers_2', 'running');
+  await updateSchemeProgress(schemeId, 'phase2_searching', taskId);
+  await updateSchemeStepStatus(schemeId, steps, 'search_papers_2', 'running', taskId);
 
   // 使用方向的 searchKeywords 或 zh.keywords 作为搜索词
   var searchTerms = selectedDirection.searchKeywords || (selectedDirection.en && selectedDirection.en.keywords) || (selectedDirection.zh && selectedDirection.zh.keywords) || [];
@@ -876,7 +946,7 @@ async function doPhase2Pipeline(taskId, keyword, constraints, selectedDirection,
   var worksRes = await callOpenAlex('searchWorks', { query: searchQuery, fromYear: recentYear, perPage: 20, sort: 'relevance_score:desc', select: selectFields2 });
 
   if (!worksRes.success) {
-    await db.collection(TASK_COLLECTION).doc(taskId).update({
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
       data: { status: 'failed', error: '执行失败，请稍后重试', searchUrl: worksRes.url || '', steps: steps, updatedAt: Date.now() }
     });
     return;
@@ -885,15 +955,16 @@ async function doPhase2Pipeline(taskId, keyword, constraints, selectedDirection,
   var rawPapers = (worksRes.data && worksRes.data.results) || [];
   var sourcePapers = simplifyWorks(rawPapers);
   var totalPapers = (worksRes.data && worksRes.data.meta && worksRes.data.meta.count) || rawPapers.length;
-  await updateStepStatus(taskId, steps, 'search_papers_2', 'completed');
-  // 保存搜索链接到任务文档
-  await db.collection(TASK_COLLECTION).doc(taskId).update({
-    data: { searchUrl: worksRes.url || '', updatedAt: Date.now() }
-  }).catch(function() {});
+  await updateSchemeStepStatus(schemeId, steps, 'search_papers_2', 'completed', taskId);
+  try {
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
+      data: { searchUrl: worksRes.url || '', updatedAt: Date.now() }
+    });
+  } catch (e) { /* ignore */ }
 
   // ===== Step 2: 提取作者并查询详情 =====
-  await updateTaskProgress(taskId, 'phase2_fetching_authors');
-  await updateStepStatus(taskId, steps, 'fetch_authors_2', 'running');
+  await updateSchemeProgress(schemeId, 'phase2_fetching_authors', taskId);
+  await updateSchemeStepStatus(schemeId, steps, 'fetch_authors_2', 'running', taskId);
 
   var authorIdSet = {};
   for (var i = 0; i < rawPapers.length; i++) {
@@ -918,11 +989,11 @@ async function doPhase2Pipeline(taskId, keyword, constraints, selectedDirection,
 
   sourceAuthors.sort(function(a, b) { return b.h - a.h; });
   var llmAuthors = sourceAuthors.slice(0, 20);
-  await updateStepStatus(taskId, steps, 'fetch_authors_2', 'completed');
+  await updateSchemeStepStatus(schemeId, steps, 'fetch_authors_2', 'completed', taskId);
 
   // ===== Step 3: AI 生成完整方案 =====
-  await updateTaskProgress(taskId, 'phase2_generating');
-  await updateStepStatus(taskId, steps, 'generate_plan', 'running');
+  await updateSchemeProgress(schemeId, 'phase2_generating', taskId);
+  await updateSchemeStepStatus(schemeId, steps, 'generate_plan', 'running', taskId);
 
   // 获取真实期刊模版（关键词匹配）
   var directionKeywords = (selectedDirection.zh && selectedDirection.zh.keywords) || [];
@@ -950,19 +1021,19 @@ async function doPhase2Pipeline(taskId, keyword, constraints, selectedDirection,
   } catch (e) {
     console.error('[Phase2] LLM 调用失败:', e.message);
     steps = markRunningStepFailed(steps);
-    await db.collection(TASK_COLLECTION).doc(taskId).update({
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
       data: { status: 'failed', error: 'AI 方案生成失败: ' + (e.message || '未知错误'), steps: steps, updatedAt: Date.now() }
     });
     return;
   }
-  await updateStepStatus(taskId, steps, 'generate_plan', 'completed');
+  await updateSchemeStepStatus(schemeId, steps, 'generate_plan', 'completed', taskId);
 
   // ===== Step 4: 解析结果 =====
-  await updateStepStatus(taskId, steps, 'parse_result_2', 'running');
+  await updateSchemeStepStatus(schemeId, steps, 'parse_result_2', 'running', taskId);
 
   var json = extractJSON(llm.content);
   if (!json) {
-    await db.collection(TASK_COLLECTION).doc(taskId).update({
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
       data: { status: 'failed', error: 'Phase 2 AI 返回数据解析失败', steps: steps, updatedAt: Date.now() }
     });
     return;
@@ -974,33 +1045,69 @@ async function doPhase2Pipeline(taskId, keyword, constraints, selectedDirection,
   // 确保 plan 存在
   var plan = json.plan || (json.plans && json.plans[0]);
   if (!plan) {
-    await db.collection(TASK_COLLECTION).doc(taskId).update({
+    await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
       data: { status: 'failed', error: 'Phase 2 AI 返回数据缺少 plan 字段', steps: steps, updatedAt: Date.now() }
     });
     return;
   }
 
-  // 补充 phase1 已有的 plans 数据
+  // 用 sourceEditorIds 关联 sourceAuthors，补全 guestEditors 的完整字段
+  var editorIdsMap = {};
+  if (Array.isArray(plan.sourceEditorIds)) {
+    for (var ei = 0; ei < plan.sourceEditorIds.length; ei++) {
+      editorIdsMap[plan.sourceEditorIds[ei]] = true;
+    }
+  }
+  var authorById = {};
+  for (var ai = 0; ai < sourceAuthors.length; ai++) {
+    authorById[sourceAuthors[ai].id] = sourceAuthors[ai];
+  }
+  if (Array.isArray(plan.guestEditors) && Array.isArray(plan.sourceEditorIds)) {
+    for (var gi = 0; gi < plan.guestEditors.length; gi++) {
+      var eid = plan.sourceEditorIds[gi];
+      var fullAuthor = authorById[eid];
+      if (fullAuthor) {
+        Object.assign(plan.guestEditors[gi], {
+          id: fullAuthor.id,
+          worksCount: fullAuthor.wc,
+          citedByCount: fullAuthor.cc,
+          hIndex: fullAuthor.h,
+          i10Index: fullAuthor.i10,
+          topics: fullAuthor.top,
+          countsByYear: fullAuthor.countsByYear,
+          affiliations: fullAuthor.affiliations
+        });
+      }
+    }
+  }
+
+  // 补充 phase1 已有的 plans 数据（从 task 查）
   var currentDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
   var phase1Plans = (currentDoc.data && currentDoc.data.result && currentDoc.data.result.plans) || [];
 
-  await updateStepStatus(taskId, steps, 'parse_result_2', 'completed');
+  await updateSchemeStepStatus(schemeId, steps, 'parse_result_2', 'completed', taskId);
 
-  // ===== 写入最终结果 =====
+  // ===== 写入 scheme 文档（不再覆盖 task） =====
   var completedAt = Date.now();
-  await db.collection(TASK_COLLECTION).doc(taskId).update({
+  await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
     data: {
       status: 'completed',
-      result: { plan: plan, plans: phase1Plans },
+      plan: plan,
+      phase1Plans: phase1Plans,
       sourcePapers: sourcePapers,
       sourceAuthors: sourceAuthors,
       usage: llm.usage,
-      phase2Usage: llm.usage,
       progress: 'completed',
       steps: steps,
-      selectedPlanKey: selectedDirection.key,
-      selectedDirectionAt: Date.now(),
       completedAt: completedAt,
+      updatedAt: completedAt
+    }
+  });
+
+  // ===== 更新 task 状态（标记有 completed scheme） =====
+  await db.collection(TASK_COLLECTION).doc(taskId).update({
+    data: {
+      schemeProgress: 'completed',
       updatedAt: completedAt
     }
   });
@@ -1102,13 +1209,12 @@ exports.main = async function(event, context) {
           result: d.result,
           error: d.error,
           steps: d.steps,
-          sourcePapers: d.sourcePapers,
-          sourceAuthors: d.sourceAuthors,
-          usage: d.usage,
           creditsDeducted: d.creditsDeducted,
           regenerateCount: d.regenerateCount || 0,
           regenerateHistory: d.regenerateHistory || [],
           selectedPlanKey: d.selectedPlanKey || '',
+          schemeProgress: d.schemeProgress || '',
+          activeSchemeId: d.activeSchemeId || '',
           completedAt: d.completedAt,
           createdAt: d.createdAt,
           constraints: d.constraints
@@ -1158,11 +1264,11 @@ exports.main = async function(event, context) {
           completedAt: item.completedAt,
           creditsDeducted: item.creditsDeducted,
           regenerateCount: item.regenerateCount || 0,
-          firstTitle: item.result && item.result.plan
-            ? ((item.result.plan.zh && item.result.plan.zh.title) || (item.result.plan.en && item.result.plan.en.title) || '')
-            : (item.result && item.result.plans && item.result.plans[0])
-              ? ((item.result.plans[0].zh && item.result.plans[0].zh.title) || (item.result.plans[0].en && item.result.plans[0].en.title) || '')
-              : '',
+          schemeProgress: item.schemeProgress || '',
+          activeSchemeId: item.activeSchemeId || '',
+          firstTitle: item.result && item.result.plans && item.result.plans[0]
+            ? ((item.result.plans[0].zh && item.result.plans[0].zh.title) || (item.result.plans[0].en && item.result.plans[0].en.title) || '')
+            : '',
           error: item.error || ''
         };
       });
@@ -1348,8 +1454,8 @@ exports.main = async function(event, context) {
     return { success: true, action: 'regenerate_done' };
   }
 
-  // ========== action: selectDirection（用户选择方向 → 触发 Phase 2） ==========
-  if (event.action === 'selectDirection') {
+  // ========== action: startScheme（用户选择方向 → 创建方案文档并异步执行） ==========
+  if (event.action === 'startScheme') {
     var selectedKey = event.directionKey;
     if (!taskId) return { success: false, error: '缺少 taskId' };
     if (!selectedKey) return { success: false, error: '缺少 directionKey' };
@@ -1357,13 +1463,12 @@ exports.main = async function(event, context) {
     try {
       var doc = await db.collection(TASK_COLLECTION).doc(taskId).get();
       if (!doc.data) return { success: false, error: '任务不存在' };
-      if (doc.data.status === 'processing') return { success: false, error: '任务正在执行中' };
 
       var result = doc.data.result || {};
       var plans = result.plans || [];
       if (plans.length === 0) return { success: false, error: '暂无可用方向' };
 
-      // 找到选中的 plan
+      // 找到选中的 direction
       var selectedPlan = null;
       for (var i = 0; i < plans.length; i++) {
         if (plans[i].key === selectedKey) {
@@ -1373,37 +1478,72 @@ exports.main = async function(event, context) {
       }
       if (!selectedPlan) return { success: false, error: '方向不存在: ' + selectedKey };
 
-      // 标记任务进入 Phase 2 处理中
+      // 检查是否已有 generating 状态的 scheme
+      var existingSchemes = await db.collection(SCHEME_COLLECTION)
+        .where({ taskId: taskId, directionKey: selectedKey, status: 'generating' })
+        .get();
+      if (existingSchemes.data && existingSchemes.data.length > 0) {
+        return { success: true, schemeId: existingSchemes.data[0]._id, message: '已有进行中的方案' };
+      }
+
+      // 创建 scheme 文档
+      var schemeId = taskId + '_s_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+      var schemeSteps = initPhase2Steps();
+      await db.collection(SCHEME_COLLECTION).add({
+        data: {
+          _id: schemeId,
+          taskId: taskId,
+          directionKey: selectedKey,
+          _openid: openid,
+          keyword: doc.data.keyword || '',
+          constraints: doc.data.constraints || '',
+          status: 'generating',
+          progress: 'phase2_searching',
+          steps: schemeSteps,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+      });
+
+      // 更新 task 记录选中的方向和正在生成的 scheme
       await db.collection(TASK_COLLECTION).doc(taskId).update({
         data: {
-          status: 'processing',
-          progress: 'phase2_searching',
-          steps: initPhase2Steps(),
           selectedPlanKey: selectedKey,
+          schemeProgress: 'generating',
+          activeSchemeId: schemeId,
           updatedAt: Date.now()
         }
       });
 
       // 异步触发 Phase 2
       context.callbackWaitsForEmptyEventLoop = false;
-      invokeWorker('selectDirection', {
+      invokeWorker('startScheme', {
         action: 'runPhase2',
         taskId: taskId,
+        schemeId: schemeId,
         directionKey: selectedKey
       });
 
-      return { success: true, taskId: taskId, message: 'Phase 2 已启动' };
+      return { success: true, taskId: taskId, schemeId: schemeId, message: '方案生成已启动' };
     } catch (e) {
-      console.error('[selectDirection] 异常:', e.message);
-      return { success: false, error: '选择方向失败' };
+      console.error('[startScheme] 异常:', e.message);
+      return { success: false, error: '启动方案生成失败' };
     }
+  }
+
+  // 保留旧 action 兼容（selectDirection → 走 startScheme 逻辑）
+  if (event.action === 'selectDirection') {
+    event.action = 'startScheme';
+    return exports.main(event, context);
   }
 
   // ========== action: runPhase2（Phase 2 Worker） ==========
   if (event.action === 'runPhase2') {
     var dirKey = event.directionKey;
+    var schemeId = event.schemeId;
     if (!taskId) return { success: false, error: '缺少 taskId' };
     if (!dirKey) return { success: false, error: '缺少 directionKey' };
+    if (!schemeId) return { success: false, error: '缺少 schemeId' };
 
     try {
       var phase2Doc = await db.collection(TASK_COLLECTION).doc(taskId).get();
@@ -1421,16 +1561,158 @@ exports.main = async function(event, context) {
       var phase2Keyword = phase2Doc.data.keyword || '';
       var phase2Constraints = phase2Doc.data.constraints || '';
 
-      await doPhase2Pipeline(taskId, phase2Keyword, phase2Constraints, selectedDir, phase2TaskOpenid);
+      await doPhase2Pipeline(taskId, schemeId, phase2Keyword, phase2Constraints, selectedDir, phase2TaskOpenid);
     } catch (err) {
       console.error('[runPhase2] 异常:', err.message || err);
       try {
-        await db.collection(TASK_COLLECTION).doc(taskId).update({
+        await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
           data: { status: 'failed', error: '执行失败，请稍后重试', updatedAt: Date.now() }
         });
       } catch (e) { /* ignore */ }
     }
     return { success: true, action: 'phase2_done' };
+  }
+
+  // ========== action: getTrendDetail（查询趋势分析详情） ==========
+  if (event.action === 'getTrendDetail') {
+    if (!taskId) return { success: false, error: '缺少 taskId' };
+    try {
+      var trendDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
+      if (!trendDoc.data) return { success: false, error: '任务不存在' };
+
+      var td = trendDoc.data;
+      // 从 directions 集合读取（优先），fallback 到 task.result.plans
+      var dirsRes = await db.collection(DIRECTION_COLLECTION)
+        .where({ taskId: taskId })
+        .get();
+      var directions = (dirsRes.data && dirsRes.data.length > 0)
+        ? dirsRes.data
+        : ((td.result && td.result.plans) || []).map(function(p, idx) {
+            return { key: p.key, zh: p.zh, en: p.en, searchKeywords: p.searchKeywords,
+              topicHeat: p.topicHeat, sourceArticleIds: p.sourceArticleIds };
+          });
+
+      // 查询方案数量
+      var schemeCountRes = await db.collection(SCHEME_COLLECTION)
+        .where({ taskId: taskId, status: 'completed' }).count();
+      var generatingRes = await db.collection(SCHEME_COLLECTION)
+        .where({ taskId: taskId, status: 'generating' }).get();
+
+      // 为每个方向查询其下的方案
+      var schemesByDir = {};
+      var allSchemes = await db.collection(SCHEME_COLLECTION)
+        .where({ taskId: taskId })
+        .get();
+      for (var si = 0; si < (allSchemes.data || []).length; si++) {
+        var s = allSchemes.data[si];
+        var dk = s.directionKey;
+        if (!schemesByDir[dk]) schemesByDir[dk] = [];
+        schemesByDir[dk].push({
+          schemeId: s._id,
+          status: s.status,
+          title: (s.plan && s.plan.zh && s.plan.zh.title) || '',
+          completedAt: s.completedAt,
+          error: s.error || ''
+        });
+      }
+
+      return {
+        success: true,
+        data: {
+          taskId: taskId,
+          keyword: td.keyword,
+          constraints: td.constraints || '',
+          status: td.status,
+          directions: directions,
+          schemesByDir: schemesByDir,
+          schemeCount: schemeCountRes.total || 0,
+          generatingSchemeId: (generatingRes.data && generatingRes.data[0] && generatingRes.data[0]._id) || ''
+        }
+      };
+    } catch (e) {
+      return { success: false, error: '查询失败' };
+    }
+  }
+
+  // ========== action: listSchemes（查询某任务所有方案） ==========
+  if (event.action === 'listSchemes') {
+    if (!taskId) return { success: false, error: '缺少 taskId' };
+    try {
+      var schemesRes = await db.collection(SCHEME_COLLECTION)
+        .where({ taskId: taskId })
+        .orderBy('createdAt', 'desc')
+        .get();
+      var schemeList = (schemesRes.data || []).map(function(s) {
+        return {
+          schemeId: s._id,
+          directionKey: s.directionKey,
+          status: s.status,
+          progress: s.progress,
+          steps: s.steps,
+          title: (s.plan && s.plan.zh && s.plan.zh.title) || '',
+          topicHeat: (s.plan && s.plan.topicHeat) || 0,
+          completedAt: s.completedAt,
+          createdAt: s.createdAt,
+          error: s.error || ''
+        };
+      });
+      return { success: true, schemes: schemeList };
+    } catch (e) {
+      return { success: false, error: '查询方案列表失败' };
+    }
+  }
+
+  // ========== action: getSchemeStatus（轮询方案进度） ==========
+  if (event.action === 'getSchemeStatus') {
+    var schemeId = event.schemeId;
+    if (!schemeId) return { success: false, error: '缺少 schemeId' };
+    try {
+      var sDoc = await db.collection(SCHEME_COLLECTION).doc(schemeId).get();
+      if (!sDoc.data) return { success: false, error: '方案不存在' };
+      return {
+        success: true,
+        data: {
+          schemeId: schemeId,
+          status: sDoc.data.status,
+          progress: sDoc.data.progress,
+          steps: sDoc.data.steps,
+          error: sDoc.data.error || ''
+        }
+      };
+    } catch (e) {
+      return { success: false, error: '查询失败' };
+    }
+  }
+
+  // ========== action: getSchemeDetail（查询方案完整详情） ==========
+  if (event.action === 'getSchemeDetail') {
+    var schemeId = event.schemeId;
+    if (!schemeId) return { success: false, error: '缺少 schemeId' };
+    try {
+      var sDoc = await db.collection(SCHEME_COLLECTION).doc(schemeId).get();
+      if (!sDoc.data) return { success: false, error: '方案不存在' };
+      var sd = sDoc.data;
+      return {
+        success: true,
+        data: {
+          schemeId: sd._id,
+          taskId: sd.taskId,
+          directionKey: sd.directionKey,
+          status: sd.status,
+          plan: sd.plan,
+          sourcePapers: sd.sourcePapers,
+          sourceAuthors: sd.sourceAuthors,
+          steps: sd.steps,
+          progress: sd.progress,
+          usage: sd.usage,
+          error: sd.error || '',
+          completedAt: sd.completedAt,
+          createdAt: sd.createdAt
+        }
+      };
+    } catch (e) {
+      return { success: false, error: '查询失败' };
+    }
   }
 
   // ========== Trigger 模式（默认） ==========

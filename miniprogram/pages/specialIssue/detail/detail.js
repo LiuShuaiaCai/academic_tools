@@ -1,6 +1,7 @@
 // pages/specialIssue/detail/detail.js
 // V5: 详情页 - 展示方案详情、来源文章、客编图表、重新生成、查看历史
 var creditsUtil = require('../../../utils/credits.js');
+var theme = require('../../../utils/theme.js');
 
 Page({
   data: {
@@ -52,13 +53,18 @@ Page({
     // 引用统计弹窗
     showCiteModal: false,
     citeModalTitle: '',
-    citeModalData: { years: [], counts: [], heights: [] }
+    citeModalData: { years: [], counts: [], heights: [] },
+
+    // 主题色（由 loadToolTheme 从 DB 加载）
+    theme: {}
   },
 
   onLoad: function(options) {
+    this.loadToolTheme();
     var taskId = options.taskId || '';
-    var keyword = options.keyword || '';
-    this.setData({ taskId: taskId, keyword: keyword });
+    var schemeId = options.schemeId || '';
+    var directionKey = options.directionKey || '';
+    this.setData({ taskId: taskId, schemeId: schemeId, directionKey: directionKey });
 
     // 检测 canvas2d 支持
     var sysInfo = wx.getSystemInfoSync();
@@ -70,13 +76,28 @@ Page({
       }
     }
 
-    this.loadTaskDetail();
+    if (schemeId) {
+      this.loadSchemeDetail();
+    } else {
+      this.loadTrendDetail();
+    }
+  },
+
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('specialIssue').then(function(t) {
+      that.setData({ theme: t });
+    });
   },
 
   onShow: function() {
-    // 如果正在轮询中，重新加载
+    // 如果正在轮询中，页面回来时刷新
     if (this._pollTimer) {
-      this.loadTaskDetail();
+      if (this.data.schemeId) {
+        this.loadSchemeDetail();
+      } else {
+        this.loadTrendDetail();
+      }
     }
   },
 
@@ -84,7 +105,228 @@ Page({
     this.stopPolling();
   },
 
-  // ---- 加载任务详情 ----
+  // ---- 加载趋势分析详情（新的 getTrendDetail 接口） ----
+  loadTrendDetail: function() {
+    var that = this;
+    wx.cloud.callFunction({
+      name: 'specialIssueAgent',
+      data: { action: 'getTrendDetail', taskId: that.data.taskId }
+    }).then(function(res) {
+      var data = res.result && res.result.data;
+      console.log('[detail] getTrendDetail返回:', JSON.stringify(data));
+      if (!data) {
+        that.setData({ loading: false, error: '任务不存在' });
+        return;
+      }
+
+      var plans = data.directions || [];
+      var schemesByDir = data.schemesByDir || {};
+
+      // 方向卡片预处理
+      for (var p = 0; p < plans.length; p++) {
+        plans[p]._topicLabel = 'Topic' + (p + 1);
+        plans[p]._avgCitationsStr = (plans[p].avgCitations || 0).toFixed(1);
+        plans[p]._avgFWCIStr = (plans[p].avgFWCI || 0).toFixed(2);
+        plans[p]._hotRecentAvgStr = (plans[p].hotRecentAvg || 0).toFixed(1);
+        plans[p]._topJournalRatioStr = ((plans[p].topJournalRatio || 0) * 100).toFixed(0) + '%';
+        var h = plans[p].topicHeat || 0;
+        if (h >= 800) plans[p]._heatColor = 'linear-gradient(135deg, #DC2626, #EF4444)';
+        else if (h >= 600) plans[p]._heatColor = 'linear-gradient(135deg, #EA580C, #F97316)';
+        else if (h >= 400) plans[p]._heatColor = 'linear-gradient(135deg, #CA8A04, #EAB308)';
+        else plans[p]._heatColor = 'linear-gradient(135deg, #2563EB, #3B82F6)';
+        // 该方向下的方案列表
+        plans[p]._schemes = schemesByDir[plans[p].key] || [];
+        // 按钮状态
+        var dirSchemes = schemesByDir[plans[p].key] || [];
+        var hasGenerating = false;
+        var hasCompleted = false;
+        var hasFailed = false;
+        var latestSchemeId = '';
+        for (var s = 0; s < dirSchemes.length; s++) {
+          if (dirSchemes[s].status === 'generating') { hasGenerating = true; latestSchemeId = dirSchemes[s].schemeId; }
+          if (dirSchemes[s].status === 'completed') { hasCompleted = true; }
+          if (dirSchemes[s].status === 'failed') { hasFailed = true; latestSchemeId = dirSchemes[s].schemeId; }
+        }
+        if (hasGenerating) {
+          plans[p]._schemeStatus = 'generating';
+          plans[p]._schemeId = latestSchemeId;
+        } else if (hasCompleted) {
+          plans[p]._schemeStatus = 'completed';
+        } else if (hasFailed) {
+          plans[p]._schemeStatus = 'failed';
+          plans[p]._schemeId = latestSchemeId;
+        } else {
+          plans[p]._schemeStatus = 'idle';
+        }
+      }
+      plans.sort(function(a, b) { return (b.topicHeat || 0) - (a.topicHeat || 0); });
+
+      var maxHeat = 1;
+      for (var p = 0; p < plans.length; p++) maxHeat = Math.max(maxHeat, plans[p].topicHeat || 0);
+      var compareHeights = plans.map(function(p) { return Math.max(Math.round((p.topicHeat || 0) / maxHeat * 100), 4); });
+
+      that.setData({
+        loading: false,
+        showDirectionPanel: true,
+        keyword: data.keyword || '',
+        plans: plans,
+        compareHeights: compareHeights,
+        schemeCount: data.schemeCount || 0,
+        generatingSchemeId: data.generatingSchemeId || '',
+        error: ''
+      });
+      wx.setNavigationBarTitle({ title: '趋势领域分析' });
+
+      // 如果有正在生成的方案，启动轮询
+      if (data.generatingSchemeId) {
+        that._pollingSchemeId = data.generatingSchemeId;
+        that.startSchemePolling();
+      }
+    }).catch(function(err) {
+      console.error('[detail] 加载趋势失败:', err);
+      that.setData({ loading: false, error: that.getDisplayError(err.message || '网络错误') });
+    });
+  },
+
+  // ---- 加载方案详情（getSchemeDetail 接口） ----
+  loadSchemeDetail: function() {
+    var that = this;
+    wx.cloud.callFunction({
+      name: 'specialIssueAgent',
+      data: { action: 'getSchemeDetail', schemeId: that.data.schemeId }
+    }).then(function(res) {
+      var data = res.result && res.result.data;
+      console.log('[detail] getSchemeDetail返回:', JSON.stringify(data));
+      if (!data) {
+        that.setData({ loading: false, error: '方案不存在' });
+        return;
+      }
+
+      if (data.status === 'generating') {
+        that._pollingSchemeId = data.schemeId;
+        that.startSchemePolling();
+        that.setData({ loading: true, progressText: '方案生成中...' });
+        return;
+      }
+
+      if (data.status === 'failed') {
+        that.setData({ loading: false, error: data.error || '生成失败' });
+        return;
+      }
+
+      var plan = data.plan || {};
+      var zh = plan.zh || {};
+      var en = plan.en || {};
+      var langData = zh.title ? zh : (en.title ? en : {});
+
+      // 筛选关联文章
+      var allPapers = data.sourcePapers || [];
+      var articleIds = plan.sourceArticleIds || [];
+      var idSet = {};
+      for (var i = 0; i < articleIds.length; i++) idSet[articleIds[i]] = true;
+      var displayPapers = articleIds.length > 0
+        ? allPapers.filter(function(p) { return idSet[p.id]; })
+        : allPapers;
+
+      that.setData({
+        loading: false,
+        hasResult: true,
+        showDirectionPanel: false,
+        planTitle: langData.title || '',
+        planAbstract: langData.abstract || '',
+        planKeywords: langData.keywords || [],
+        planGuestEditors: plan.guestEditors || [],
+        planTopicHeat: plan.topicHeat || 0,
+        planSourceArticleIds: plan.sourceArticleIds || [],
+        planSourceEditorIds: plan.sourceEditorIds || [],
+        sourcePapers: allPapers,
+        displayPapers: displayPapers,
+        sourceAuthors: data.sourceAuthors || [],
+        keyword: data.keyword || '',
+        error: ''
+      });
+      wx.setNavigationBarTitle({ title: '方案详情' });
+      that.buildEditorCharts();
+    }).catch(function(err) {
+      console.error('[detail] 加载方案失败:', err);
+      that.setData({ loading: false, error: that.getDisplayError(err.message || '网络错误') });
+    });
+  },
+
+  // ---- 轮询方案进度 ----
+  startSchemePolling: function() {
+    var that = this;
+    that.stopPolling();
+    that._pollTimer = setInterval(function() {
+      that.pollSchemeStatus();
+    }, 3000);
+  },
+
+  pollSchemeStatus: function() {
+    var that = this;
+    var schemeId = that._pollingSchemeId;
+    if (!schemeId) return;
+    wx.cloud.callFunction({
+      name: 'specialIssueAgent',
+      data: { action: 'getSchemeStatus', schemeId: schemeId }
+    }).then(function(res) {
+      var data = res.result && res.result.data;
+      if (!data) return;
+      if (data.status === 'completed') {
+        that.stopPolling();
+        that._pollingSchemeId = null;
+        // 重新加载趋势详情或方案详情
+        if (that.data.schemeId) {
+          that.loadSchemeDetail();
+        } else {
+          that.loadTrendDetail();
+        }
+      } else if (data.status === 'failed') {
+        that.stopPolling();
+        that._pollingSchemeId = null;
+        that.loadTrendDetail();
+      }
+    }).catch(function() {});
+  },
+
+  // ---- 生成方案（startScheme） ----
+  onGenerateScheme: function(e) {
+    var that = this;
+    var directionKey = e.currentTarget.dataset.key;
+    if (!directionKey) return;
+
+    // 防抖：正在生成中不允许重复点击
+    if (that.data.selectingDirection) return;
+    that.setData({ selectingDirection: true });
+    wx.cloud.callFunction({
+      name: 'specialIssueAgent',
+      data: { action: 'startScheme', taskId: that.data.taskId, directionKey: directionKey }
+    }).then(function(res) {
+      var result = res.result || {};
+      if (result.success && result.schemeId) {
+        wx.showToast({ title: '方案生成已启动', icon: 'none' });
+        that._pollingSchemeId = result.schemeId;
+        that.startSchemePolling();
+        // 立即刷新方向状态
+        that.loadTrendDetail();
+      } else {
+        wx.showToast({ title: result.error || '启动失败', icon: 'none' });
+        that.setData({ selectingDirection: false });
+      }
+    }).catch(function() {
+      that.setData({ selectingDirection: false });
+      wx.showToast({ title: '网络错误', icon: 'none' });
+    });
+  },
+
+  // ---- 查看方案 ----
+  onViewScheme: function(e) {
+    var schemeId = e.currentTarget.dataset.schemeId;
+    if (!schemeId) return;
+    wx.navigateTo({ url: '../detail/detail?schemeId=' + schemeId });
+  },
+
+  // ---- 加载任务详情 (旧版，保留兼容) ----
 
   loadTaskDetail: function() {
     var that = this;
@@ -403,21 +645,23 @@ Page({
           return {
             name: author.n || editor.name,
             institution: author.inst || editor.institution,
-            hIndex: author.h || 0,
-            worksCount: author.wc || 0,
-            citedByCount: author.cc || 0,
-            worksByYear: author.worksByYear || { years: [], counts: [] },
-            citationsByYear: author.citationsByYear || { years: [], counts: [] },
-            top: author.top || []
+            hIndex: author.h || editor.hIndex || 0,
+            worksCount: author.wc || editor.worksCount || 0,
+            citedByCount: author.cc || editor.citedByCount || 0,
+            countsByYear: author.countsByYear || editor.countsByYear || [],
+            affiliations: author.affiliations || editor.affiliations || [],
+            top: author.top || editor.topics || []
           };
         }
         return {
           name: editor.name,
           institution: editor.institution,
-          hIndex: 0, worksCount: 0, citedByCount: 0,
-          worksByYear: { years: [], counts: [] },
-          citationsByYear: { years: [], counts: [] },
-          top: []
+          hIndex: editor.hIndex || 0,
+          worksCount: editor.worksCount || 0,
+          citedByCount: editor.citedByCount || 0,
+          countsByYear: editor.countsByYear || [],
+          affiliations: editor.affiliations || [],
+          top: editor.topics || []
         };
       }).filter(function(e) { return e.name; });
     }
@@ -429,21 +673,23 @@ Page({
         return {
           name: author.n || editor.name,
           institution: author.inst || editor.institution,
-          hIndex: author.h || 0,
-          worksCount: author.wc || 0,
-          citedByCount: author.cc || 0,
-          worksByYear: author.worksByYear || { years: [], counts: [] },
-          citationsByYear: author.citationsByYear || { years: [], counts: [] },
-          top: author.top || []
+          hIndex: author.h || editor.hIndex || 0,
+          worksCount: author.wc || editor.worksCount || 0,
+          citedByCount: author.cc || editor.citedByCount || 0,
+          countsByYear: author.countsByYear || editor.countsByYear || [],
+          affiliations: author.affiliations || editor.affiliations || [],
+          top: author.top || editor.topics || []
         };
       }
       return {
         name: editor.name,
         institution: editor.institution,
-        hIndex: 0, worksCount: 0, citedByCount: 0,
-        worksByYear: { years: [], counts: [] },
-        citationsByYear: { years: [], counts: [] },
-        top: []
+        hIndex: editor.hIndex || 0,
+        worksCount: editor.worksCount || 0,
+        citedByCount: editor.citedByCount || 0,
+        countsByYear: editor.countsByYear || [],
+        affiliations: editor.affiliations || [],
+        top: editor.topics || []
       };
     });
   },
@@ -455,13 +701,13 @@ Page({
     var charts = {};
     for (var i = 0; i < editors.length; i++) {
       var ed = editors[i];
-      var wby = ed.worksByYear || { years: [], counts: [] };
-      var ccy = ed.citationsByYear || { years: [], counts: [] };
-      if (wby.years.length > 0) {
-        charts['ed_works_' + i] = this.buildColumnChart(wby.years, wby.counts, '逐年发文', '#10B981');
-      }
-      if (ccy.years.length > 0) {
-        charts['ed_cites_' + i] = this.buildColumnChart(ccy.years, ccy.counts, '逐年被引', '#F59E0B');
+      var cby = ed.countsByYear || [];
+      if (cby.length > 0) {
+        var years = cby.map(function(y) { return y.year; });
+        var works = cby.map(function(y) { return y.works_count || 0; });
+        var cites = cby.map(function(y) { return y.cited_by_count || 0; });
+        charts['ed_works_' + i] = this.buildColumnChart(years, works, '逐年发文', '#10B981');
+        charts['ed_cites_' + i] = this.buildColumnChart(years, cites, '逐年被引', '#F59E0B');
       }
     }
     this.setData({ editorChartData: charts });
@@ -640,14 +886,12 @@ Page({
     this.setData({ showDetailModal: false, detailModalPlan: null });
   },
 
-  // 弹窗内直接选择方向
+  // 弹窗内直接选择方向 → 使用新 onGenerateScheme
   onSelectFromModal: function(e) {
     var key = e.currentTarget.dataset.key;
-    var plan = this.data.detailModalPlan;
-    if (!plan || !key) return;
+    if (!key) return;
     this.hideDetailModal();
-    // 复用 onSelectDirection 逻辑
-    this.onSelectDirection({ currentTarget: { dataset: { key: key } } });
+    this.onGenerateScheme({ currentTarget: { dataset: { key: key } } });
   },
 
   stopBubble: function() {},

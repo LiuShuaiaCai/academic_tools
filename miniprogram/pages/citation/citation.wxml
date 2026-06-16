@@ -1,5 +1,5 @@
 <!-- pages/citation/citation.wxml -->
-<view class="page">
+<view class="page" style="--primary-color:{{theme.primary}};--primary-dark:{{theme.primaryDark}};--primary-light:{{theme.primaryLight}};--primary-light-text:{{theme.primaryLightText}};--primary-shadow:{{theme.primaryShadow}}">
   <!-- 自定义 Toast -->
   <view class="custom-toast" wx:if="{{customToast.show}}">
     <text>{{customToast.title}}</text>

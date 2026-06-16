@@ -5,6 +5,7 @@ var parseDate = dbInit.parseDate;
 var softDelete = dbInit.softDelete;
 var config = require('../../utils/submissions-config');
 var formatUtil = require('../../utils/submissions-format');
+var theme = require('../../utils/theme.js');
 
 Page({
   data: {
@@ -24,10 +25,14 @@ Page({
     // 首页跳转带来的待处理参数
     targetId:'', targetTitle:'', pendingAutoEdit:false,
     isTargetMode:false,  // 是否只显示目标稿件
-    currentOpenid: '' // 当前用户的 openid
+    currentOpenid: '', // 当前用户的 openid
+
+    // 主题色（由 loadToolTheme 从 DB 加载）
+    theme: {}
   },
 
   onLoad:function(options){
+    this.loadToolTheme();
     var that = this;
     // 获取当前用户的 openid
     wx.cloud.callFunction({
@@ -62,6 +67,13 @@ Page({
       }
     });
   },
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('submission').then(function(t) {
+      that.setData({ theme: t });
+    });
+  },
+
   onShow:function(){
     // 只有没有待处理参数时才刷新列表，避免重复加载
     if(!this.data.targetId && !this.data.isTargetMode) this.loadList();

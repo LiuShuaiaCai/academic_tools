@@ -211,11 +211,8 @@ Page({
       data: { action: 'getUserTools' }
     }).then(function(res) {
       var userTools = res.result || {};
-      return wx.cloud.callFunction({
-        name: 'academicAPI',
-        data: { action: 'getAllTools' }
-      }).then(function(toolRes) {
-        var toolDefs = toolRes.result || [];
+      var toolCache = require('../../utils/toolCache.js');
+      return toolCache.getAllTools().then(function(toolDefs) {
         var enabledTools = [];
         for (var i = 0; i < toolDefs.length; i++) {
           var t = toolDefs[i];
