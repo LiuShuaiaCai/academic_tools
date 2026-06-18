@@ -1,7 +1,7 @@
 // app.js
 App({
   globalData: {
-    env: "cloud1-d9gwkfeid5c310b5a",
+    env: "online-d7ghspq5r1b409893",
     firstLaunch: false,
     userRole: null, // researcher / reviewer / editor
     locale: 'zh'   // 当前语言：zh | en

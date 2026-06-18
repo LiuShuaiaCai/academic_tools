@@ -204,13 +204,15 @@ async function getCreditsInfo(event) {
     });
   }
 
-  return {
+  var result = {
     success: true,
     credits: validCredits,
     signinDays: (config && config.signinDays) || 0,
     continuousDays: continuousDays,
     signedToday: (config && config.lastSigninDate) === todayStr
   };
+  console.log('[getCreditsInfo] 返回数据:', JSON.stringify(result));
+  return result;
 }
 
 // 计算有效积分
@@ -234,14 +236,20 @@ async function calculateValidCredits(openid) {
 
   // 计算有效积分：Σ(remainPoints)，排除已过期的
   // remainPoints 在 spendCredits 扣减时已减少，在 cleanExpiredCredits 清零时已归零
+  console.log('[calculateValidCredits] openid:', openid, '符合条件的记录数:', earnRes.data.length);
   var totalEarn = 0;
   for (var i = 0; i < earnRes.data.length; i++) {
     var item = earnRes.data[i];
+    console.log('[calculateValidCredits] 记录' + i + ': points=' + item.points + ', remainPoints=' + item.remainPoints + ', expireTime=' + item.expireTime);
     if (!item.expireTime || item.expireTime >= nowWithTime) {
       var remain = item.remainPoints !== undefined ? item.remainPoints : (item.points || 0);
+      console.log('[calculateValidCredits] 记录' + i + ': 有效, remain=' + remain + ', 累加后 totalEarn=' + (totalEarn + remain));
       totalEarn += remain;
+    } else {
+      console.log('[calculateValidCredits] 记录' + i + ': 已过期, 跳过');
     }
   }
+  console.log('[calculateValidCredits] 最终有效积分:', totalEarn);
 
   return Math.max(0, totalEarn);
 }
@@ -1026,7 +1034,7 @@ exports.main = async (event, context) => {
     switch (event.action) {
       // 积分核心
       case 'initCredits':    return await initCredits(event);
-      case 'getCreditsInfo': return await getCreditsInfo();
+      case 'getCreditsInfo': return await getCreditsInfo(event);
       case 'doSignin':       return await doSignin();
       case 'getCreditsList': return await getCreditsList(event);
       case 'spendCredits':   return await spendCredits(event);

@@ -923,7 +923,7 @@ Page({
               data: {
                 action: 'chat',
                 provider: 'kimi',
-                model: 'kimi-k2.6',
+                model: 'moonshot-v1-128k',
                 messages: [{
                   role: 'user',
                   content: [
