@@ -5,6 +5,7 @@ var parseDate = dbInit.parseDate;
 var softDelete = dbInit.softDelete;
 var config = require('../../utils/conferences-config');
 var formatUtil = require('../../utils/conferences-format');
+var theme = require('../../utils/theme.js');
 
 Page({
   data: {
@@ -66,10 +67,14 @@ Page({
     targetTitle: '',
     pendingAutoEdit: false,
     isTargetMode: false,
-    currentOpenid: '' // 当前用户的 openid
+    currentOpenid: '', // 当前用户的 openid
+
+    // 主题色（由 loadToolTheme 从 DB 加载）
+    theme: {}
   },
 
   onLoad: function(options) {
+    this.loadToolTheme();
     var that = this;
     // 获取当前用户的 openid
     wx.cloud.callFunction({
@@ -101,6 +106,13 @@ Page({
       } else {
         that.loadList();
       }
+    });
+  },
+
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('conference').then(function(t) {
+      that.setData({ theme: t });
     });
   },
 

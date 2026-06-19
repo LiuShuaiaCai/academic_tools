@@ -1,11 +1,9 @@
 /* pages/specialIssue/specialIssue.wxss V5 */
 
-/* ========== 主题色变量 ========== */
+/* 主题色 CSS 变量（页面根节点生效） */
 page {
-  --primary-color: #10B981;
-  --primary-dark: #059669;
-  --primary-light: #ECFDF5;
-  --primary-shadow: rgba(16, 185, 129, 0.4);
+  --primary-color: #2D7FF9;
+  --primary-dark: #1A5EC4;
 }
 
 /* ========== 基础布局 ========== */
@@ -220,6 +218,18 @@ page {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* V6: scheme badge */
+.scheme-badge {
+  display: inline-block;
+  padding: 4rpx 14rpx;
+  background: #D1FAE5;
+  color: #059669;
+  font-size: 22rpx;
+  font-weight: 600;
+  border-radius: 8rpx;
+  margin-right: 8rpx;
 }
 
 /* 失败任务预览 + 重新执行按钮 */

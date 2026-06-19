@@ -166,7 +166,7 @@ class KimiProvider extends BaseProvider {
     super({
       id: 'kimi',
       name: 'Kimi',
-      defaultModel: 'kimi-k2.6',
+      defaultModel: 'moonshot-v1-128k',
       baseURL: 'https://api.moonshot.cn',
       authType: 'Bearer',
       supportsStream: true,

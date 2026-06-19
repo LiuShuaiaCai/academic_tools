@@ -1,6 +1,7 @@
 // pages/citation/citation.js
 var crossref = require('../../utils/citation/crossref.js');
 var formatter = require('../../utils/citation/formatter.js');
+var theme = require('../../utils/theme.js');
 
 var TYPE_LABEL_MAP = {
   journal: '期刊文章',
@@ -220,10 +221,14 @@ Page({
     tableModalData: [],
 
     // 当前用户
-    currentOpenid: ''
+    currentOpenid: '',
+
+    // 主题色（由 loadToolTheme 从 DB 加载）
+    theme: {}
   },
 
   onLoad: function() {
+    this.loadToolTheme();
     var that = this;
     // 检测平台：真机(ios/android)使用 canvas2d，模拟器(windows/mac)使用 inScrollView
     var systemInfo = wx.getSystemInfoSync();
@@ -242,6 +247,13 @@ Page({
     }).catch(function(err) {
       console.error('[citation] 获取用户标识失败', err);
       that.setData({ library: [] });
+    });
+  },
+
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('citation').then(function(t) {
+      that.setData({ theme: t });
     });
   },
 
@@ -911,7 +923,7 @@ Page({
               data: {
                 action: 'chat',
                 provider: 'kimi',
-                model: 'kimi-k2.6',
+                model: 'moonshot-v1-128k',
                 messages: [{
                   role: 'user',
                   content: [

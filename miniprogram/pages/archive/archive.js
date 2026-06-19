@@ -2,6 +2,7 @@
 var dbInit = require('../../utils/dbInit');
 var formatTime = dbInit.formatTime;
 var softDelete = dbInit.softDelete;
+var theme = require('../../utils/theme.js');
 
 Page({
   data: {
@@ -17,10 +18,14 @@ Page({
     autoOpening: false, // 是否正在自动打开分享的文件
     autoOpenFileName: '', // 自动打开时显示的文件名
     autoOpenTip: '',        // 自动打开时的提示文字
-    currentOpenid: '' // 当前用户的 openid
+    currentOpenid: '', // 当前用户的 openid
+
+    // 主题色（由 loadToolTheme 从 DB 加载）
+    theme: {}
   },
 
   onLoad: function(options) {
+    this.loadToolTheme();
     var that = this;
     // 获取当前用户的 openid
     wx.cloud.callFunction({
@@ -39,6 +44,13 @@ Page({
       this._autoDownloadSharedFile(options.fileId);
     }
   },
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('archive').then(function(t) {
+      that.setData({ theme: t });
+    });
+  },
+
   onShow: function() { this.loadAll(); },
   onUnload: function() {
     // 页面卸载时清空分享状态

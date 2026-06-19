@@ -1,5 +1,5 @@
 <!-- pages/specialIssue/detail/detail.wxml V5 -->
-<view class="page">
+<view class="page" style="--primary-color:{{theme.primary}};--primary-dark:{{theme.primaryDark}};--primary-light:{{theme.primaryLight}};--primary-shadow:{{theme.primaryShadow}}">
 
   <!-- ========== 加载状态 ========== -->
   <view wx:if="{{loading}}" class="loading-state">
@@ -331,9 +331,9 @@
     <!-- 操作区域 -->
     <view class="result-card action-card">
       <view class="action-row">
-        <view class="action-btn primary" bindtap="onRegenerate">
-          <text>🔄 重新生成</text>
-          <text class="action-hint">💰 消耗 30 积分</text>
+        <view class="action-btn primary" bindtap="onRegenerate" style="flex-direction: column;">
+          <view>🔄 重新生成</view>
+          <view class="action-hint">（消耗 30 积分）</view>
         </view>
         <view class="action-btn outline" bindtap="copyFullPlan">
           📋 复制方案

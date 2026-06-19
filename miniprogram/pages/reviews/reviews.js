@@ -5,6 +5,7 @@ var parseDate = dbInit.parseDate;
 var softDelete = dbInit.softDelete;
 var config = require('../../utils/reviews-config');
 var formatUtil = require('../../utils/reviews-format');
+var theme = require('../../utils/theme.js');
 
 Page({
   data: {
@@ -25,10 +26,14 @@ Page({
     advStatusOptions:[], advJournalOptions:[],
     // 首页跳转
     targetId:'', targetTitle:'', pendingAutoEdit:false, isTargetMode:false,
-    currentOpenid: '' // 当前用户的 openid
+    currentOpenid: '', // 当前用户的 openid
+
+    // 主题色（由 loadToolTheme 从 DB 加载）
+    theme: {}
   },
 
   onLoad:function(options){
+    this.loadToolTheme();
     var that = this;
     // 获取当前用户的 openid
     wx.cloud.callFunction({
@@ -62,6 +67,13 @@ Page({
       }
     });
   },
+  loadToolTheme: function() {
+    var that = this;
+    theme.loadToolTheme('review').then(function(t) {
+      that.setData({ theme: t });
+    });
+  },
+
   onShow:function(){
     if(!this.data.targetId && !this.data.isTargetMode) this.loadList();
   },

@@ -128,12 +128,9 @@ Page({
       data: { action: 'getUserTools' }
     }).then(function(res) {
       var userTools = res.result || {};
-      // 通过云函数获取所有工具定义（客户端自行过滤未发布的）
-      return wx.cloud.callFunction({
-        name: 'academicAPI',
-        data: { action: 'getAllTools' }
-      }).then(function(toolRes) {
-        var toolDefs = toolRes.result || [];
+      // 通过缓存获取所有工具定义
+      var toolCache = require('../../utils/toolCache.js');
+      return toolCache.getAllTools().then(function(toolDefs) {
         return { userTools: userTools, toolDefs: toolDefs };
       });
     }).then(function(data) {

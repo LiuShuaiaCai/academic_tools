@@ -1,6 +1,9 @@
 // pages/toolbox/toolbox.js
 
 // 集合名称映射
+var themeUtil = require('../../utils/theme.js');
+var toolCache = require('../../utils/toolCache.js');
+
 var TASK_COLLECTION_MAP = {
   submission: 'submissions',
   review: 'reviews',
@@ -45,12 +48,8 @@ Page({
       data: { action: 'getUserTools' }
     }).then(function(res) {
       var userTools = res.result || {};
-      // 通过云函数获取所有工具定义
-      return wx.cloud.callFunction({
-        name: 'academicAPI',
-        data: { action: 'getAllTools' }
-      }).then(function(toolRes) {
-        var toolDefs = toolRes.result || [];
+      // 通过缓存获取所有工具定义（首次查云函数，后续走本地缓存）
+      return toolCache.getAllTools().then(function(toolDefs) {
         console.log('[toolbox] 工具定义:', toolDefs);
         return { userTools: userTools, toolDefs: toolDefs };
       });
@@ -65,12 +64,15 @@ Page({
         var isEnabled = userTools[t.id] === true;
         if (!isEnabled) continue;
 
+        var toolTheme = themeUtil.getThemeByColor(t.color || 'blue');
         tools.push({
           id: t.id,
           name: t.name,
           desc: t.desc,
           iconEmoji: t.iconEmoji || '🔧',
           color: t.color || 'blue',
+          themePrimary: toolTheme.primary,
+          themePrimaryLight: toolTheme.primaryLight,
           pagePath: t.pagePath || '',
           isTaskType: t.isTaskType !== false,
           count: 0,
@@ -105,6 +107,7 @@ Page({
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji, color: tool.color,
+            themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight,
             pagePath: tool.pagePath, isTaskType: false, count: 0, urgent: 0
           }));
           return;
@@ -168,12 +171,13 @@ Page({
               return {
                 id: tool.id, name: tool.name, desc: tool.desc,
                 iconEmoji: tool.iconEmoji, color: tool.color,
+                themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight,
                 pagePath: tool.pagePath, isTaskType: tool.isTaskType,
                 count: results[0].total, urgent: results[1].total
               };
             }).catch(function(e) {
               console.error('[toolbox] 查询失败:', tool.id, e);
-              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji, color: tool.color, pagePath: tool.pagePath, isTaskType: tool.isTaskType, count: 0, urgent: 0 };
+              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji, color: tool.color, themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight, pagePath: tool.pagePath, isTaskType: tool.isTaskType, count: 0, urgent: 0 };
             })
           );
         } else {
@@ -181,6 +185,7 @@ Page({
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji, color: tool.color,
+            themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight,
             pagePath: tool.pagePath, isTaskType: tool.isTaskType, count: 0, urgent: 0
           }));
         }

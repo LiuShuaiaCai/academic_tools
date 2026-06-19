@@ -1,5 +1,5 @@
 <!--pages/conferences/conferences.wxml-->
-<view class="sub-page">
+<view class="sub-page" style="--primary-color:{{theme.primary}};--primary-dark:{{theme.primaryDark}};--primary-light:{{theme.primaryLight}};--primary-light-text:{{theme.primaryLightText}};--primary-shadow:{{theme.primaryShadow}}">
   <!-- 搜索栏 -->
   <view class="search-bar">
     <view class="search-input-wrap">

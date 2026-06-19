@@ -1,5 +1,5 @@
 <!--pages/archive/archive.wxml-->
-<view class="page-container">
+<view class="page-container" style="--primary-color:{{theme.primary}};--primary-dark:{{theme.primaryDark}};--primary-light:{{theme.primaryLight}};--primary-light-text:{{theme.primaryLightText}};--primary-shadow:{{theme.primaryShadow}}">
   <!-- 分享卡片打开时的自动下载遮罩 -->
   <view class="auto-open-mask" wx:if="{{autoOpening}}">
     <view class="auto-open-box">

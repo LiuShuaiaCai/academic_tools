@@ -14,7 +14,7 @@ var AI_REVIEW_PROVIDERS = {
   'kimi': {
     name: 'Kimi',
     aiProvider: 'kimi',
-    aiModel: 'kimi-k2.6',
+    aiModel: 'moonshot-v1-128k',
     maxChars: 100000,
     temperature: 1             // Kimi 只能用 1
   },

@@ -42,14 +42,11 @@ Page({
     this.loadToolDefs();
   },
 
-  // 从云函数加载工具定义（不再客户端直查 tools 集合）
+  // 从缓存加载工具定义（首次查云函数，后续走本地缓存）
   loadToolDefs: function() {
     var that = this;
-    wx.cloud.callFunction({
-      name: 'academicAPI',
-      data: { action: 'getAllTools' }
-    }).then(function(res) {
-      var toolDefs = res.result;
+    var toolCache = require('../../utils/toolCache.js');
+    toolCache.getAllTools().then(function(toolDefs) {
       if (!toolDefs || toolDefs.length === 0) {
         console.log('[onboarding] 工具定义为空，使用本地备用数据');
         that.processTools(DEFAULT_TOOLS);

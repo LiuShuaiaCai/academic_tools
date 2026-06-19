@@ -68,13 +68,14 @@
     <!-- 工具网格 -->
     <view wx:else class="stats-grid" id="statsGrid">
       <view
-        class="stats-card {{item.color}}-accent"
+        class="stats-card"
         wx:for="{{tools}}"
         wx:key="id"
         bindtap="goToTool"
         data-page="{{item.pagePath}}"
       >
-        <view class="card-icon {{item.color}}-bg">{{item.iconEmoji}}</view>
+        <view class="card-accent-bar" style="background:{{item.themePrimary}}"></view>
+        <view class="card-icon" style="background:{{item.themePrimaryLight}};color:{{item.themePrimary}}">{{item.iconEmoji}}</view>
         <view class="card-info">
           <view class="card-title">{{item.name}}</view>
           <view class="card-desc">{{item.desc}}</view>

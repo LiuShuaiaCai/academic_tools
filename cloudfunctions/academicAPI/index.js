@@ -132,73 +132,6 @@ async function migrateTools() {
   return { success: true, updated: updated };
 }
 
-// 数据迁移：给 tools 表补 iconEmoji 字段
-async function migrateIconEmoji() {
-  var emojiMap = {
-    'paper-plane': '📄',
-    'glasses': '👓',
-    'calendar-alt': '📅',
-    'folder-open': '📁',
-    'quote-right': '📚',
-    'exclamation-triangle': '⚠️',
-    'trophy': '🏆',
-    'sticky-note': '📝'
-  };
-  var res = await db.collection('tools').where({ deleteTime: null }).get();
-  var updated = 0;
-  for (var i = 0; i < res.data.length; i++) {
-    var tool = res.data[i];
-    if (!tool.iconEmoji && emojiMap[tool.icon]) {
-      await db.collection('tools').doc(tool._id).update({
-        data: { iconEmoji: emojiMap[tool.icon], updateTime: formatTime() }
-      });
-      updated++;
-    }
-  }
-  return { success: true, updated: updated };
-}
-
-// 数据迁移：给 tools 表补 pagePath 字段
-async function migratePagePath() {
-  var pathMap = {
-    'submission': '/pages/submissions/submissions',
-    'review': '/pages/reviews/reviews',
-    'conference': '/pages/conferences/conferences',
-    'archive': '/pages/archive/archive',
-    'note': '/pages/toolbox/toolbox'
-  };
-  var res = await db.collection('tools').where({ deleteTime: null }).get();
-  var updated = 0;
-  for (var i = 0; i < res.data.length; i++) {
-    var tool = res.data[i];
-    if (!tool.pagePath && pathMap[tool.id]) {
-      await db.collection('tools').doc(tool._id).update({
-        data: { pagePath: pathMap[tool.id], updateTime: formatTime() }
-      });
-      updated++;
-    }
-  }
-  return { success: true, updated: updated };
-}
-
-// 数据迁移：给 tools 表补 isTaskType 字段（已设置过的跳过）
-// submission/review/conference = true，其余 = false
-async function migrateIsTaskType() {
-  var taskTypeIds = ['submission', 'review', 'conference'];
-  var res = await db.collection('tools').where({ deleteTime: null }).get();
-  var updated = 0;
-  for (var i = 0; i < res.data.length; i++) {
-    var tool = res.data[i];
-    if (tool.isTaskType !== undefined) continue; // 已设置过，跳过
-    var isTask = taskTypeIds.indexOf(tool.id) !== -1;
-    await db.collection('tools').doc(tool._id).update({
-      data: { isTaskType: isTask, updateTime: formatTime() }
-    });
-    updated++;
-  }
-  return { success: true, updated: updated };
-}
-
 // 清理 user_tools 重复数据（同 openid+toolId 只保留最新一条）
 async function cleanUserTools() {
   var wxContext = cloud.getWXContext();
@@ -451,14 +384,13 @@ async function fixCompleted() {
 
 // ==================== 入口 ====================
 
+
+
 exports.main = async (event) => {
   try {
     switch (event.action) {
       case 'getAllTools':       return await getAllTools();
       case 'migrateTools':      return await migrateTools();
-      case 'migrateIconEmoji': return await migrateIconEmoji();
-      case 'migratePagePath': return await migratePagePath();
-      case 'migrateIsTaskType': return await migrateIsTaskType();
       case 'cleanUserTools':    return await cleanUserTools();
       case 'getUserId':         return await getUserId();
       case 'getUserConfig':   return await getUserConfig();

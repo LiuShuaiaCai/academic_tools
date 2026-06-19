@@ -88,9 +88,8 @@ page { background: #F6F6F6; }
   border: 1rpx solid rgba(0,0,0,0.04);
 }
 
-/* 顶部彩色条 */
-.stats-card::before {
-  content: '';
+/* 顶部彩色条（颜色由 inline style 动态注入） */
+.card-accent-bar {
   position: absolute;
   top: 0;
   left: 0;
@@ -98,12 +97,7 @@ page { background: #F6F6F6; }
   height: 4rpx;
 }
 
-.stats-card.blue-accent::before { background: #2563eb; }
-.stats-card.red-accent::before { background: #EF4444; }
-.stats-card.green-accent::before { background: #10B981; }
-.stats-card.orange-accent::before { background: #F59E0B; }
-.stats-card.purple-accent::before { background: #7C3AED; }
-
+/* 图标颜色由 inline style 动态注入 */
 .card-icon {
   width: 64rpx;
   height: 64rpx;
@@ -115,11 +109,6 @@ page { background: #F6F6F6; }
   margin-bottom: 12rpx;
 }
 
-.card-icon.blue-bg { background: #DBEAFE; color: #2563eb; }
-.card-icon.red-bg { background: #FEE2E2; color: #EF4444; }
-.card-icon.green-bg { background: #D1FAE5; color: #10B981; }
-.card-icon.orange-bg { background: #FEF3C7; color: #F59E0B; }
-.card-icon.purple-bg { background: #EDE9FE; color: #7C3AED; }
 
 .card-info { }
 
