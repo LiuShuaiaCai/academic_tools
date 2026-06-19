@@ -151,11 +151,11 @@ page {
   transition: width 0.4s ease;
 }
 
-.compare-bar-0 { background: linear-gradient(90deg, #DC2626, #EF4444); }
-.compare-bar-1 { background: linear-gradient(90deg, #EA580C, #F97316); }
-.compare-bar-2 { background: linear-gradient(90deg, #CA8A04, #EAB308); }
-.compare-bar-3 { background: linear-gradient(90deg, #2563EB, #3B82F6); }
-.compare-bar-4 { background: linear-gradient(90deg, #7C3AED, #8B5CF6); }
+.compare-bar-0 { background: linear-gradient(90deg, #059669, #10B981); }
+.compare-bar-1 { background: linear-gradient(90deg, #2563EB, #3B82F6); }
+.compare-bar-2 { background: linear-gradient(90deg, #0891B2, #06B6D4); }
+.compare-bar-3 { background: linear-gradient(90deg, #6366F1, #818CF8); }
+.compare-bar-4 { background: linear-gradient(90deg, #6B7280, #9CA3AF); }
 
 .compare-value {
   width: 140rpx;
