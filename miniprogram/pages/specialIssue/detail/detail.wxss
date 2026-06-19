@@ -118,7 +118,7 @@ page {
 .keyword-tag {
   padding: 8rpx 20rpx;
   background: #F3F4F6;
-  color: #6B7280;
+  color: #374151;
   font-size: 24rpx;
   border-radius: 40rpx;
   border: 1rpx solid #E5E7EB;
@@ -641,11 +641,11 @@ page {
   transition: width 0.4s ease;
 }
 
-.compare-bar-0 { background: linear-gradient(90deg, #059669, #10B981); }
-.compare-bar-1 { background: linear-gradient(90deg, #2563EB, #3B82F6); }
-.compare-bar-2 { background: linear-gradient(90deg, #0891B2, #06B6D4); }
-.compare-bar-3 { background: linear-gradient(90deg, #6366F1, #818CF8); }
-.compare-bar-4 { background: linear-gradient(90deg, #6B7280, #9CA3AF); }
+.compare-bar-0 { background: linear-gradient(90deg, #7F1D1D, #DC2626); }
+.compare-bar-1 { background: linear-gradient(90deg, #991B1B, #EF4444); }
+.compare-bar-2 { background: linear-gradient(90deg, #B91C1C, #F87171); }
+.compare-bar-3 { background: linear-gradient(90deg, #DC2626, #FCA5A5); }
+.compare-bar-4 { background: linear-gradient(90deg, #EF4444, #FECACA); }
 
 .compare-value {
   width: 140rpx;
@@ -747,6 +747,7 @@ page {
   align-items: center;
   padding: 2rpx 12rpx;
   background: #F3F4F6;
+  border: 1rpx solid #E5E7EB;
   border-radius: 20rpx;
   font-size: 22rpx;
   color: #374151;
@@ -761,12 +762,12 @@ page {
 
 .meta-cite-pill {
   background: #F3F4F6;
-  color: #6B7280;
+  color: #374151;
 }
 
 .meta-fwci-pill {
   background: #F3F4F6;
-  color: #6B7280;
+  color: #374151;
 }
 
 .heat-num {
@@ -824,7 +825,7 @@ page {
 }
 
 .meta-cite {
-  color: #DC2626;
+  color: #3B82F6;
   font-weight: 500;
 }
 
@@ -844,7 +845,8 @@ page {
   display: inline-block;
   padding: 2rpx 14rpx;
   background: #F3F4F6;
-  color: #6B7280;
+  border: 1rpx solid #E5E7EB;
+  color: #374151;
   border-radius: 16rpx;
   font-size: 20rpx;
   line-height: 1.6;
@@ -1068,6 +1070,7 @@ page {
 .detail-keyword-tag {
   padding: 6rpx 16rpx;
   background: #F3F4F6;
+  border: 1rpx solid #E5E7EB;
   color: #374151;
   font-size: 22rpx;
   border-radius: 40rpx;
