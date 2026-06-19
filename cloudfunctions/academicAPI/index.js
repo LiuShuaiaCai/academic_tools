@@ -101,14 +101,14 @@ async function saveUserConfig(event) {
 // isPublished !== false 的都返回（兼容老数据没有该字段的情况）
 // isTaskType 缺省时根据 id 判断：submission/review/conference 默认为 true，其余为 false
 async function getAllTools() {
-  var knownTaskIds = ['submission', 'review', 'conference'];
+  var knownTaskIds = ['submission', 'review', 'conference', 'specialIssue'];
   var res = await db.collection('tools').where({ deleteTime: null }).orderBy('category', 'asc').orderBy('order', 'asc').get();
   var result = [];
   for (var i = 0; i < res.data.length; i++) {
     var tool = res.data[i];
     if (tool.isPublished === false) continue;
     // isTaskType 缺省时按 id 推断，后续可在数据库中覆盖
-    if (tool.isTaskType === undefined) {
+    if (tool.isTaskType === undefined || tool.isTaskType === false) {
       tool.isTaskType = knownTaskIds.indexOf(tool.id) !== -1;
     }
     result.push(tool);

@@ -262,6 +262,12 @@ page {
   text-align: center;
 }
 
+.metric-tappable:active {
+  transform: scale(0.94);
+  opacity: 0.8;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
 .metric-num {
   display: block;
   font-size: 32rpx;
@@ -435,8 +441,8 @@ page {
 }
 
 .cite-modal-content {
-  width: 80%;
-  max-width: 640rpx;
+  width: 92%;
+  max-width: 680rpx;
   background: #FFF;
   border-radius: 20rpx;
   overflow: hidden;
@@ -446,7 +452,7 @@ page {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28rpx 32rpx;
+  padding: 20rpx 28rpx;
   border-bottom: 1rpx solid #F0F0F0;
 }
 
@@ -468,11 +474,38 @@ page {
 }
 
 .cite-modal-body {
-  padding: 32rpx;
+  padding: 20rpx 24rpx;
 }
 
 .cite-chart {
   height: 320rpx;
+}
+
+/* 引用弹窗柱状图（ucharts） */
+.chart-section {
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 16rpx 12rpx;
+  position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  isolation: isolate;
+}
+
+.chart-title {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 10rpx;
+  padding-left: 4rpx;
+}
+
+.uchart-box {
+  height: 420rpx;
+  width: 100%;
+  position: relative;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .cite-chart-bars {
@@ -1426,79 +1459,6 @@ page {
   font-size: 28rpx;
 }
 
-/* ========== V6: 机构履历 ========== */
-.editor-affiliations {
-  margin-top: 16rpx;
-  padding: 16rpx;
-  background: #F8FAFC;
-  border-radius: 12rpx;
-  border: 1rpx solid #E2E8F0;
-}
-
-.affiliations-title {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 12rpx;
-}
-
-.affiliation-item {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  padding: 10rpx 0;
-  border-bottom: 1rpx dashed #E2E8F0;
-}
-
-.affiliation-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.affiliation-name {
-  font-size: 22rpx;
-  font-weight: 500;
-  color: #334155;
-}
-
-.affiliation-years {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4rpx;
-}
-
-.aff-year-tag {
-  display: inline-block;
-  padding: 2rpx 10rpx;
-  background: #DBEAFE;
-  color: #1D4ED8;
-  font-size: 18rpx;
-  border-radius: 4rpx;
-  font-weight: 500;
-}
-
-.affiliation-meta {
-  display: flex;
-  gap: 8rpx;
-  margin-left: auto;
-}
-
-.aff-country {
-  font-size: 18rpx;
-  color: #64748B;
-  padding: 2rpx 8rpx;
-  background: #F1F5F9;
-  border-radius: 4rpx;
-}
-
-.aff-type {
-  font-size: 18rpx;
-  color: #059669;
-  padding: 2rpx 8rpx;
-  background: #ECFDF5;
-  border-radius: 4rpx;
-}
 
 /* ========== V6: 客编图表双栏 ========== */
 .editor-mini-charts {
@@ -1515,3 +1475,114 @@ page {
   font-size: 24rpx;
   color: #9CA3AF;
 }
+
+/* ========== 查看工作经历按钮 ========== */
+.editor-work-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+  padding: 14rpx 20rpx;
+  background: linear-gradient(135deg, #F0FDF4, #DCFCE7);
+  border-radius: 12rpx;
+  border: 1rpx solid #BBF7D0;
+}
+
+.editor-work-btn:active {
+  background: linear-gradient(135deg, #DCFCE7, #BBF7D0);
+  transform: scale(0.98);
+}
+
+.work-btn-icon {
+  font-size: 24rpx;
+}
+
+.work-btn-text {
+  font-size: 24rpx;
+  color: #166534;
+  font-weight: 500;
+}
+
+.work-btn-arrow {
+  font-size: 28rpx;
+  color: #166534;
+  font-weight: 600;
+}
+
+/* ========== 工作经历弹窗 - 时间线 ========== */
+.work-history-modal .cite-modal-body {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 24rpx 20rpx;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 34rpx;
+}
+
+/* 竖线从第一个圆点中心(9rpx)开始，纵向贯穿所有圆点 */
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 9rpx;
+  top: 0;
+  bottom: 0;
+  width: 3rpx;
+  background: linear-gradient(180deg, #10B981, #34D399, #A7F3D0);
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 36rpx;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* 圆点绝对定位：left: -34rpx 使圆点位于 timeline 左边缘 0 处，即圆点中心=9rpx，与竖线(9rpx)对齐 */
+.timeline-dot {
+  position: absolute;
+  left: -34rpx;
+  top: 26rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 0 4rpx rgba(16, 185, 129, 0.15);
+}
+
+.timeline-content {
+  background: #FAFAFE;
+  border-radius: 10rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid #E8E4F8;
+}
+
+.timeline-name {
+  display: block;
+  font-size: 26rpx;
+  color: #1F2937;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  line-height: 2;
+}
+
+.timeline-period {
+  font-size: 22rpx;
+  color: #6B7280;
+}
+
+.timeline-country {
+  font-size: 22rpx;
+  color: #6B7280;
+}
+

@@ -14,14 +14,14 @@ const DEFAULT_TOOLS = [
   { id: 'conference',  name: '学术会议', desc: '跟踪会议截稿日期',    icon: 'calendar-alt',  iconEmoji: '📅', color: 'green',  category: 'core', order: 3, comingSoon: false, isPublished: true, pagePath: '/pages/conferences/conferences', isTaskType: true },
   { id: 'archive',     name: '资料归档', desc: '统一管理附件文件',    icon: 'folder-open',   iconEmoji: '📁', color: 'orange', category: 'core', order: 4, comingSoon: false, isPublished: true, pagePath: '/pages/archive/archive', isTaskType: false },
   { id: 'citation',    name: '文献引用', desc: 'GB/T 7714、APA格式化', icon: 'quote-right',  iconEmoji: '📚', color: 'purple', category: 'ext',  order: 5, comingSoon: false, isPublished: true, pagePath: '/pages/citation/citation', isTaskType: false },
-  { id: 'specialIssue',name: '特刊策划', desc: 'AI策划特刊话题、推荐客编', icon: 'lightbulb', iconEmoji: '💡', color: 'teal', category: 'ext',  order: 6, comingSoon: false, isPublished: true, pagePath: '/pages/specialIssue/specialIssue', isTaskType: false },
+  { id: 'specialIssue',name: '特刊策划', desc: 'AI策划特刊话题、推荐客编', icon: 'lightbulb', iconEmoji: '💡', color: 'teal', category: 'ext',  order: 6, comingSoon: false, isPublished: true, pagePath: '/pages/specialIssue/specialIssue', isTaskType: true },
   { id: 'journal',     name: '期刊预警', desc: '预警期刊、假会议检测', icon: 'exclamation-triangle', iconEmoji: '⚠️', color: 'red', category: 'ext', order: 7, comingSoon: true,  isPublished: false, pagePath: '', isTaskType: false },
   { id: 'achievement', name: '成果汇总', desc: '自动汇总论文、导出CV', icon: 'trophy',        iconEmoji: '🏆', color: 'orange', category: 'ext', order: 8, comingSoon: true,  isPublished: false, pagePath: '', isTaskType: false }, 
   { id: 'note',        name: '学术笔记', desc: '文献阅读笔记管理',    icon: 'sticky-note',   iconEmoji: '📝', color: 'green',  category: 'ext', order: 9, comingSoon: false, isPublished: true, pagePath: '/pages/toolbox/toolbox', isTaskType: false }
 ];
 
 // 所有集合
-const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config', 'credits', 'tasks','user_settings','feedbacks'];
+const COLLECTIONS = ['tools', 'user_tools', 'submissions', 'reviews', 'conferences', 'archives', 'archive_categories', 'user_config', 'credits', 'tasks','user_settings','feedbacks',];
 
 // 获取北京时间 Date 对象
 function getBeijingTime(date) {

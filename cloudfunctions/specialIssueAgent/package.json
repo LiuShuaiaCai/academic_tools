@@ -3,6 +3,6 @@
   "version": "4.0.0",
   "description": "异步轮询架构：trigger 立即返回 taskId，worker 后台执行 OpenAlex + Kimi LLM",
   "dependencies": {
-    "wx-server-sdk": "latest"
+    "wx-server-sdk": "~2.6.3"
   }
 }

@@ -1,4 +1,4 @@
-// pages/specialIssue/specialIssue.js
+﻿// pages/specialIssue/specialIssue.js
 // V5: 列表页 - 搜索框 + 创建按钮 + 任务列表
 var creditsUtil = require('../../utils/credits.js');
 var theme = require('../../utils/theme.js');
@@ -113,17 +113,23 @@ Page({
           hasMore: list.length >= that.data.listPageSize
         });
       } else {
-        // 静默刷新：更新进行中的任务状态
+        // 静默刷新：更新任务状态，同步进度弹窗
         var existing = that.data.taskList;
+        var updatedSteps = null;
         for (var i = 0; i < list.length; i++) {
           for (var j = 0; j < existing.length; j++) {
             if (existing[j]._id === list[i]._id) {
+              if (that.data.showProgressModal && existing[j]._id === that.data.selectedTaskId) {
+                updatedSteps = list[i].steps || [];
+              }
               existing[j] = list[i];
               break;
             }
           }
         }
-        that.setData({ taskList: existing });
+        var updateData = { taskList: existing };
+        if (updatedSteps) updateData.selectedTaskSteps = updatedSteps;
+        that.setData(updateData);
       }
     }).catch(function(err) {
       that.setData({ loadingList: false });
@@ -274,19 +280,24 @@ Page({
     });
   },
 
-  // ========== 卡片点击 → 进入详情（仅已完成/待选/失败） ==========
+  // ========== 卡片点击 ==========
 
   onCardTap: function(e) {
     var taskId = e.currentTarget.dataset.taskid;
     var task = this.data.taskList.find(function(t) { return t._id === taskId; });
     if (!task) return;
     if (task.status === 'processing') {
-      wx.showToast({ title: '分析中，请稍后查看', icon: 'none' });
+      this.setData({ showProgressModal: true, selectedTaskSteps: task.steps || [], selectedTaskProgress: task.progress || '', selectedTaskId: taskId });
       return;
     }
-    // 允许 awaited_selection、completed、failed 进入详情
+    // 失败 → 提示重新生成，不跳转
+    if (task.status === 'failed') {
+      wx.showToast({ title: '生成失败，请重新生成', icon: 'none' });
+      return;
+    }
+    // 成功/待选 → 进入详情
     wx.navigateTo({
-      url: '/pages/specialIssue/detail/detail?taskId=' + taskId + '&keyword=' + encodeURIComponent(task.keyword || '')
+      url: '/pages/specialIssue/trend/trend?taskId=' + taskId + '&keyword=' + encodeURIComponent(task.keyword || '')
     });
   },
 
@@ -387,7 +398,7 @@ Page({
     var task = this.data.taskList.find(function(t) { return t._id === taskId; });
     var keyword = task ? task.keyword : '';
     wx.navigateTo({
-      url: '/pages/specialIssue/detail/detail?taskId=' + taskId + '&keyword=' + encodeURIComponent(keyword)
+      url: '/pages/specialIssue/trend/trend?taskId=' + taskId + '&keyword=' + encodeURIComponent(keyword)
     });
   },
 

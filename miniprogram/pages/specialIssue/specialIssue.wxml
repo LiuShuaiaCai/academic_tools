@@ -11,8 +11,12 @@
           value="{{keyword}}"
           bindinput="onKeywordInput"
           bindconfirm="onSearch"
+          bindblur="onSearchBlur"
           confirm-type="search"
         />
+        <view class="search-clear" wx:if="{{keyword}}" catchtap="onClearKeyword">
+          <text>✕</text>
+        </view>
       </view>
       <view class="search-btn" bindtap="onSearch">
         <text>搜索</text>
@@ -71,9 +75,9 @@
           <text class="preview-title">{{item.firstTitle || '查看详情'}}</text>
         </view>
 
-        <!-- 已完成/已有方案时显示预览 -->
-        <view wx:elif="{{item.status === 'completed' || item._showSchemeBadge}}" class="task-preview">
-          <text wx:if="{{item._showSchemeBadge}}" class="preview-label scheme-badge">{{item._schemeLabel}}</text>
+        <!-- 已完成时显示预览 -->
+        <view wx:elif="{{item.status === 'completed' || item.status === 'awaiting_selection'}}" class="task-preview">
+          <text wx:if="{{item.activeSchemeId}}" class="preview-label scheme-badge">已有方案</text>
           <text class="preview-title">{{item.firstTitle || '查看详情'}}</text>
         </view>
 

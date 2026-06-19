@@ -190,7 +190,8 @@ Page({
     var TASK_COLLECTION_MAP = {
       submission: 'submissions',
       review: 'reviews',
-      conference: 'conferences'
+      conference: 'conferences',
+      specialIssue: 'special_issue_tasks'
     };
 
     for (var i = 0; i < enabledTools.length; i++) {
@@ -211,8 +212,22 @@ Page({
         if (tool.id === 'citation') colName = 'citation_library';
         if (colName) {
           // 总数查询：不过滤 completed，显示全量（仅当前用户）
-          var countWhere = { deleteTime: null, _openid: that.data.currentOpenid };
-          var countPromise = db.collection(colName).where(countWhere).count();
+          // specialIssue 通过云函数查询（避免前端直接查询权限问题）
+          var countPromise;
+          if (tool.id === 'specialIssue') {
+            countPromise = wx.cloud.callFunction({
+              name: 'specialIssueAgent',
+              data: { action: 'count' }
+            }).then(function(res) {
+              console.log('[home] specialIssue count 云函数返回:', JSON.stringify(res));
+              return { total: (res.result && res.result.success) ? (res.result.count || 0) : 0 };
+            }).catch(function(err) {
+              console.error('[home] specialIssue count 调用失败:', err);
+              return { total: 0 };
+            });
+          } else {
+            countPromise = db.collection(colName).where({ deleteTime: null, _openid: that.data.currentOpenid }).count();
+          }
 
           // 紧急数查询（0-3天内截止的未完成项，deadline存的是字符串格式）
           var urgentPromise;

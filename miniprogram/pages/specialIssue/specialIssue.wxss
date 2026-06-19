@@ -43,15 +43,36 @@ page {
 
 .search-input-wrap {
   flex: 1;
+  display: flex;
+  align-items: center;
   background: #FFF;
   border-radius: 12rpx;
-  padding: 0 24rpx;
+  padding: 0 16rpx;
 }
 
 .search-input {
+  flex: 1;
   height: 72rpx;
   font-size: 26rpx;
   color: #1F2937;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E5E7EB;
+  border-radius: 50%;
+  margin-left: 8rpx;
+}
+
+.search-clear text {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  line-height: 1;
 }
 
 .search-btn {
@@ -144,8 +165,8 @@ page {
 }
 
 .status-done {
-  background: #D1FAE5;
-  color: #059669;
+  background: #DBEAFE;
+  color: #1D4ED8;
 }
 
 .status-select {
@@ -224,8 +245,8 @@ page {
 .scheme-badge {
   display: inline-block;
   padding: 4rpx 14rpx;
-  background: #D1FAE5;
-  color: #059669;
+  background: #DBEAFE;
+  color: #1D4ED8;
   font-size: 22rpx;
   font-weight: 600;
   border-radius: 8rpx;
@@ -442,8 +463,8 @@ page {
 }
 
 .step-status.done {
-  background: #D1FAE5;
-  color: #059669;
+  background: #DBEAFE;
+  color: #1D4ED8;
 }
 
 .step-status.running {

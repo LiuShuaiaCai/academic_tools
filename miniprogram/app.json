@@ -19,6 +19,7 @@
     "pages/editProfile/editProfile",
     "pages/feedback/feedback",
     "pages/specialIssue/specialIssue",
+    "pages/specialIssue/trend/trend",
     "pages/specialIssue/detail/detail"
   ],
   "window": {

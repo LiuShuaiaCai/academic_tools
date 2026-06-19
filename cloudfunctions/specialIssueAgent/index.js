@@ -214,7 +214,7 @@ function calcHotRecent(cby) {
 function simplifyWorks(rawWorks) {
   if (!Array.isArray(rawWorks)) return [];
   return rawWorks.map(function(w) {
-    var cby = w.counts_by_year || [];
+    var cby = (w.counts_by_year || []).slice().sort(function(a, b) { return (a.year || 0) - (b.year || 0); });
     var years = [], citationsByYear = [];
     for (var i = 0; i < cby.length; i++) {
       years.push(cby[i].year);
@@ -230,7 +230,7 @@ function simplifyWorks(rawWorks) {
       authors: (w.authorships || []).map(function(a) {
         return (a.author && a.author.display_name) || '';
       }).filter(Boolean),
-      cc: w.cited_by_count || 0,
+      cc: citationsByYear.reduce(function(s, v) { return s + (v || 0); }, 0) || w.cited_by_count || 0,
       year: w.publication_year || 0,
       url: w.id || '',
       doi: w.doi || '',
@@ -690,27 +690,6 @@ async function deductCredits(taskId, points, openid) {
   }
 }
 
-function isCallFunctionTimeout(err) {
-  var msg = (err && (err.message || err.errMsg || String(err))) || '';
-  return msg.indexOf('ESOCKETTIMEDOUT') >= 0 || msg.indexOf('ETIMEDOUT') >= 0;
-}
-
-function invokeWorker(label, data) {
-  cloud.callFunction({
-    name: 'specialIssueAgent',
-    data: data,
-    timeout: 120000
-  }).then(function(res) {
-    console.log('[' + label + '] 后台 worker 调用返回:', JSON.stringify((res && res.result) || {}));
-  }).catch(function(e) {
-    if (isCallFunctionTimeout(e)) {
-      console.log('[' + label + '] 后台 worker 调用端超时，任务状态以数据库轮询为准:', e.message || e);
-      return;
-    }
-    console.error('[' + label + '] 后台 worker 触发失败:', e.message || e);
-  });
-}
-
 function markRunningStepFailed(steps) {
   steps = steps || [];
   for (var i = 0; i < steps.length; i++) {
@@ -899,11 +878,19 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
       steps: steps,
       creditsDeducted: deductResult.success,
       completedAt: completedAt,
-      updatedAt: completedAt
+      updatedAt: completedAt,
+      // 清除旧残留字段
+      result: db.command.remove(),
+      sourcePapers: db.command.remove(),
+      totalPapers: db.command.remove()
     }
   });
 
   // ===== 写入 special_issue_directions（每个方向存各自引用的论文）=====
+  // 先按热度降序排序，热度高的排在前面
+  if (resultData.plans && resultData.plans.length > 0) {
+    resultData.plans.sort(function(a, b) { return (b.topicHeat || 0) - (a.topicHeat || 0); });
+  }
   for (var dp = 0; dp < (resultData.plans || []).length; dp++) {
     var dPlan = resultData.plans[dp];
     var dirArticleIds = dPlan.sourceArticleIds || [];
@@ -947,7 +934,7 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
 
 // ==================== doPhase2Pipeline（Phase 2：方案生成） ====================
 
-async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selectedDirection, openid) {
+async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selectedDirection, openid, isRegeneration) {
   var steps = initPhase2Steps();
 
   // ===== Step 1: 按方向关键词重新搜索论文（20篇，按被引量降序）=====
@@ -960,7 +947,7 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
 
   var recentYear = new Date().getFullYear() - 2;
   var selectFields2 = 'id,display_name,authorships,cited_by_count,publication_year,doi,primary_location,primary_topic,keywords,fwci,citation_normalized_percentile,counts_by_year,type';
-  var worksRes = await callOpenAlex('searchWorks', { query: searchQuery, fromYear: recentYear, perPage: 20, sort: 'relevance_score:desc', select: selectFields2 });
+  var worksRes = await callOpenAlex('searchWorks', { query: searchQuery, fromYear: recentYear, perPage: 50, sort: 'relevance_score:desc', select: selectFields2 });
 
   if (!worksRes.success) {
     await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
@@ -972,6 +959,22 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
   var rawPapers = (worksRes.data && worksRes.data.results) || [];
   var sourcePapers = simplifyWorks(rawPapers);
   var totalPapers = (worksRes.data && worksRes.data.meta && worksRes.data.meta.count) || rawPapers.length;
+
+  // 重新生成时随机打乱论文顺序并选取随机子集，让 AI 每次看到不同的论文
+  var llmPapers = sourcePapers;
+  if (isRegeneration && sourcePapers.length > 15) {
+    // Fisher-Yates shuffle
+    var shuffled = sourcePapers.slice();
+    for (var si = shuffled.length - 1; si > 0; si--) {
+      var ri = Math.floor(Math.random() * (si + 1));
+      var tmp = shuffled[si]; shuffled[si] = shuffled[ri]; shuffled[ri] = tmp;
+    }
+    // 随机取 20-35 篇传给 AI（确保每次看到的子集不同）
+    var takeN = 20 + Math.floor(Math.random() * Math.min(16, shuffled.length - 20));
+    llmPapers = shuffled.slice(0, takeN);
+    console.log('[Phase2 重新生成] 随机打乱论文, 取 ' + takeN + '/' + sourcePapers.length + ' 篇传给 AI');
+  }
+
   await updateSchemeStepStatus(schemeId, steps, 'search_papers_2', 'completed', taskId);
   try {
     await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
@@ -1027,14 +1030,16 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
     keywords: selectedDirection.zh ? selectedDirection.zh.keywords : (selectedDirection.en ? selectedDirection.en.keywords : []),
     topicHeat: selectedDirection.topicHeat || 0
   };
-  var userMsg = buildPhase2UserMessage(directionInfo, sourcePapers, llmAuthors, totalPapers, authorIds.length, constraints, templates);
+  var userMsg = buildPhase2UserMessage(directionInfo, llmPapers, llmAuthors, totalPapers, authorIds.length, constraints, templates);
 
   var llm;
   try {
-    llm = await callLLM([
-      { role: 'system', content: PHASE2_SYSTEM_PROMPT },
-      { role: 'user', content: userMsg }
-    ], { timeout: 600000, maxTokens: 4096 });
+    var llmMessages = [{ role: 'system', content: PHASE2_SYSTEM_PROMPT }];
+    if (isRegeneration) {
+      llmMessages.push({ role: 'system', content: '# 重新生成提示\n此次为重新生成，请优先选取与之前不同的论文作为 sourceArticleIds，并从不同的角度撰写方案标题和摘要。' });
+    }
+    llmMessages.push({ role: 'user', content: userMsg });
+    llm = await callLLM(llmMessages, { timeout: 600000, maxTokens: 4096 });
   } catch (e) {
     console.error('[Phase2] LLM 调用失败:', e.message);
     steps = markRunningStepFailed(steps);
@@ -1098,13 +1103,6 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
     }
   }
 
-  // 补充 phase1 已有的 plans 数据（从 direction 集合查）
-  var dirsRes = await db.collection(DIRECTION_COLLECTION).where({ taskId: taskId }).get();
-  var phase1Plans = (dirsRes.data || []).map(function(d) {
-    return { key: d.key, zh: d.zh, en: d.en, searchKeywords: d.searchKeywords,
-      topicHeat: d.topicHeat, sourceArticleIds: d.sourceArticleIds };
-  });
-
   await updateSchemeStepStatus(schemeId, steps, 'parse_result_2', 'completed', taskId);
 
   // ===== 只通过 scheme 表跟踪进度，不再同步 task =====
@@ -1113,7 +1111,6 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
     data: {
       status: 'completed',
       plan: plan,
-      phase1Plans: phase1Plans,
       sourcePapers: sourcePapers,
       sourceAuthors: sourceAuthors,
       usage: llm.usage,
@@ -1123,6 +1120,11 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
       updatedAt: completedAt
     }
   });
+
+  // 重新生成方案时，完成后扣积分
+  if (isRegeneration) {
+    await deductCredits(taskId, 15, openid);
+  }
 
 }
 
@@ -1203,22 +1205,19 @@ async function doRegeneratePipeline(keyword, constraints, taskId, openid) {
     var matched = [], citations = [], fwcis = [], hots = [], topCount = 0;
     for (var j = 0; j < ids.length; j++) {
       allReferencedIds[ids[j]] = true;
-      var paper = paperMap[ids[j]];
-      if (paper) {
-        matched.push(paper);
-        if (paper.cited_by_count) citations.push(paper.cited_by_count);
-        if (paper.fwci != null) fwcis.push(paper.fwci);
-        if (paper.citationNormalizedPercentile) {
-          var np = paper.citationNormalizedPercentile.value;
-          if (np != null) hots.push(np);
-        }
-        if (paper.primary_location && paper.primary_location.source && paper.primary_location.source.type === 'journal') topCount++;
-      }
+      var pap = paperMap[ids[j]];
+      if (!pap) continue;
+      matched.push(pap);
+      citations.push(pap.cc || 0);
+      fwcis.push(pap.fwci || 0);
+      hots.push(pap.hotRecent || 0);
+      if (pap.citationPercentile && pap.citationPercentile.isTop10) topCount++;
     }
-    plan.avgCitations = citations.length > 0 ? (citations.reduce(function(a,b){return a+b;},0) / citations.length) : 0;
-    plan.avgFWCI = fwcis.length > 0 ? (fwcis.reduce(function(a,b){return a+b;},0) / fwcis.length) : 0;
-    plan.hotRecentAvg = hots.length > 0 ? (hots.reduce(function(a,b){return a+b;},0) / hots.length) : 0;
-    plan.topJournalRatio = ids.length > 0 ? (topCount / ids.length) : 0;
+    var n = matched.length || 1;
+    plan.avgCitations = Math.round(citations.reduce(function(a,b){return a+b;},0) / n);
+    plan.avgFWCI = Math.round((fwcis.reduce(function(a,b){return a+b;},0) / n) * 100) / 100;
+    plan.hotRecentAvg = Math.round(hots.reduce(function(a,b){return a+b;},0) / n);
+    plan.topJournalRatio = Math.round((topCount / n) * 100) / 100;
     plan.paperCount = matched.length;
   }
 
@@ -1233,7 +1232,11 @@ async function doRegeneratePipeline(keyword, constraints, taskId, openid) {
     steps: steps,
     creditsDeducted: deductResult.success,
     completedAt: completedAt,
-    updatedAt: completedAt
+    updatedAt: completedAt,
+    // 清除旧残留字段
+    result: db.command.remove(),
+    sourcePapers: db.command.remove(),
+    totalPapers: db.command.remove()
   };
 
   // 存档旧方向数据（从 direction 集合迁移到 history）
@@ -1259,6 +1262,10 @@ async function doRegeneratePipeline(keyword, constraints, taskId, openid) {
   await db.collection(TASK_COLLECTION).doc(taskId).update({ data: updateData });
 
   // ===== 写入新的 directions =====
+  // 先按热度降序排序，热度高的排在前面
+  if (plans && plans.length > 0) {
+    plans.sort(function(a, b) { return (b.topicHeat || 0) - (a.topicHeat || 0); });
+  }
   for (var dp = 0; dp < plans.length; dp++) {
     var dPlan = plans[dp];
     var dirArticleIds = dPlan.sourceArticleIds || [];
@@ -1292,6 +1299,43 @@ async function doRegeneratePipeline(keyword, constraints, taskId, openid) {
   }
 }
 
+// ==================== runPhase2Pipeline（后台直接调用入口，替代 self-call） ====================
+
+async function runPhase2Pipeline(taskId, dirKey, schemeId, taskOpenid, isRegeneration) {
+  if (!taskId || !dirKey || !schemeId) {
+    console.error('[runPhase2Pipeline] 缺少必要参数:', JSON.stringify({ taskId, dirKey, schemeId }));
+    return;
+  }
+
+  try {
+    // 获取任务数据
+    var phase2Doc = await db.collection(TASK_COLLECTION).doc(taskId).get();
+    if (!phase2Doc.data) {
+      console.error('[runPhase2Pipeline] 任务不存在:', taskId);
+      return;
+    }
+
+    // 获取方向数据
+    var dirDoc = await db.collection(DIRECTION_COLLECTION).doc(taskId + '_' + dirKey).get();
+    if (!dirDoc.data) {
+      console.error('[runPhase2Pipeline] 方向不存在:', dirKey);
+      return;
+    }
+
+    var phase2Keyword = phase2Doc.data.keyword || '';
+    var phase2Constraints = phase2Doc.data.constraints || '';
+
+    await doPhase2Pipeline(taskId, schemeId, phase2Keyword, phase2Constraints, dirDoc.data, taskOpenid, isRegeneration);
+  } catch (err) {
+    console.error('[runPhase2Pipeline] 异常:', err.message || err);
+    try {
+      await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
+        data: { status: 'failed', error: '执行失败，请稍后重试', updatedAt: Date.now() }
+      });
+    } catch (e) { /* ignore */ }
+  }
+}
+
 // ==================== 主入口 ====================
 
 exports.main = async function(event, context) {
@@ -1307,6 +1351,7 @@ exports.main = async function(event, context) {
     try {
       var doc = await db.collection(TASK_COLLECTION).doc(taskId).get();
       if (!doc.data) return { success: false, error: '任务不存在' };
+      if (doc.data._openid !== openid) return { success: false, error: '无权访问' };
       var d = await markStaleProcessingTask(Object.assign({ _id: taskId }, doc.data));
       return {
         success: true,
@@ -1326,6 +1371,23 @@ exports.main = async function(event, context) {
       };
     } catch (e) {
       return { success: false, error: '查询失败' };
+    }
+  }
+
+  // ========== action: count（查询当前用户任务数量） ==========
+  if (event.action === 'count') {
+    try {
+      // 用 .get() 代替 .count()，后者在某些情况下可能返回0
+      var allTasks = await db.collection(TASK_COLLECTION)
+        .where({ _openid: openid })
+        .limit(1000)
+        .get();
+      var taskCount = (allTasks.data || []).length;
+      console.log('[count] openid:', openid, 'taskCount:', taskCount);
+      return { success: true, count: taskCount };
+    } catch (e) {
+      console.error('[count] error:', e.message);
+      return { success: false, count: 0, error: e.message };
     }
   }
 
@@ -1400,12 +1462,17 @@ exports.main = async function(event, context) {
   if (event.action === 'delete') {
     if (!taskId) return { success: false, error: '缺少 taskId' };
     try {
-      // 1. 删除该任务下所有方案
+      // 0. 先校验任务归属
+      var delTaskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
+      if (!delTaskDoc.data) return { success: false, error: '任务不存在' };
+      if (delTaskDoc.data._openid !== openid) return { success: false, error: '无权操作' };
+
+      // 1. 删除该任务下所有方案（已校验 task 归属，仅用 taskId 即可兼容旧数据）
       var schemesRes = await db.collection(SCHEME_COLLECTION).where({ taskId: taskId }).get();
       for (var si = 0; si < (schemesRes.data || []).length; si++) {
         await db.collection(SCHEME_COLLECTION).doc(schemesRes.data[si]._id).remove();
       }
-      // 2. 删除该任务下所有方向
+      // 2. 删除该任务下所有方向（已校验 task 归属，仅用 taskId 即可兼容旧数据）
       var dirsRes = await db.collection(DIRECTION_COLLECTION).where({ taskId: taskId }).get();
       for (var di = 0; di < (dirsRes.data || []).length; di++) {
         await db.collection(DIRECTION_COLLECTION).doc(dirsRes.data[di]._id).remove();
@@ -1425,6 +1492,7 @@ exports.main = async function(event, context) {
     try {
       var retryDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
       if (!retryDoc.data) return { success: false, error: '任务不存在' };
+      if (retryDoc.data._openid !== openid) return { success: false, error: '无权操作' };
       if (retryDoc.data.status !== 'failed') return { success: false, error: '当前状态不允许重新执行' };
 
       var retryData = retryDoc.data;
@@ -1452,11 +1520,9 @@ exports.main = async function(event, context) {
         });
 
         context.callbackWaitsForEmptyEventLoop = false;
-        invokeWorker('retryPhase2', {
-          action: 'runPhase2',
-          taskId: taskId,
-          directionKey: retrySelectedKey
-        });
+        var retrySchemeId = retryData.activeSchemeId || (taskId + '_s_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+        runPhase2Pipeline(taskId, retrySelectedKey, retrySchemeId, openid, false)
+          .catch(function(err) { console.error('[retryPhase2] runPhase2Pipeline 异常:', err.message || err); });
 
         return { success: true, taskId: taskId, phase: 'phase2', message: '已从第二阶段重新开始执行' };
       }
@@ -1472,15 +1538,10 @@ exports.main = async function(event, context) {
         }
       });
 
-      // 异步触发 Worker（重试不扣积分）
+      // 异步执行（重试不扣积分）
       context.callbackWaitsForEmptyEventLoop = false;
-      invokeWorker('retry', {
-        action: 'process',
-        keyword: retryData.keyword,
-        constraints: retryData.constraints,
-        taskId: taskId,
-        isRetry: true
-      });
+      doFullPipeline(retryData.keyword, retryData.constraints, taskId, openid, true)
+        .catch(function(err) { console.error('[retry] doFullPipeline 异常:', err.message || err); });
 
       return { success: true, taskId: taskId, phase: 'phase1', message: '已从第一阶段重新开始执行' };
     } catch (e) {
@@ -1488,38 +1549,13 @@ exports.main = async function(event, context) {
     }
   }
 
-  // ========== action: process（首次创建 Worker） ==========
-  if (event.action === 'process') {
-    try {
-      var taskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
-      var taskOpenid = (taskDoc.data && taskDoc.data._openid) || openid;
-      var isRetry = event.isRetry === true;
-      await doFullPipeline(keyword, constraints, taskId, taskOpenid, isRetry);
-      var processDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
-      var processData = processDoc.data || {};
-      return {
-        success: processData.status !== 'failed',
-        action: 'process_done',
-        status: processData.status || '',
-        error: processData.error || ''
-      };
-    } catch (err) {
-      console.error('[Worker] doFullPipeline 异常:', err.message || err);
-      try {
-        await db.collection(TASK_COLLECTION).doc(taskId).update({
-          data: { status: 'failed', error: '执行失败，请稍后重试', updatedAt: Date.now() }
-        });
-      } catch (e) { /* ignore */ }
-      return { success: false, action: 'process_done', status: 'failed', error: err.message || '执行失败' };
-    }
-  }
-
-  // ========== action: regenerate（重新生成触发） ==========
+  // ========== action: regenerate（重新生成趋势分析触发） ==========
   if (event.action === 'regenerate') {
     try {
       // 1. 查询当前任务
       var taskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
       if (!taskDoc.data) return { success: false, error: '任务不存在' };
+      if (taskDoc.data._openid !== openid) return { success: false, error: '无权操作' };
       if (taskDoc.data.status === 'processing') return { success: false, error: '任务正在执行中' };
 
       // 2. 检查积分
@@ -1535,7 +1571,40 @@ exports.main = async function(event, context) {
       }
       console.log('[regenerate] 积分检查通过，继续执行');
 
-      // 3. 标记任务为重新生成中
+      // 2.5 删除该任务下所有旧方案（已校验 task 归属，仅用 taskId 即可兼容旧数据）
+      var oldSchemesForRegen = await db.collection(SCHEME_COLLECTION).where({ taskId: taskId }).get();
+      var deletedSchemeCount = 0;
+      for (var osi = 0; osi < (oldSchemesForRegen.data || []).length; osi++) {
+        try { await db.collection(SCHEME_COLLECTION).doc(oldSchemesForRegen.data[osi]._id).remove(); deletedSchemeCount++; } catch (e) {}
+      }
+      console.log('[regenerate] 已删除旧方案 ' + deletedSchemeCount + '/' + (oldSchemesForRegen.data || []).length + ' 个');
+
+      // 2.6 存档并删除所有旧方向（已校验 task 归属，仅用 taskId 即可兼容旧数据）
+      var taskForArchive = await db.collection(TASK_COLLECTION).doc(taskId).get();
+      var oldDirs = await db.collection(DIRECTION_COLLECTION).where({ taskId: taskId }).get();
+      if (oldDirs.data && oldDirs.data.length > 0) {
+        var regenHistory = (taskForArchive.data && taskForArchive.data.regenerateHistory) || [];
+        regenHistory.push({
+          directions: oldDirs.data,
+          usage: taskForArchive.data ? taskForArchive.data.usage : null,
+          completedAt: taskForArchive.data ? taskForArchive.data.completedAt : null,
+          index: regenHistory.length + 1
+        });
+        var deletedDirCount = 0;
+        for (var odi = 0; odi < oldDirs.data.length; odi++) {
+          try { await db.collection(DIRECTION_COLLECTION).doc(oldDirs.data[odi]._id).remove(); deletedDirCount++; } catch (e) {}
+        }
+        await db.collection(TASK_COLLECTION).doc(taskId).update({
+          data: {
+            regenerateHistory: regenHistory,
+            regenerateCount: (taskForArchive.data && (taskForArchive.data.regenerateCount || 0)) + 1,
+            updatedAt: Date.now()
+          }
+        });
+        console.log('[regenerate] 已存档并删除旧方向 ' + deletedDirCount + '/' + oldDirs.data.length + ' 个');
+      }
+
+      // 3. 标记任务为重新生成中，同时清除旧的趋势分析结果字段
       await db.collection(TASK_COLLECTION).doc(taskId).update({
         data: {
           status: 'processing',
@@ -1547,18 +1616,23 @@ exports.main = async function(event, context) {
             { key: 'parse_result',   label: '解析并保存结果',         status: 'pending' }
           ],
           creditsDeducted: false,
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          // 清除旧趋势分析数据
+          phase1Usage: db.command.remove(),
+          usage: db.command.remove(),
+          result: db.command.remove(),
+          sourcePapers: db.command.remove(),
+          totalPapers: db.command.remove(),
+          searchUrl: db.command.remove(),
+          completedAt: db.command.remove(),
+          error: db.command.remove()
         }
       });
 
-      // 4. 触发精简 pipeline（重新搜索 + LLM）
+      // 4. 异步执行精简 pipeline（重新搜索 + LLM）
       context.callbackWaitsForEmptyEventLoop = false;
-      invokeWorker('regenerate', {
-        action: 'regenerateProcess',
-        taskId: taskId,
-        keyword: taskDoc.data.keyword,
-        constraints: taskDoc.data.constraints
-      });
+      doRegeneratePipeline(taskDoc.data.keyword, taskDoc.data.constraints, taskId, taskOwnerOpenid)
+        .catch(function(err) { console.error('[regenerate] doRegeneratePipeline 异常:', err.message || err); });
 
       return { success: true, taskId: taskId };
     } catch (e) {
@@ -1566,26 +1640,77 @@ exports.main = async function(event, context) {
     }
   }
 
-  // ========== action: regenerateProcess（重新生成 Worker） ==========
-  if (event.action === 'regenerateProcess') {
+  // ========== action: regenerateScheme（重新生成方案：删除旧方案 + 启动新 Phase 2） ==========
+  if (event.action === 'regenerateScheme') {
+    var oldSchemeId = event.schemeId;
+    var regenDirKey = event.directionKey;
+    if (!taskId) return { success: false, error: '缺少 taskId' };
+    if (!oldSchemeId) return { success: false, error: '缺少 schemeId' };
+    if (!regenDirKey) return { success: false, error: '缺少 directionKey' };
+
     try {
-      var taskDoc2 = await db.collection(TASK_COLLECTION).doc(taskId).get();
-      var taskOpenid2 = (taskDoc2.data && taskDoc2.data._openid) || openid;
-      await doRegeneratePipeline(
-        keyword,
-        constraints,
-        taskId,
-        taskOpenid2
-      );
-    } catch (err) {
-      console.error('[Worker] doRegeneratePipeline 异常:', err.message || err);
-      try {
-        await db.collection(TASK_COLLECTION).doc(taskId).update({
-          data: { status: 'failed', error: '执行失败，请稍后重试', updatedAt: Date.now() }
-        });
-      } catch (e) { /* ignore */ }
+      var regenTaskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
+      if (!regenTaskDoc.data) return { success: false, error: '任务不存在' };
+      // 校验任务归属
+      if (regenTaskDoc.data._openid !== openid) return { success: false, error: '无权操作' };
+
+      // 1. 检查积分
+      var regenOpenid = regenTaskDoc.data._openid || openid;
+      var regenCreditsRes = await cloud.callFunction({ name: 'creditsAPI', data: { action: 'getCreditsInfo', _openid: regenOpenid } });
+      var regenBalance = regenCreditsRes.result.credits || regenCreditsRes.result.balance || 0;
+      if (regenBalance < 15) {
+        return { success: false, error: '积分不足', balance: regenBalance };
+      }
+
+      // 2. 删除该方向下所有旧方案（按趋势ID过滤，已校验 task 归属，仅用 taskId+directionKey）
+      var oldDirSchemes = await db.collection(SCHEME_COLLECTION)
+        .where({ taskId: taskId, directionKey: regenDirKey })
+        .get();
+      for (var ods = 0; ods < (oldDirSchemes.data || []).length; ods++) {
+        try { await db.collection(SCHEME_COLLECTION).doc(oldDirSchemes.data[ods]._id).remove(); } catch (e) {}
+      }
+      console.log('[regenerateScheme] 已删除该方向 ' + (oldDirSchemes.data || []).length + ' 个旧方案');
+
+      // 3. 从 direction 集合读取方向数据
+      var regenDirDoc = await db.collection(DIRECTION_COLLECTION).doc(taskId + '_' + regenDirKey).get();
+      if (!regenDirDoc.data) return { success: false, error: '方向不存在: ' + regenDirKey };
+
+      // 4. 创建新方案文档
+      var newSchemeId = taskId + '_s_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+      var regenSchemeSteps = initPhase2Steps();
+      var regenDirectionId = taskId + '_' + regenDirKey;
+      await db.collection(SCHEME_COLLECTION).add({
+        data: {
+          _id: newSchemeId,
+          taskId: taskId,
+          directionId: regenDirectionId,
+          directionKey: regenDirKey,
+          _openid: regenOpenid,
+          keyword: regenTaskDoc.data.keyword || '',
+          constraints: regenTaskDoc.data.constraints || '',
+          status: 'generating',
+          progress: 'phase2_searching',
+          steps: regenSchemeSteps,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+      });
+
+      // 5. 更新 task 的活跃 scheme
+      await db.collection(TASK_COLLECTION).doc(taskId).update({
+        data: { activeSchemeId: newSchemeId, updatedAt: Date.now() }
+      });
+
+      // 6. 异步执行 Phase 2（标记为重新生成，完成后扣积分）
+      context.callbackWaitsForEmptyEventLoop = false;
+      runPhase2Pipeline(taskId, regenDirKey, newSchemeId, regenOpenid, true)
+        .catch(function(err) { console.error('[regenerateScheme] runPhase2Pipeline 异常:', err.message || err); });
+
+      return { success: true, taskId: taskId, schemeId: newSchemeId, message: '方案重新生成已启动' };
+    } catch (e) {
+      console.error('[regenerateScheme] 异常:', e.message);
+      return { success: false, error: '重新生成方案失败: ' + (e.message || '') };
     }
-    return { success: true, action: 'regenerate_done' };
   }
 
   // ========== action: startScheme（用户选择方向 → 创建方案文档并异步执行） ==========
@@ -1597,12 +1722,13 @@ exports.main = async function(event, context) {
     try {
       var doc = await db.collection(TASK_COLLECTION).doc(taskId).get();
       if (!doc.data) return { success: false, error: '任务不存在' };
+      if (doc.data._openid !== openid) return { success: false, error: '无权操作' };
 
       // 从 direction 集合读取方向数据
       var dirDoc = await db.collection(DIRECTION_COLLECTION).doc(taskId + '_' + selectedKey).get();
       if (!dirDoc.data) return { success: false, error: '方向不存在: ' + selectedKey };
 
-      // 检查是否已有 generating 状态的 scheme
+      // 检查是否已有 generating 状态的 scheme（已校验 task 归属，仅用 taskId+directionKey）
       var existingSchemes = await db.collection(SCHEME_COLLECTION)
         .where({ taskId: taskId, directionKey: selectedKey, status: 'generating' })
         .get();
@@ -1639,14 +1765,10 @@ exports.main = async function(event, context) {
         }
       });
 
-      // 异步触发 Phase 2
+      // 异步执行 Phase 2
       context.callbackWaitsForEmptyEventLoop = false;
-      invokeWorker('startScheme', {
-        action: 'runPhase2',
-        taskId: taskId,
-        schemeId: schemeId,
-        directionKey: selectedKey
-      });
+      runPhase2Pipeline(taskId, selectedKey, schemeId, doc.data._openid || openid, false)
+        .catch(function(err) { console.error('[startScheme] runPhase2Pipeline 异常:', err.message || err); });
 
       return { success: true, taskId: taskId, schemeId: schemeId, message: '方案生成已启动' };
     } catch (e) {
@@ -1661,39 +1783,6 @@ exports.main = async function(event, context) {
     return exports.main(event, context);
   }
 
-  // ========== action: runPhase2（Phase 2 Worker） ==========
-  if (event.action === 'runPhase2') {
-    var dirKey = event.directionKey;
-    var schemeId = event.schemeId;
-    if (!taskId) return { success: false, error: '缺少 taskId' };
-    if (!dirKey) return { success: false, error: '缺少 directionKey' };
-    if (!schemeId) return { success: false, error: '缺少 schemeId' };
-
-    try {
-      var phase2Doc = await db.collection(TASK_COLLECTION).doc(taskId).get();
-      if (!phase2Doc.data) return { success: false, error: '任务不存在' };
-
-      // 从 direction 集合读取方向数据
-      var dirDoc = await db.collection(DIRECTION_COLLECTION).doc(taskId + '_' + dirKey).get();
-      if (!dirDoc.data) return { success: false, error: '方向不存在: ' + dirKey };
-      var selectedDir = dirDoc.data;
-
-      var phase2TaskOpenid = phase2Doc.data._openid || openid;
-      var phase2Keyword = phase2Doc.data.keyword || '';
-      var phase2Constraints = phase2Doc.data.constraints || '';
-
-      await doPhase2Pipeline(taskId, schemeId, phase2Keyword, phase2Constraints, selectedDir, phase2TaskOpenid);
-    } catch (err) {
-      console.error('[runPhase2] 异常:', err.message || err);
-      try {
-        await db.collection(SCHEME_COLLECTION).doc(schemeId).update({
-          data: { status: 'failed', error: '执行失败，请稍后重试', updatedAt: Date.now() }
-        });
-      } catch (e) { /* ignore */ }
-    }
-    return { success: true, action: 'phase2_done' };
-  }
-
   // ========== action: getTrendDetail（查询趋势分析详情） ==========
   if (event.action === 'getTrendDetail') {
     if (!taskId) return { success: false, error: '缺少 taskId' };
@@ -1702,26 +1791,30 @@ exports.main = async function(event, context) {
       if (!trendDoc.data) return { success: false, error: '任务不存在' };
 
       var td = trendDoc.data;
-      // 从 directions 集合读取
+      // 校验任务归属
+      if (td._openid !== openid) return { success: false, error: '无权访问' };
+
+      // 从 directions 集合读取（按热度降序，已校验 task 归属，仅用 taskId）
       var dirsRes = await db.collection(DIRECTION_COLLECTION)
         .where({ taskId: taskId })
+        .orderBy('topicHeat', 'desc')
         .get();
       var directions = dirsRes.data || [];
 
-      // 查询方案数量
+      // 查询方案数量（已校验 task 归属，仅用 taskId）
       var schemeCountRes = await db.collection(SCHEME_COLLECTION)
         .where({ taskId: taskId, status: 'completed' }).count();
       var generatingRes = await db.collection(SCHEME_COLLECTION)
         .where({ taskId: taskId, status: 'generating' }).get();
 
-      // 为每个方向查询其下的方案（用 directionId 关联）
+      // 为每个方向查询其下的方案（用 directionId 关联，已校验 task 归属，仅用 taskId）
       var schemesByDir = {};
       var allSchemes = await db.collection(SCHEME_COLLECTION)
         .where({ taskId: taskId })
         .get();
       for (var si = 0; si < (allSchemes.data || []).length; si++) {
         var s = allSchemes.data[si];
-        var dk = s.directionId || s.directionKey;
+        var dk = s.directionKey || s.directionId;
         if (!schemesByDir[dk]) schemesByDir[dk] = [];
         schemesByDir[dk].push({
           schemeId: s._id,
@@ -1810,6 +1903,35 @@ exports.main = async function(event, context) {
       var sDoc = await db.collection(SCHEME_COLLECTION).doc(schemeId).get();
       if (!sDoc.data) return { success: false, error: '方案不存在' };
       var sd = sDoc.data;
+
+      // 截断大数组避免超过 1MB 云函数响应限制
+      var allPapers = sd.sourcePapers || [];
+      var articleIds = (sd.plan && sd.plan.sourceArticleIds) || [];
+      var filteredPapers;
+      if (articleIds.length > 0) {
+        // 只返回方案引用的论文
+        var idSet = {};
+        for (var fi = 0; fi < articleIds.length; fi++) idSet[articleIds[fi]] = true;
+        filteredPapers = allPapers.filter(function(p) { return idSet[p.id]; });
+      } else {
+        // 未标注引用时限制数量
+        filteredPapers = allPapers.slice(0, 20);
+      }
+      // 精简论文字段（保留 citationsByYear 给前端点击"被引"柱状图用）
+      var slimPapers = filteredPapers.map(function(p) {
+        return {
+          id: p.id, title: p.title, abstract: p.abstract,
+          authors: p.authors, cc: p.cc, year: p.year,
+          url: p.url, doi: p.doi,
+          type: p.type, journal: p.journal,
+          topics: p.topics, keywords: p.keywords,
+          fwci: p.fwci, citationPercentile: p.citationPercentile,
+          citationsByYear: p.citationsByYear
+        };
+      });
+      // 作者列表截断
+      var slimAuthors = (sd.sourceAuthors || []).slice(0, 15);
+
       return {
         success: true,
         data: {
@@ -1819,8 +1941,8 @@ exports.main = async function(event, context) {
           directionKey: sd.directionKey,
           status: sd.status,
           plan: sd.plan,
-          sourcePapers: sd.sourcePapers,
-          sourceAuthors: sd.sourceAuthors,
+          sourcePapers: slimPapers,
+          sourceAuthors: slimAuthors,
           steps: sd.steps,
           progress: sd.progress,
           usage: sd.usage,
@@ -1872,9 +1994,10 @@ exports.main = async function(event, context) {
     return { success: false, error: '创建任务失败' };
   }
 
-  // Fire-and-forget: 异步触发 worker
+  // Fire-and-forget: 异步执行 pipeline
   context.callbackWaitsForEmptyEventLoop = false;
-  invokeWorker('Trigger', { action: 'process', keyword: keyword, constraints: constraints, taskId: newTaskId });
+  doFullPipeline(keyword, constraints, newTaskId, openid, false)
+    .catch(function(err) { console.error('[Trigger] doFullPipeline 异常:', err.message || err); });
 
   return { success: true, taskId: newTaskId };
 };

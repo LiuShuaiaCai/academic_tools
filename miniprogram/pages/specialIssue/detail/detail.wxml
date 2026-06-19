@@ -145,7 +145,16 @@
                 <view class="detail-label">依据论文（{{item._matchedPapers.length}}篇）</view>
                 <view class="detail-papers">
                   <view class="detail-paper-item" wx:for="{{item._matchedPapers}}" wx:for-item="mp" wx:key="id">
-                    <text class="detail-paper-title" bindtap="onTapArticle" data-url="{{mp.url}}">{{mp.title}}</text>
+                    <view class="detail-paper-info">
+                      <text class="detail-paper-title" bindtap="onTapArticle" data-url="{{mp.url}}">{{mp.title}}</text>
+                      <view class="detail-paper-meta-row">
+                        <text wx:if="{{mp.journal}}" class="detail-paper-journal">📰 {{mp.journal}}</text>
+                        <text wx:if="{{mp.year}}" class="detail-paper-year">{{mp.year}}</text>
+                      </view>
+                      <view class="detail-paper-meta-row" wx:if="{{mp.doi}}">
+                        <text class="detail-paper-doi" bindtap="onTapArticle" data-url="{{'https://doi.org/' + mp.doi}}">DOI: {{mp.doi}}</text>
+                      </view>
+                    </view>
                     <text class="detail-paper-cite">被引 {{mp.cc}}</text>
                   </view>
                 </view>
@@ -159,7 +168,7 @@
       <view class="direction-footer">
         <view class="action-btn outline" bindtap="onRegenerate">
           <text>🔄 重新分析</text>
-          <text class="action-hint">（消耗 30 积分）</text>
+          <text class="action-hint">（消耗 15 积分）</text>
         </view>
       </view>
     </view>
@@ -175,7 +184,7 @@
       </view>
       <scroll-view scroll-y="true" class="detail-modal-body">
         <block wx:if="{{detailModalPlan}}">
-          <!-- 核心指标 -->
+          <!-- 核心指标（点击查看趋势） -->
           <view class="detail-section">
             <view class="detail-label">📊 核心指标</view>
             <view class="trend-metrics-grid">
@@ -241,7 +250,16 @@
             <view class="detail-label">📄 依据论文（{{detailModalPlan._matchedPapers.length}}篇）</view>
             <view class="detail-papers">
               <view class="detail-paper-item" wx:for="{{detailModalPlan._matchedPapers}}" wx:for-item="mp" wx:key="id">
-                <text class="detail-paper-title" bindtap="onTapArticle" data-url="{{mp.url}}">{{mp.title}}</text>
+                <view class="detail-paper-info">
+                  <text class="detail-paper-title" bindtap="onTapArticle" data-url="{{mp.url}}">{{mp.title}}</text>
+                  <view class="detail-paper-meta-row">
+                    <text wx:if="{{mp.journal}}" class="detail-paper-journal">📰 {{mp.journal}}</text>
+                    <text wx:if="{{mp.year}}" class="detail-paper-year">{{mp.year}}</text>
+                  </view>
+                  <view class="detail-paper-meta-row" wx:if="{{mp.doi}}">
+                    <text class="detail-paper-doi" bindtap="onTapArticle" data-url="{{'https://doi.org/' + mp.doi}}">DOI: {{mp.doi}}</text>
+                  </view>
+                </view>
                 <text class="detail-paper-cite">被引 {{mp.cc}}</text>
               </view>
             </view>
@@ -299,7 +317,8 @@
             <text class="meta-item">{{item.authors ? item.authors.join(', ') : ''}}</text>
           </view>
           <view class="article-meta">
-            <text class="meta-item">{{item.year}}</text>
+            <text wx:if="{{item.journal}}" class="meta-item meta-journal">📰 {{item.journal}}</text>
+            <text wx:if="{{item.year}}" class="meta-item meta-year">{{item.year}}</text>
             <text class="meta-sep">|</text>
             <text class="meta-item meta-cite" bindtap="onTapCitations" data-index="{{index}}">被引: {{item.cc}}</text>
           </view>
@@ -311,13 +330,13 @@
     </view>
 
     <!-- 推荐客编卡片 -->
-    <view class="result-card editors-card" wx:if="{{planGuestEditors.length > 0}}">
+    <view class="result-card editors-card" wx:if="{{enrichedEditors.length > 0}}">
       <view class="card-header">
         <view class="card-icon">👥</view>
         <view class="card-title">推荐客编</view>
-        <text class="editor-count">({{planGuestEditors.length}} 位)</text>
+        <text class="editor-count">({{enrichedEditors.length}} 位)</text>
       </view>
-      <view class="editor-item" wx:for="{{planGuestEditors}}" wx:key="name">
+      <view class="editor-item" wx:for="{{enrichedEditors}}" wx:key="name">
         <view class="editor-header">
           <view class="editor-avatar">{{index + 1}}</view>
           <view class="editor-main">
@@ -325,7 +344,36 @@
             <view class="editor-institution">{{item.institution}}</view>
           </view>
         </view>
-      </view>
+        <!-- 研究方向 -->
+        <view class="editor-expertise" wx:if="{{item.top.length > 0}}">
+          <text class="expertise-tag" wx:for="{{item.top}}" wx:key="*this" wx:for-item="topic">{{topic}}</text>
+        </view>
+        <!-- 核心指标 -->
+        <view class="editor-metrics">
+          <view class="metric-item metric-tappable" bindtap="onTapMetric" data-index="{{index}}" data-metric="hindex">
+            <text class="metric-num">{{item.hIndex}}</text>
+            <text class="metric-label">H-index</text>
+          </view>
+          <view class="metric-item metric-tappable" bindtap="onTapMetric" data-index="{{index}}" data-metric="i10">
+            <text class="metric-num">{{item.i10Index}}</text>
+            <text class="metric-label">i10-index</text>
+          </view>
+          <view class="metric-item metric-tappable" bindtap="onTapMetric" data-index="{{index}}" data-metric="works">
+            <text class="metric-num">{{item.worksCount}}</text>
+            <text class="metric-label">作品数</text>
+          </view>
+          <view class="metric-item metric-tappable" bindtap="onTapMetric" data-index="{{index}}" data-metric="cited">
+            <text class="metric-num">{{item.citedByCount}}</text>
+            <text class="metric-label">被引</text>
+          </view>
+        </view>
+        <!-- 查看工作经历 -->
+        <view class="editor-work-btn" bindtap="onTapWorkHistory" data-index="{{index}}">
+          <text class="work-btn-icon">🏛️</text>
+          <text class="work-btn-text">查看工作经历</text>
+          <text class="work-btn-arrow">›</text>
+        </view>
+        </view>
     </view>
 
     <!-- 操作区域 -->
@@ -333,7 +381,7 @@
       <view class="action-row">
         <view class="action-btn primary" bindtap="onRegenerate" style="flex-direction: column;">
           <view>🔄 重新生成</view>
-          <view class="action-hint">（消耗 30 积分）</view>
+          <view class="action-hint">（消耗 15 积分）</view>
         </view>
         <view class="action-btn outline" bindtap="copyFullPlan">
           📋 复制方案
@@ -355,19 +403,62 @@
         <text class="cite-modal-close" bindtap="hideCiteModal">×</text>
       </view>
       <view class="cite-modal-body">
-        <view class="cite-chart" wx:if="{{citeModalData.years.length > 0}}">
-          <view class="cite-chart-bars">
-            <view class="cite-bar-wrap" wx:for="{{citeModalData.years}}" wx:key="*this" wx:for-index="idx">
-              <view class="cite-bar-track">
-                <view class="cite-bar" style="height: {{citeModalData.heights[idx]}}%;"></view>
-              </view>
-              <text class="cite-bar-label">{{item}}</text>
-              <text class="cite-bar-value">{{citeModalData.counts[idx]}}</text>
-            </view>
+        <view class="chart-section" wx:if="{{citeYearChartData.series}}">
+          <view class="chart-title">📊 每年被引次数</view>
+          <view class="uchart-box">
+            <qiun-wx-ucharts type="column" canvasId="citeYearChart" chartData="{{citeYearChartData}}" canvas2d="{{citeUseCanvas2d}}" inScrollView="{{!citeUseCanvas2d}}" />
           </view>
         </view>
         <view class="cite-empty" wx:else>
           <text>暂无年度引用数据</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 单指标按年统计弹窗 -->
+  <view class="cite-modal" wx:if="{{showMetricYearModal}}" bindtap="hideMetricYearModal">
+    <view class="cite-modal-content" catchtap="stopBubble">
+      <view class="cite-modal-header">
+        <text class="cite-modal-title">{{metricYearModalTitle}}</text>
+        <text class="cite-modal-close" bindtap="hideMetricYearModal">×</text>
+      </view>
+      <view class="cite-modal-body">
+        <view class="chart-section" wx:if="{{metricYearChartData.series}}">
+          <view class="chart-title">📊 年度数据</view>
+          <view class="uchart-box">
+            <qiun-wx-ucharts type="column" canvasId="metricYearChart" chartData="{{metricYearChartData}}" canvas2d="{{citeUseCanvas2d}}" inScrollView="{{!citeUseCanvas2d}}" />
+          </view>
+        </view>
+        <view class="cite-empty" wx:else>
+          <text>暂无数据</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 工作经历弹窗 -->
+  <view class="cite-modal work-history-modal" wx:if="{{showWorkHistoryModal}}" bindtap="hideWorkHistoryModal">
+    <view class="cite-modal-content" catchtap="stopBubble">
+      <view class="cite-modal-header">
+        <text class="cite-modal-title">{{workHistoryTitle}}</text>
+        <text class="cite-modal-close" bindtap="hideWorkHistoryModal">×</text>
+      </view>
+      <view class="cite-modal-body">
+        <view class="timeline">
+          <view class="timeline-item" wx:for="{{workHistoryList}}" wx:key="displayName">
+            <view class="timeline-dot"></view>
+            <view class="timeline-content">
+              <text class="timeline-name">{{item.displayName}}</text>
+              <view class="timeline-meta">
+                <text class="timeline-period">🕐 {{item.period}}</text>
+                <text class="timeline-country" wx:if="{{item.countryCode}}">{{item.countryCode}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="cite-empty" wx:if="{{workHistoryList.length === 0}}">
+          <text>暂无工作经历</text>
         </view>
       </view>
     </view>

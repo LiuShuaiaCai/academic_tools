@@ -1,11 +1,13 @@
 // pages/specialIssue/detail/detail.js
-// V5: 详情页 - 展示方案详情、来源文章、客编图表、重新生成、查看历史
+// 方案详情页：展示方案详情、来源文章、客编图表、重新生成、查看历史
 var creditsUtil = require('../../../utils/credits.js');
 var theme = require('../../../utils/theme.js');
 
 Page({
   data: {
     taskId: '',
+    schemeId: '',
+    directionKey: '',
     keyword: '',
     displayLang: 'zh',
 
@@ -21,29 +23,15 @@ Page({
     planAbstract: '',
     planKeywords: [],
     planGuestEditors: [],
+    enrichedEditors: [],
     planTopicHeat: 0,
     planSourceArticleIds: [],
     planSourceEditorIds: [],
 
-    // 方向选择面板
-    plans: [],
-    showDirectionPanel: false,
-    expandedDirection: '',
-    selectingDirection: false,
-    compareHeights: [],
-
     // scheme detail 展示数据
     sourcePapers: [],
+    displayPapers: [],
     sourceAuthors: [],
-
-    // 方向详情弹窗
-    showDetailModal: false,
-    detailModalPlan: null,
-
-    // 方案进度弹窗
-    showProgressModal: false,
-    selectedSchemeSteps: [],
-    selectedSchemeProgress: '',
 
     // 状态
     loading: true,
@@ -55,21 +43,34 @@ Page({
     editorChartData: {},
     canvas2d: true,
 
-    // 引用统计弹窗
+    // 引用统计弹窗（ucharts 柱状图）
     showCiteModal: false,
     citeModalTitle: '',
-    citeModalData: { years: [], counts: [], heights: [] },
+    citeYearChartData: {},
+    citeUseCanvas2d: false,
 
-    // 主题色（由 loadToolTheme 从 DB 加载）
+    // 工作经历弹窗
+    showWorkHistoryModal: false,
+    workHistoryTitle: '',
+    workHistoryList: [],
+
+    // 单指标按年统计弹窗
+    showMetricYearModal: false,
+    metricYearModalTitle: '',
+    metricYearChartData: {},
+
+    // 主题色
     theme: {}
   },
 
   onLoad: function(options) {
     this.loadToolTheme();
-    var taskId = options.taskId || '';
     var schemeId = options.schemeId || '';
-    var directionKey = options.directionKey || '';
-    this.setData({ taskId: taskId, schemeId: schemeId, directionKey: directionKey });
+    this.setData({
+      taskId: options.taskId || '',
+      schemeId: schemeId,
+      keyword: options.keyword || ''
+    });
 
     // 检测 canvas2d 支持
     var sysInfo = wx.getSystemInfoSync();
@@ -80,12 +81,11 @@ Page({
         this.setData({ canvas2d: false });
       }
     }
+    // 引用柱状图 canvas2d 检测（真机用 canvas2d）
+    var platform = sysInfo.platform;
+    this.setData({ citeUseCanvas2d: platform === 'ios' || platform === 'android' });
 
-    if (schemeId) {
-      this.loadSchemeDetail();
-    } else {
-      this.loadTrendDetail();
-    }
+    this.loadSchemeDetail();
   },
 
   loadToolTheme: function() {
@@ -96,13 +96,8 @@ Page({
   },
 
   onShow: function() {
-    // 如果正在轮询中，页面回来时刷新
     if (this._pollTimer) {
-      if (this.data.schemeId) {
-        this.loadSchemeDetail();
-      } else {
-        this.loadTrendDetail();
-      }
+      this.loadSchemeDetail();
     }
   },
 
@@ -110,95 +105,7 @@ Page({
     this.stopPolling();
   },
 
-  // ---- 加载趋势分析详情（新的 getTrendDetail 接口） ----
-  loadTrendDetail: function() {
-    var that = this;
-    wx.cloud.callFunction({
-      name: 'specialIssueAgent',
-      data: { action: 'getTrendDetail', taskId: that.data.taskId }
-    }).then(function(res) {
-      var data = res.result && res.result.data;
-      console.log('[detail] getTrendDetail返回:', JSON.stringify(data));
-      if (!data) {
-        that.setData({ loading: false, error: '任务不存在' });
-        return;
-      }
-
-      var plans = data.directions || [];
-      var schemesByDir = data.schemesByDir || {};
-
-      // 方向卡片预处理
-      for (var p = 0; p < plans.length; p++) {
-        plans[p]._topicLabel = 'Topic' + (p + 1);
-        plans[p]._paperCount = plans[p].paperCount || 0;
-        plans[p]._avgCitationsStr = (plans[p].avgCitations || 0).toFixed(1);
-        plans[p]._avgFWCIStr = (plans[p].avgFWCI || 0).toFixed(2);
-        plans[p]._hotRecentAvgStr = (plans[p].hotRecentAvg || 0).toFixed(1);
-        plans[p]._topJournalRatioStr = ((plans[p].topJournalRatio || 0) * 100).toFixed(0) + '%';
-        // 从 direction 的 sourcePapers 字段获取依据论文
-        plans[p]._matchedPapers = plans[p].sourcePapers || [];
-        var h = plans[p].topicHeat || 0;
-        if (h >= 800) plans[p]._heatColor = 'linear-gradient(135deg, #DC2626, #EF4444)';
-        else if (h >= 600) plans[p]._heatColor = 'linear-gradient(135deg, #EA580C, #F97316)';
-        else if (h >= 400) plans[p]._heatColor = 'linear-gradient(135deg, #CA8A04, #EAB308)';
-        else plans[p]._heatColor = 'linear-gradient(135deg, #2563EB, #3B82F6)';
-        // 该方向下的方案列表
-        plans[p]._schemes = schemesByDir[plans[p].key] || [];
-        // 按钮状态
-        var dirSchemes = schemesByDir[plans[p].key] || [];
-        var hasGenerating = false;
-        var hasCompleted = false;
-        var hasFailed = false;
-        var latestSchemeId = '';
-        for (var s = 0; s < dirSchemes.length; s++) {
-          if (dirSchemes[s].status === 'generating') { hasGenerating = true; latestSchemeId = dirSchemes[s].schemeId; }
-          if (dirSchemes[s].status === 'completed') { hasCompleted = true; }
-          if (dirSchemes[s].status === 'failed') { hasFailed = true; latestSchemeId = dirSchemes[s].schemeId; }
-        }
-        if (hasGenerating) {
-          plans[p]._schemeStatus = 'generating';
-          plans[p]._schemeId = latestSchemeId;
-          plans[p]._progressPercent = plans[p]._progressPercent || 0;
-        } else if (hasCompleted) {
-          plans[p]._schemeStatus = 'completed';
-          plans[p]._schemeId = (dirSchemes.find(function(s) { return s.status === 'completed'; }) || {}).schemeId || '';
-        } else if (hasFailed) {
-          plans[p]._schemeStatus = 'failed';
-          plans[p]._schemeId = latestSchemeId;
-        } else {
-          plans[p]._schemeStatus = 'idle';
-        }
-      }
-      plans.sort(function(a, b) { return (b.topicHeat || 0) - (a.topicHeat || 0); });
-
-      var maxHeat = 1;
-      for (var p = 0; p < plans.length; p++) maxHeat = Math.max(maxHeat, plans[p].topicHeat || 0);
-      var compareHeights = plans.map(function(p) { return Math.max(Math.round((p.topicHeat || 0) / maxHeat * 100), 4); });
-
-      that.setData({
-        loading: false,
-        showDirectionPanel: true,
-        keyword: data.keyword || '',
-        plans: plans,
-        compareHeights: compareHeights,
-        schemeCount: data.schemeCount || 0,
-        generatingSchemeId: data.generatingSchemeId || '',
-        error: ''
-      });
-      wx.setNavigationBarTitle({ title: '趋势领域分析' });
-
-      // 如果有正在生成的方案，启动轮询
-      if (data.generatingSchemeId) {
-        that._pollingSchemeId = data.generatingSchemeId;
-        that.startSchemePolling();
-      }
-    }).catch(function(err) {
-      console.error('[detail] 加载趋势失败:', err);
-      that.setData({ loading: false, error: that.getDisplayError(err.message || '网络错误') });
-    });
-  },
-
-  // ---- 加载方案详情（getSchemeDetail 接口） ----
+  // ---- 加载方案详情 ----
   loadSchemeDetail: function() {
     var that = this;
     wx.cloud.callFunction({
@@ -238,15 +145,18 @@ Page({
         ? allPapers.filter(function(p) { return idSet[p.id]; })
         : allPapers;
 
+      // 用 sourceAuthors 数据补全客编信息（h指数、作品数、被引、研究领域）
+      var enrichedEditors = that.enrichEditors(plan.guestEditors || [], data.sourceAuthors || []);
       that.setData({
         loading: false,
         hasResult: true,
-        showDirectionPanel: false,
-        result: data.plan || {},   // 兼容 getPlan() 等工具函数
+        result: data.plan || {},
+        directionKey: data.directionKey || '',
         planTitle: langData.title || '',
         planAbstract: langData.abstract || '',
         planKeywords: langData.keywords || [],
         planGuestEditors: plan.guestEditors || [],
+        enrichedEditors: enrichedEditors,
         planTopicHeat: plan.topicHeat || 0,
         planSourceArticleIds: plan.sourceArticleIds || [],
         planSourceEditorIds: plan.sourceEditorIds || [],
@@ -283,205 +193,16 @@ Page({
     }).then(function(res) {
       var data = res.result && res.result.data;
       if (!data) return;
-      if (data.status === 'generating') {
-        // 更新对应方向卡片的进度
-        var steps = data.steps || [];
-        var done = steps.filter(function(s) { return s.status === 'completed' || s.status === 'failed'; }).length;
-        var pct = steps.length > 0 ? Math.round(done / steps.length * 100) : 0;
-        var plans = that.data.plans;
-        for (var i = 0; i < plans.length; i++) {
-          if (plans[i]._schemeId === schemeId || plans[i]._schemeStatus === 'generating') {
-            plans[i]._progressPercent = pct;
-            plans[i]._schemeSteps = steps;
-          }
-        }
-        that.setData({ plans: plans });
-      }
       if (data.status === 'completed') {
         that.stopPolling();
         that._pollingSchemeId = null;
-        // 重新加载趋势详情或方案详情
-        if (that.data.schemeId) {
-          that.loadSchemeDetail();
-        } else {
-          that.loadTrendDetail();
-        }
+        that.loadSchemeDetail();
       } else if (data.status === 'failed') {
         that.stopPolling();
         that._pollingSchemeId = null;
-        that.loadTrendDetail();
+        that.setData({ loading: false, error: data.error || '生成失败' });
       }
     }).catch(function() {});
-  },
-
-  // ---- 生成方案（startScheme） ----
-  onGenerateScheme: function(e) {
-    var that = this;
-    var directionKey = e.currentTarget.dataset.key;
-    if (!directionKey) return;
-
-    // 防抖：正在生成中不允许重复点击
-    if (that.data.selectingDirection) return;
-    that.setData({ selectingDirection: true });
-    wx.cloud.callFunction({
-      name: 'specialIssueAgent',
-      data: { action: 'startScheme', taskId: that.data.taskId, directionKey: directionKey }
-    }).then(function(res) {
-      var result = res.result || {};
-      if (result.success && result.schemeId) {
-        wx.showToast({ title: '方案生成已启动', icon: 'none' });
-        that._pollingSchemeId = result.schemeId;
-        that.startSchemePolling();
-        // 立即刷新方向状态
-        that.loadTrendDetail();
-      } else {
-        wx.showToast({ title: result.error || '启动失败', icon: 'none' });
-        that.setData({ selectingDirection: false });
-      }
-    }).catch(function() {
-      that.setData({ selectingDirection: false });
-      wx.showToast({ title: '网络错误', icon: 'none' });
-    });
-  },
-
-  // ---- 查看已完成方案 ----
-  onViewScheme: function(e) {
-    var schemeId = e.currentTarget.dataset.schemeId;
-    if (!schemeId) {
-      // 从 key 反查 _schemeId
-      var key = e.currentTarget.dataset.key;
-      var plan = this.data.plans.find(function(p) { return p.key === key; });
-      schemeId = (plan && plan._schemeId) || '';
-    }
-    if (!schemeId) return;
-    wx.navigateTo({ url: '../detail/detail?schemeId=' + schemeId });
-  },
-
-  // ---- 查看生成中方案进度（弹窗） ----
-  onViewSchemeProgress: function(e) {
-    var that = this;
-    var key = e.currentTarget.dataset.key;
-    var schemeId = e.currentTarget.dataset.schemeId;
-    var plan = that.data.plans.find(function(p) { return p.key === key; }) || {};
-
-    // 先用已有的步骤显示
-    if (plan._schemeSteps && plan._schemeSteps.length > 0) {
-      that.setData({
-        showProgressModal: true,
-        selectedSchemeSteps: plan._schemeSteps,
-        selectedSchemeProgress: (plan._progressPercent || 0) + '%'
-      });
-      return;
-    }
-
-    // 没有缓存步骤则实时查询
-    if (!schemeId) return;
-    wx.cloud.callFunction({
-      name: 'specialIssueAgent',
-      data: { action: 'getSchemeStatus', schemeId: schemeId }
-    }).then(function(res) {
-      var data = res.result && res.result.data;
-      if (!data) return;
-      var steps = data.steps || [];
-      that.setData({
-        showProgressModal: true,
-        selectedSchemeSteps: steps,
-        selectedSchemeProgress: data.progress || ''
-      });
-    }).catch(function() {
-      wx.showToast({ title: '查询进度失败', icon: 'none' });
-    });
-  },
-
-  onHideProgress: function() {
-    this.setData({ showProgressModal: false });
-  },
-
-  getStepStatusIcon: function(status) {
-    if (status === 'completed') return '✅';
-    if (status === 'running') return '⏳';
-    if (status === 'failed') return '❌';
-    return '⏸️';
-  },
-
-  // ---- 重试失败方案 ----
-  onRetryScheme: function(e) {
-    var that = this;
-    var key = e.currentTarget.dataset.key;
-    var schemeId = e.currentTarget.dataset.schemeId;
-    if (!key) return;
-
-    wx.showModal({
-      title: '重试方案',
-      content: '将重新为此方向生成方案，是否继续？',
-      confirmText: '确认重试',
-      success: function(res) {
-        if (!res.confirm) return;
-        that.onGenerateScheme({ currentTarget: { dataset: { key: key, schemeId: schemeId } } });
-      }
-    });
-  },
-
-  // ---- 加载任务详情（轮询用，仅处理 processing 状态，其余走 loadTrendDetail） ----
-
-  loadTaskDetail: function() {
-    var that = this;
-    wx.cloud.callFunction({
-      name: 'specialIssueAgent',
-      data: { action: 'poll', taskId: that.data.taskId }
-    }).then(function(res) {
-      var data = res.result && res.result.data;
-      console.log('[detail] poll返回:', JSON.stringify(data));
-      if (!data) {
-        that.setData({ loading: false, error: '任务不存在' });
-        return;
-      }
-
-      if (data.status === 'processing') {
-        that.setData({
-          loading: true,
-          hasResult: false,
-          showDirectionPanel: false,
-          progressText: '任务进行中，请稍候...'
-        });
-        that.startPolling();
-      } else {
-        // 非 processing 状态：转到 loadTrendDetail 读取完整数据
-        that.stopPolling();
-        that.loadTrendDetail();
-      }
-    }).catch(function(err) {
-      console.error('[detail] 加载失败:', err);
-      that.setData({
-        loading: false,
-        error: that.getDisplayError(err.message || '网络错误')
-      });
-    });
-  },
-
-  getDisplayError: function(error) {
-    var msg = error || '';
-    if (!msg) return '执行失败，请稍后重试';
-    if (msg.indexOf('429') >= 0 || msg.indexOf('rate_limit') >= 0 || msg.indexOf('TPD') >= 0) {
-      return 'AI 服务今日额度已用完，请稍后重试';
-    }
-    if (msg.indexOf('超时') >= 0 || msg.indexOf('timeout') >= 0 || msg.indexOf('ETIMEDOUT') >= 0) {
-      return 'AI 服务响应超时，请稍后重试';
-    }
-    if (msg.indexOf('Kimi API') >= 0 || msg.indexOf('openai API') >= 0 || msg.indexOf('deepseek API') >= 0 || msg.indexOf('tencent API') >= 0 || msg.indexOf('alibaba API') >= 0 || msg.indexOf('organization') >= 0 || msg.indexOf('project') >= 0) {
-      return 'AI 服务暂时不可用，请稍后重试';
-    }
-    return '执行失败，请稍后重试';
-  },
-
-  // ---- 轮询 ----
-
-  startPolling: function() {
-    var that = this;
-    that.stopPolling();
-    that._pollTimer = setInterval(function() {
-      that.loadTaskDetail();
-    }, 3000);
   },
 
   stopPolling: function() {
@@ -492,7 +213,6 @@ Page({
   },
 
   // ---- 语言切换 ----
-
   toggleContentLang: function() {
     var newLang = this.data.displayLang === 'zh' ? 'en' : 'zh';
     var plan = this.getPlan();
@@ -506,11 +226,9 @@ Page({
   },
 
   // ---- 数据读取 ----
-
   getPlan: function() {
     var result = this.data.result;
     if (!result) return null;
-    // 兼容旧格式 { plan: {...} } 和新格式直接为 plan 对象
     return result.plan || result;
   },
 
@@ -541,11 +259,10 @@ Page({
     return (plan && plan.guestEditors) ? plan.guestEditors : [];
   },
 
-  // ---- 点击被引数：显示年度引用柱状图 ----
-
+  // ---- 点击被引数：显示年度引用柱状图（qiun-wx-ucharts）----
   onTapCitations: function(e) {
     var idx = e.currentTarget.dataset.index;
-    var paper = this.data.sourcePapers[idx];
+    var paper = this.data.displayPapers[idx];
     if (!paper || !paper.citationsByYear) return;
     var years = paper.citationsByYear.years || [];
     var counts = paper.citationsByYear.counts || [];
@@ -553,18 +270,125 @@ Page({
       wx.showToast({ title: '暂无年度引用数据', icon: 'none' });
       return;
     }
-    var maxCount = Math.max.apply(null, counts) || 1;
-    var heights = counts.map(function(c) { return Math.max((c / maxCount) * 80, 4); });
+    var yearChartData = {
+      categories: years.map(function(y) { return String(y); }),
+      series: [{ name: '被引次数', data: counts }]
+    };
     this.setData({
       showCiteModal: true,
       citeModalTitle: (paper.title || '文章') + ' 的引用趋势',
-      citeModalData: { years: years, counts: counts, heights: heights }
+      citeYearChartData: yearChartData
     });
   },
 
   hideCiteModal: function() {
-    this.setData({ showCiteModal: false });
+    this.setData({ showCiteModal: false, citeYearChartData: {} });
   },
+
+  // ---- 按年统计工具函数（限制近5年） ----
+  takeLastNYears: function(cby, n) {
+    n = n || 5;
+    if (!cby || cby.length === 0) return [];
+    if (cby.length <= n) return cby;
+    return cby.slice(-n);
+  },
+
+  // ---- 点击"查看工作经历"按钮 ----
+  onTapWorkHistory: function(e) {
+    var idx = e.currentTarget.dataset.index;
+    var editor = this.data.enrichedEditors[idx];
+    if (!editor) return;
+    var affiliations = editor.affiliations || [];
+    if (affiliations.length === 0) {
+      wx.showToast({ title: '暂无机构履历', icon: 'none' });
+      return;
+    }
+    var that = this;
+    var timeline = affiliations.map(function(aff) {
+      var sortedYears = (aff.years || []).slice().sort();
+      var firstYear = sortedYears[0];
+      var lastYear = sortedYears[sortedYears.length - 1];
+      var period = firstYear
+        ? (firstYear === lastYear ? String(firstYear) : firstYear + ' - ' + lastYear)
+        : '—';
+      return {
+        displayName: aff.displayName || '未知机构',
+        period: period,
+        countryCode: aff.countryCode || '',
+        countryName: that.getCountryName(aff.countryCode || ''),
+        firstYear: firstYear || 9999
+      };
+    });
+    timeline.sort(function(a, b) { return b.firstYear - a.firstYear; });
+    this.setData({
+      showWorkHistoryModal: true,
+      workHistoryTitle: (editor.name || '学者') + ' 的工作经历',
+      workHistoryList: timeline
+    });
+  },
+
+  hideWorkHistoryModal: function() {
+    this.setData({ showWorkHistoryModal: false, workHistoryList: [] });
+  },
+
+  getCountryName: function(code) {
+    var map = {
+      'US': '美国', 'CN': '中国', 'GB': '英国', 'DE': '德国', 'FR': '法国',
+      'JP': '日本', 'KR': '韩国', 'CA': '加拿大', 'AU': '澳大利亚', 'IT': '意大利',
+      'ES': '西班牙', 'NL': '荷兰', 'CH': '瑞士', 'SE': '瑞典', 'SG': '新加坡',
+      'IN': '印度', 'BR': '巴西', 'RU': '俄罗斯', 'TW': '中国台湾', 'HK': '中国香港'
+    };
+    return map[code] || code || '';
+  },
+
+
+
+  // ---- 点击单个指标 ----
+  onTapMetric: function(e) {
+    var idx = e.currentTarget.dataset.index;
+    var metric = e.currentTarget.dataset.metric;
+    var editor = this.data.enrichedEditors[idx];
+    if (!editor) return;
+    var cby = this.takeLastNYears(editor.countsByYear || []);
+    if (cby.length === 0) {
+      wx.showToast({ title: '暂无年度统计数据', icon: 'none' });
+      return;
+    }
+    var years = cby.map(function(y) { return String(y.year); });
+    var chartData;
+    var titleSuffix;
+    if (metric === 'works') {
+      var works = cby.map(function(y) { return y.works_count || 0; });
+      chartData = {
+        categories: years,
+        series: [{ name: '发文数', data: works }]
+      };
+      titleSuffix = '发文量趋势（近5年）';
+    } else if (metric === 'cited') {
+      var cites = cby.map(function(y) { return y.cited_by_count || 0; });
+      chartData = {
+        categories: years,
+        series: [{ name: '被引次数', data: cites }]
+      };
+      titleSuffix = '被引趋势（近5年）';
+    } else {
+      wx.showToast({ title: '该指标为汇总统计', icon: 'none' });
+      return;
+    }
+    this.setData({
+      showMetricYearModal: true,
+      metricYearModalTitle: (editor.name || '学者') + ' - ' + titleSuffix,
+      metricYearChartData: chartData
+    });
+  },
+
+  hideMetricYearModal: function() {
+    this.setData({
+      showMetricYearModal: false,
+      metricYearChartData: {}
+    });
+  },
+
 
   onTapDoi: function(e) {
     var doi = e.currentTarget.dataset.doi;
@@ -583,7 +407,6 @@ Page({
     return (plan && plan.topicHeat) || 0;
   },
 
-  // 获取 LLM 引用的来源文章（根据 sourceArticleIds 筛选）
   getSourceArticles: function() {
     var plan = this.getPlan();
     var sourcePapers = this.data.sourcePapers;
@@ -597,7 +420,29 @@ Page({
     return sourcePapers.filter(function(p) { return idSet[p.id]; });
   },
 
-  // 获取 LLM 推荐的客编者详细信息（匹配 sourceEditorIds）
+  enrichEditors: function(guestEditors, sourceAuthors) {
+    if (!guestEditors || guestEditors.length === 0) return [];
+    var authorMap = {};
+    for (var i = 0; i < sourceAuthors.length; i++) {
+      authorMap[sourceAuthors[i].n] = sourceAuthors[i];
+      authorMap[sourceAuthors[i].id] = sourceAuthors[i];
+    }
+    return guestEditors.map(function(editor) {
+      var author = authorMap[editor.name] || authorMap[editor.id];
+      return {
+        name: editor.name || '',
+        institution: editor.institution || '',
+        hIndex: author ? author.h : (editor.hIndex || 0),
+        i10Index: author ? author.i10 : (editor.i10Index || 0),
+        worksCount: author ? author.wc : (editor.worksCount || 0),
+        citedByCount: author ? author.cc : (editor.citedByCount || 0),
+        top: author ? (author.top || []) : (editor.topics || []),
+        countsByYear: author ? author.countsByYear : (editor.countsByYear || []),
+        affiliations: author ? author.affiliations : (editor.affiliations || [])
+      };
+    });
+  },
+
   getEnrichedEditors: function() {
     var plan = this.getPlan();
     var sourceAuthors = this.data.sourceAuthors;
@@ -610,7 +455,6 @@ Page({
       authorMap[sourceAuthors[i].id] = sourceAuthors[i];
     }
 
-    // 也按 sourceEditorIds 匹配
     if (plan && plan.sourceEditorIds) {
       return plan.sourceEditorIds.map(function(id, idx) {
         var author = authorMap[id];
@@ -640,7 +484,6 @@ Page({
       }).filter(function(e) { return e.name; });
     }
 
-    // fallback: 按 name 匹配
     return guestEditors.map(function(editor) {
       var author = authorMap[editor.name];
       if (author) {
@@ -669,7 +512,6 @@ Page({
   },
 
   // ---- 客编图表 ----
-
   buildEditorCharts: function() {
     var editors = this.getEnrichedEditors();
     var charts = {};
@@ -708,31 +550,57 @@ Page({
     };
   },
 
-  // ---- 重新生成 ----
-
+  // ---- 重新生成方案（删除旧方案 → 启动新 Phase 2） ----
   onRegenerate: function() {
     var that = this;
+    var schemeId = that.data.schemeId;
+    var directionKey = that.data.directionKey;
+    if (!schemeId || !directionKey) {
+      wx.showToast({ title: '缺少方案信息', icon: 'none' });
+      return;
+    }
     wx.showModal({
-      title: '重新生成',
-      content: '将消耗 30 积分重新生成策划方案，确认？',
+      title: '重新生成方案',
+      content: '将删除当前方案并消耗 15 积分重新生成，确认？',
       confirmText: '确认',
       cancelText: '取消',
       success: function(res) {
         if (res.confirm) {
-          wx.showLoading({ title: '重新生成中...' });
+          wx.showLoading({ title: '删除旧方案...' });
           wx.cloud.callFunction({
             name: 'specialIssueAgent',
-            data: { action: 'regenerate', taskId: that.data.taskId }
+            data: {
+              action: 'regenerateScheme',
+              taskId: that.data.taskId,
+              schemeId: schemeId,
+              directionKey: directionKey
+            }
           }).then(function(res) {
             wx.hideLoading();
-            console.log('[onRegenerate] 云函数返回:', JSON.stringify(res));
-            console.log('[onRegenerate] res.result:', JSON.stringify(res.result));
-            if (res.result.success) {
-              console.log('[onRegenerate] 成功，开始轮询');
-              that.setData({ loading: true, progressText: '正在重新生成方案...' });
-              that.startPolling();
+            if (res.result.success && res.result.schemeId) {
+              that._pollingSchemeId = res.result.schemeId;
+              // 清空旧方案数据，避免残留
+              that.setData({
+                schemeId: res.result.schemeId,
+                loading: true,
+                hasResult: false,
+                progressText: '方案重新生成中...',
+                result: {},
+                planTitle: '',
+                planAbstract: '',
+                planKeywords: [],
+                planGuestEditors: [],
+                enrichedEditors: [],
+                planTopicHeat: 0,
+                planSourceArticleIds: [],
+                planSourceEditorIds: [],
+                sourcePapers: [],
+                displayPapers: [],
+                sourceAuthors: [],
+                error: ''
+              });
+              that.startSchemePolling();
             } else {
-              console.log('[onRegenerate] 失败, error:', res.result.error, 'balance:', res.result.balance);
               wx.showToast({ title: res.result.error || '重新生成失败', icon: 'none' });
             }
           }).catch(function(err) {
@@ -744,8 +612,7 @@ Page({
     });
   },
 
-  // ---- 查看历史方案 ----
-
+  // ---- 查看历史方案：跳转趋势页查看完整历史方向 ----
   onViewHistory: function() {
     var that = this;
     wx.cloud.callFunction({
@@ -764,24 +631,18 @@ Page({
         return '第' + (i + 1) + '次: ' + title;
       });
       wx.showActionSheet({
-        itemList: items,
-        success: function(actionRes) {
-          var selected = history[actionRes.tapIndex];
-          // 展示历史方向数据
-          var dirs = selected.directions || [];
-          that.setData({
-            plans: dirs,
-            showDirectionPanel: true,
-            hasResult: false
+        itemList: items.concat(['查看全部历史方向']),
+        success: function() {
+          // 跳转到趋势页查看历史方向
+          wx.navigateTo({
+            url: '../trend/trend?taskId=' + encodeURIComponent(that.data.taskId || '') + '&keyword=' + encodeURIComponent(that.data.keyword || '')
           });
-          wx.setNavigationBarTitle({ title: '历史方向' });
         }
       });
     });
   },
 
   // ---- 文章标题点击 ----
-
   onTapArticle: function(e) {
     var url = e.currentTarget.dataset.url;
     if (url) {
@@ -795,23 +656,19 @@ Page({
   },
 
   // ---- 补扣积分 ----
-
   onRetryDeduct: function() {
     var that = this;
     creditsUtil.spendCredits('special_issue', 30, '特刊策划补扣', that.data.taskId).then(function(res) {
       if (res.success) {
         that.setData({ creditsDeducted: true });
         wx.showToast({ title: '扣费成功', icon: 'success' });
-      } else if (res.insufficient) {
-        // 已在 showInsufficientDialog 中处理
-      } else {
+      } else if (!res.insufficient) {
         wx.showToast({ title: '扣费失败，请稍后重试', icon: 'none' });
       }
     });
   },
 
   // ---- 复制方案 ----
-
   copyFullPlan: function() {
     var plan = this.getPlan();
     if (!plan) return;
@@ -836,97 +693,10 @@ Page({
   },
 
   // ---- 格式化 ----
-
   formatNumber: function(num) {
     if (!num && num !== 0) return '0';
     if (num >= 10000) return (num / 10000).toFixed(1) + '万';
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  },
-
-  // ---- 方向选择面板 ----
-
-  onExpandDirection: function(e) {
-    var key = e.currentTarget.dataset.key;
-    this.setData({ expandedDirection: key });
-  },
-
-  onCollapseDirection: function() {
-    this.setData({ expandedDirection: '' });
-  },
-
-  // 弹窗显示方向详情
-  onOpenDetail: function(e) {
-    var key = e.currentTarget.dataset.key;
-    var plan = this.data.plans.find(function(p) { return p.key === key; });
-    if (plan) {
-      this.setData({ showDetailModal: true, detailModalPlan: plan });
-    }
-  },
-
-  hideDetailModal: function() {
-    this.setData({ showDetailModal: false, detailModalPlan: null });
-  },
-
-  // 弹窗内直接选择方向 → 使用新 onGenerateScheme
-  onSelectFromModal: function(e) {
-    var key = e.currentTarget.dataset.key;
-    if (!key) return;
-    this.hideDetailModal();
-    this.onGenerateScheme({ currentTarget: { dataset: { key: key } } });
-  },
-
-  stopBubble: function() {},
-
-  onSelectDirection: function(e) {
-    var that = this;
-    var key = e.currentTarget.dataset.key;
-    var plan = that.data.plans.find(function(p) { return p.key === key; });
-    if (!plan) return;
-
-    var zhTitle = (plan.zh && plan.zh.title) || '';
-    wx.showModal({
-      title: '确认选择',
-      content: '选择方向「' + zhTitle + '」生成详细方案？',
-      confirmText: '确认',
-      success: function(res) {
-        if (res.confirm) {
-          that.doSelectDirection(key);
-        }
-      }
-    });
-  },
-
-  doSelectDirection: function(key) {
-    var that = this;
-    that.setData({ selectingDirection: true });
-    wx.showLoading({ title: '启动方案生成...' });
-
-    wx.cloud.callFunction({
-      name: 'specialIssueAgent',
-      data: { action: 'startScheme', taskId: that.data.taskId, directionKey: key }
-    }).then(function(res) {
-      wx.hideLoading();
-      var result = res.result || {};
-      if (result.success && result.schemeId) {
-        // Phase 2 已启动
-        wx.showToast({ title: '方案生成已启动', icon: 'none' });
-        that._pollingSchemeId = result.schemeId;
-        that.startSchemePolling();
-        that.loadTrendDetail();
-      } else {
-        that.setData({ selectingDirection: false });
-        wx.showToast({ title: result.error || '启动失败', icon: 'none' });
-      }
-    }).catch(function(err) {
-      wx.hideLoading();
-      that.setData({ selectingDirection: false });
-      wx.showToast({ title: '请求失败: ' + (err.message || ''), icon: 'none' });
-    });
-  },
-
-  // 获取方向热度条宽度
-  getHeatBarWidth: function(heat) {
-    return Math.min(heat / 10, 100);
   },
 
   formatTime: function(ts) {
@@ -934,5 +704,22 @@ Page({
     var d = new Date(ts);
     var pad = function(n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  },
+
+  stopBubble: function() {},
+
+  getDisplayError: function(error) {
+    var msg = error || '';
+    if (!msg) return '执行失败，请稍后重试';
+    if (msg.indexOf('429') >= 0 || msg.indexOf('rate_limit') >= 0 || msg.indexOf('TPD') >= 0) {
+      return 'AI 服务今日额度已用完，请稍后重试';
+    }
+    if (msg.indexOf('超时') >= 0 || msg.indexOf('timeout') >= 0 || msg.indexOf('ETIMEDOUT') >= 0) {
+      return 'AI 服务响应超时，请稍后重试';
+    }
+    if (msg.indexOf('Kimi API') >= 0 || msg.indexOf('openai API') >= 0 || msg.indexOf('deepseek API') >= 0 || msg.indexOf('tencent API') >= 0 || msg.indexOf('alibaba API') >= 0 || msg.indexOf('organization') >= 0 || msg.indexOf('project') >= 0) {
+      return 'AI 服务暂时不可用，请稍后重试';
+    }
+    return '执行失败，请稍后重试';
   }
 });
