@@ -70,10 +70,9 @@ Page({
       plans[p]._matchedPapers = plans[p].sourcePapers || [];
 
       var h = plans[p].topicHeat || 0;
-      if (h >= 800) plans[p]._heatColor = 'linear-gradient(135deg, #DC2626, #EF4444)';
-      else if (h >= 600) plans[p]._heatColor = 'linear-gradient(135deg, #EA580C, #F97316)';
-      else if (h >= 400) plans[p]._heatColor = 'linear-gradient(135deg, #CA8A04, #EAB308)';
-      else plans[p]._heatColor = 'linear-gradient(135deg, #2563EB, #3B82F6)';
+      if (h >= 600) plans[p]._heatColor = 'linear-gradient(135deg, #DC2626, #EF4444)';
+      else if (h >= 300) plans[p]._heatColor = 'linear-gradient(135deg, #F59E0B, #D97706)';
+      else plans[p]._heatColor = 'linear-gradient(135deg, #6B7280, #9CA3AF)';
 
       // 方案状态关联
       plans[p]._schemes = schemesByDir[plans[p].key] || [];

@@ -760,13 +760,13 @@ page {
 }
 
 .meta-cite-pill {
-  background: #FEF2F2;
-  color: #DC2626;
+  background: #F3F4F6;
+  color: #6B7280;
 }
 
 .meta-fwci-pill {
-  background: #EFF6FF;
-  color: #2563EB;
+  background: #F3F4F6;
+  color: #6B7280;
 }
 
 .heat-num {
@@ -843,8 +843,8 @@ page {
 .kw-tag {
   display: inline-block;
   padding: 2rpx 14rpx;
-  background: #F0F0FF;
-  color: #4338CA;
+  background: #F3F4F6;
+  color: #6B7280;
   border-radius: 16rpx;
   font-size: 20rpx;
   line-height: 1.6;
@@ -1067,8 +1067,8 @@ page {
 
 .detail-keyword-tag {
   padding: 6rpx 16rpx;
-  background: #EEF2FF;
-  color: #4F46E5;
+  background: #F3F4F6;
+  color: #374151;
   font-size: 22rpx;
   border-radius: 40rpx;
 }
