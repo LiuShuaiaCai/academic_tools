@@ -15,7 +15,7 @@ var AI_REVIEW_PROVIDERS = {
     name: 'Kimi',
     aiProvider: 'kimi',
     aiModel: 'moonshot-v1-128k',
-    maxChars: 100000,
+    maxChars: 80000,           // 云函数层面会做 token 级安全截断保护
     temperature: 1             // Kimi 只能用 1
   },
   'openai': {

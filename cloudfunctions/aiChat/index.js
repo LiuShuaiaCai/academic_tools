@@ -258,6 +258,147 @@ function validateMessages(messages) {
   return null;
 }
 
+/**
+ * 估算 token 数（基于字符类型混合估算）
+ * Kimi/Moonshot BPE tokenizer 实测校准系数（基于线上 400 错误反推）：
+ * 中文/日文/韩文：~1.7 tokens/字
+ * 英文/数字/标点：~0.33 tokens/字符（约 3 字符/token）
+ */
+function estimateTokens(text) {
+  if (typeof text !== 'string' || text.length === 0) return 0;
+  // 统计 CJK 字符（中文日文韩文等 wide chars）
+  const cjkCount = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\uff00-\uffef\u2e80-\u2eff\u31c0-\u31ef\u2f00-\u2fdf\u2ff0-\u2fff\uac00-\ud7af\u3040-\u309f\u30a0-\u30ff]/g) || []).length;
+  const otherCount = text.length - cjkCount;
+  // CJK: ~1.7 tokens/char | 其他：~1 token per 3 chars
+  return Math.ceil(cjkCount * 1.7 + otherCount / 3);
+}
+
+/**
+ * 估算 messages 数组的总 token 数
+ */
+function estimateMessagesTokens(messages) {
+  let total = 0;
+  for (const msg of messages) {
+    if (typeof msg.content === 'string') {
+      total += estimateTokens(msg.content);
+    } else if (Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part.type === 'text' && typeof part.text === 'string') {
+          total += estimateTokens(part.text);
+        }
+        // 图片：大致每张 ~85 tokens（底座 token），base64 会更多，保守算 500
+        if (part.type === 'image_url') {
+          total += 500;
+        }
+      }
+    }
+  }
+  // 每条消息有 ~4 tokens 的格式开销
+  total += messages.length * 4;
+  return total;
+}
+
+/**
+ * 根据模型获取上下文窗口大小
+ */
+function getModelContextLimit(providerId, model) {
+  // 各模型上下文窗口（tokens）
+  const limits = {
+    // Kimi / Moonshot
+    'moonshot-v1-8k': 8192,
+    'moonshot-v1-32k': 32768,
+    'moonshot-v1-128k': 131072,
+    // DeepSeek
+    'deepseek-chat': 65536,
+    'deepseek-v3-0324': 65536,
+    'deepseek-v4-pro': 131072,
+    'deepseek-reasoner': 65536,
+    // OpenAI
+    'gpt-4.1-mini': 128000,
+    'gpt-4o': 128000,
+    'gpt-4o-mini': 128000,
+    // 腾讯混元
+    'hunyuan-turbos-latest': 32768,
+    'hunyuan-lite': 32768,
+    // 阿里通义
+    'qwen-plus': 131072,
+    'qwen-max': 32768,
+    'qwen-turbo': 131072
+  };
+  return limits[model] || 131072; // 默认 128K
+}
+
+/**
+ * 截断 messages 以确保总 token 数不超限
+ * 策略：优先保留 system prompt，从最后一个 user message 尾部截断
+ * @returns {{ messages, wasTruncated, estimatedTokens }}
+ */
+function truncateMessagesIfNeeded(messages, providerId, model, maxTokens, safetyMargin) {
+  safetyMargin = safetyMargin || 5000; // 安全边距：经 Kimi 线上验证，需要足够余量
+  const contextLimit = getModelContextLimit(providerId, model);
+  const maxInputTokens = contextLimit - (maxTokens || 4096) - safetyMargin;
+
+  const estimated = estimateMessagesTokens(messages);
+  if (estimated <= maxInputTokens) {
+    return { messages, wasTruncated: false, estimatedTokens: estimated };
+  }
+
+  console.log(`[aiChat] Token 超限预警: 估算 ${estimated} tokens, 限制 ${maxInputTokens} tokens, 开始截断`);
+
+  // 找出最后一个可截断的 user message
+  const truncated = messages.map(m => ({ ...m }));
+  let excessTokens = estimated - maxInputTokens;
+  // 截断比例系数：1.0 即按估算值精确截断（估算已有余量，不额外多截）
+  const truncateRatio = 1.0;
+
+  for (let i = truncated.length - 1; i >= 0 && excessTokens > 0; i--) {
+    const msg = truncated[i];
+    if (msg.role !== 'user') continue;
+
+    if (typeof msg.content === 'string') {
+      const contentTokens = estimateTokens(msg.content);
+      if (contentTokens <= 0) continue;
+
+      // 计算需要保留的字符数
+      const keepRatio = Math.max(0, 1 - (excessTokens * truncateRatio) / contentTokens);
+      const keepChars = Math.floor(msg.content.length * keepRatio);
+
+      if (keepChars <= 50) {
+        // 内容几乎全被截断 -> 清空并终止
+        const truncatedContent = msg.content.substring(0, 50);
+        msg.content = truncatedContent + '\n\n[... 输入过长，已截断 ...]';
+        excessTokens = 0;
+        break;
+      }
+
+      const truncatedContent = msg.content.substring(0, keepChars);
+      msg.content = truncatedContent + '\n\n[... 输入过长，尾部已截断以适应模型限制 ...]';
+      excessTokens -= contentTokens * (1 - keepRatio);
+    } else if (Array.isArray(msg.content)) {
+      // 多模态消息：优先截断 text 部分，保留图片
+      for (const part of msg.content) {
+        if (part.type === 'text' && typeof part.text === 'string' && excessTokens > 0) {
+          const textTokens = estimateTokens(part.text);
+          if (textTokens <= 0) continue;
+          const keepRatio = Math.max(0, 1 - (excessTokens * truncateRatio) / textTokens);
+          const keepChars = Math.floor(part.text.length * keepRatio);
+          if (keepChars <= 50) {
+            part.text = part.text.substring(0, 50) + '\n\n[... 输入过长，已截断 ...]';
+            excessTokens = 0;
+          } else {
+            part.text = part.text.substring(0, keepChars) + '\n\n[... 输入过长，尾部已截断 ...]';
+            excessTokens -= textTokens * (1 - keepRatio);
+          }
+        }
+      }
+    }
+  }
+
+  const finalEstimated = estimateMessagesTokens(truncated);
+  console.log(`[aiChat] 截断完成: 估算 ${finalEstimated} tokens / 限制 ${maxInputTokens} tokens`);
+  return { messages: truncated, wasTruncated: true, estimatedTokens: finalEstimated };
+}
+
 // ==================== 核心调用 ====================
 
 async function chatSync(provider, model, messages, params) {
@@ -419,12 +560,21 @@ async function chat(event) {
   // 多模态场景：将外部图片 URL 转为 base64（兼容 Kimi 等不支持远程 URL 的模型）
   const processedMessages = await preprocessMessages(messages);
 
+  // Token 截断保护：防止输入过长导致 API 返回 token 超限错误
+  const modelName = model || createProvider(provider).defaultModel;
+  const { messages: safeMessages, wasTruncated } = truncateMessagesIfNeeded(
+    processedMessages, provider, modelName, maxTokens || 4096
+  );
+  if (wasTruncated) {
+    console.log('[aiChat] ⚠️ 输入已截断, provider:', provider, 'model:', modelName);
+  }
+
   const params = { apiKey: event.apiKey, baseURL, temperature, maxTokens, topP, stop, timeout };
   const isStream = stream === true || stream === 'true';
 
   return isStream
-    ? await chatStream(provider, model, processedMessages, params)
-    : await chatSync(provider, model, processedMessages, params);
+    ? await chatStream(provider, model, safeMessages, params)
+    : await chatSync(provider, model, safeMessages, params);
 }
 
 function listProviders() {
