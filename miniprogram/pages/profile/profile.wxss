@@ -90,15 +90,25 @@
   color: rgba(255,255,255,0.8);
 }
 
-/* ========== 积分条 ========== */
-.credits-bar {
+/* 积分 & 统计合并卡片 */
+.credits-stats-card {
   background: #fff;
   margin: 24rpx;
   border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.stats-divider {
+  height: 1rpx;
+  background: #E5E7EB;
+  margin: 0 28rpx;
+}
+
+/* ========== 积分条 ========== */
+.credits-bar {
   padding: 24rpx 28rpx;
   display: flex;
   align-items: center;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
 }
 
 .credits-bar-item {
@@ -128,13 +138,9 @@
 .signin-btn-bar:active { opacity: 0.8; }
 
 .profile-stats {
-  background: #fff;
-  margin: 24rpx;
-  border-radius: 16rpx;
   padding: 24rpx 0;
   display: flex;
   align-items: center;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
 }
 
 .pstat-item { flex: 1; text-align: center; padding: 8rpx 0; }

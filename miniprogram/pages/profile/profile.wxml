@@ -14,34 +14,33 @@
     </view>
   </view>
 
-  <!-- 积分条 -->
-  <view class="credits-bar" bindtap="goToCredits">
-    <view class="credits-bar-item">
-      <text class="credits-bar-icon">💰</text>
-      <text class="credits-bar-num">{{credits}}</text>
-      <text class="credits-bar-label">积分</text>
-    </view>
-    <view class="credits-bar-divider"></view>
-    <view class="credits-bar-item">
-      <text class="credits-bar-icon">🔥</text>
-      <text class="credits-bar-num">{{continuousDays}}</text>
-      <text class="credits-bar-label">连续签到</text>
-    </view>
-    <view class="signin-btn-bar {{signedToday ? 'signed' : ''}}" catchtap="doSignin">
-      <text wx:if="{{signedToday}}">✓已签到</text>
-      <text wx:else>签到</text>
-    </view>
-  </view>
-
-  <!-- 统计数据 -->
-  <view class="profile-stats" wx:if="{{statItems.length > 0}}">
-    <block wx:for="{{statItems}}" wx:key="id">
-      <view class="pstat-item" bindtap="goToStatPage" data-id="{{item.id}}" data-page="{{item.pagePath}}" hover-class="pstat-item-active">
-        <view class="pstat-num {{item.color}}">{{item.count}}</view>
-        <view class="pstat-label">{{item.name}}</view>
+  <!-- 积分 & 统计数据 -->  <view class="credits-stats-card">
+    <view class="credits-bar" bindtap="goToCredits">
+      <view class="credits-bar-item">
+        <text class="credits-bar-icon">💰</text>
+        <text class="credits-bar-num">{{credits}}</text>
+        <text class="credits-bar-label">积分</text>
       </view>
-      <view class="pstat-divider" wx:if="{{index < statItems.length - 1}}"></view>
-    </block>
+      <view class="credits-bar-item">
+        <text class="credits-bar-icon">🔥</text>
+        <text class="credits-bar-num">{{continuousDays}}</text>
+        <text class="credits-bar-label">连续签到</text>
+      </view>
+      <view class="signin-btn-bar {{signedToday ? 'signed' : ''}}" catchtap="doSignin">
+        <text wx:if="{{signedToday}}">✓已签到</text>
+        <text wx:else>签到</text>
+      </view>
+    </view>
+    <view class="stats-divider" wx:if="{{statItems.length > 0}}"></view>
+    <view class="profile-stats" wx:if="{{statItems.length > 0}}">
+      <block wx:for="{{statItems}}" wx:key="id">
+        <view class="pstat-item" bindtap="goToStatPage" data-id="{{item.id}}" data-page="{{item.pagePath}}" hover-class="pstat-item-active">
+          <view class="pstat-num {{item.color}}">{{item.count}}</view>
+          <view class="pstat-label">{{item.name}}</view>
+        </view>
+        <view class="pstat-divider" wx:if="{{index < statItems.length - 1}}"></view>
+      </block>
+    </view>
   </view>
 
   <!-- 功能模块 -->
