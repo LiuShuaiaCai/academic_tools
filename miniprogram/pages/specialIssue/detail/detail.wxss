@@ -12,7 +12,7 @@ page {
 .page {
   min-height: 100vh;
   background: #F5F7FA;
-  padding-bottom: 40rpx;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
 }
 
 /* ========== 卡片通用 ========== */
@@ -301,15 +301,26 @@ page {
   height: 340rpx;
 }
 
-/* ========== 操作卡片 ========== */
+/* ========== 操作卡片（固定底部栏） ========== */
 .action-card {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: #FFF;
+  margin: 0;
+  border-radius: 0;
+  padding: 16rpx 24rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
   text-align: center;
 }
 
 .action-row {
   display: flex;
   gap: 16rpx;
-  margin-bottom: 20rpx;
+  margin-bottom: 12rpx;
 }
 
 .action-btn {
