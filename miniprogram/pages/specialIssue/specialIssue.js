@@ -197,6 +197,14 @@ Page({
     this.setData({ keyword: e.detail.value });
   },
 
+  onClearKeyword: function() {
+    this.setData({ keyword: '' });
+    this.setData({ listPage: 0 });
+    this.loadTaskList(false);
+  },
+
+  onSearchBlur: function() {},
+
   onSearch: function() {
     this.setData({ listPage: 0 });
     this.loadTaskList(false);
