@@ -86,7 +86,7 @@
   margin-top: 12rpx;
   padding: 0;
   background: transparent;
-  font-size: 20rpx;
+  font-size: 26rpx;
   color: rgba(255,255,255,0.8);
 }
 
@@ -168,7 +168,7 @@
   display: flex;
   align-items: center;
   padding: 34rpx 28rpx;
-  border-bottom: 1rpx solid #F3F4F6;
+  border-bottom: 1rpx solid #E5E7EB;
 }
 
 .profile-badge {
