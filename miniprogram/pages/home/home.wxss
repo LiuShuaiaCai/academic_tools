@@ -304,6 +304,7 @@ page { background: #F6F6F6; }
 .upcoming-item.type-blue::before { background: #2563eb; }
 .upcoming-item.type-red::before { background: #EF4444; }
 .upcoming-item.type-green::before { background: #10B981; }
+.upcoming-item.type-purple::before { background: #8B5CF6; }
 
 .upcoming-item.urgent { }
 

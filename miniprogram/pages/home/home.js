@@ -335,7 +335,14 @@ Page({
         completed: _.neq(true),
         status: _.neq(null).and(_.neq('')),
         startDate: _.gte(todayDateStr).and(_.lte(urgentDateStr + ' 23:59:59'))
-      }).limit(5).orderBy('startDate', 'asc').get().catch(function() { return { data: [] }; })
+      }).limit(5).orderBy('startDate', 'asc').get().catch(function() { return { data: [] }; }),
+      // 今天任务（未完成、未删除）
+      db.collection('tasks').where({
+        deleteTime: null,
+        _openid: that.data.currentOpenid,
+        completed: _.neq(true),
+        date: todayDateStr
+      }).limit(5).orderBy('time', 'asc').get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
       var items = [];
       var i;
@@ -356,6 +363,12 @@ Page({
         var cu = results[3].data[i];
         // 用 startDate 作为排序日期
         items.push({ _id: cu._id, title: cu.name, type: 'conference', typeLabel: '会议', icon: '🎤', pagePath: '/pages/conferences/conferences', deadline: cu.startDate });
+      }
+      // 今天任务（点击跳转日历）
+      for (i = 0; i < results[4].data.length; i++) {
+        var t = results[4].data[i];
+        var taskDeadline = t.date + (t.time ? ' ' + t.time : ' 00:00:00');
+        items.push({ _id: t._id, title: t.title, type: 'task', typeLabel: '任务', icon: '📋', pagePath: '/pages/calendar/calendar', deadline: taskDeadline });
       }
 
       items.sort(function(a, b) { return new Date(String(a.deadline).replace(' ', 'T')) - new Date(String(b.deadline).replace(' ', 'T')); });
@@ -398,7 +411,11 @@ Page({
     var pagePath = e.currentTarget.dataset.page;
     var id = e.currentTarget.dataset.id;
     var title = e.currentTarget.dataset.title || '';
-    if (pagePath) {
+    var type = e.currentTarget.dataset.type || '';
+    if (type === 'task') {
+      // 任务类型：跳转到日历 tab
+      wx.switchTab({ url: '/pages/calendar/calendar' });
+    } else if (pagePath) {
       var url = pagePath + '?targetId=' + id;
       if (title) url += '&targetTitle=' + encodeURIComponent(title) + '&autoEdit=true';
       wx.navigateTo({ url: url });

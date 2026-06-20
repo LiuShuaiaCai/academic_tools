@@ -121,13 +121,14 @@
 
     <view wx:else>
       <view
-        class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : 'type-green'}} {{item.urgent ? 'urgent' : ''}}"
+        class="upcoming-item {{item.type === 'submission' ? 'type-blue' : item.type === 'review' ? 'type-red' : item.type === 'task' ? 'type-purple' : 'type-green'}} {{item.urgent ? 'urgent' : ''}}"
         wx:for="{{upcomingItems}}"
         wx:key="_id"
         bindtap="goToItem"
         data-page="{{item.pagePath}}"
         data-id="{{item._id}}"
         data-title="{{item.title}}"
+        data-type="{{item.type}}"
       >
         <view class="upcoming-icon">{{item.iconEmoji}}</view>
         <view class="upcoming-info">
