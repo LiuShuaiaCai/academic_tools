@@ -1,0 +1,64 @@
+<!-- pages/archive/stats/stats.wxml -->
+<view class="stats-page">
+  <view class="stats-loading" wx:if="{{!loaded}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:if="{{loaded}}">
+    <!-- 概览卡片 -->
+    <view class="stats-overview">
+      <view class="overview-card total">
+        <text class="overview-num">{{total}}</text>
+        <text class="overview-label">文件总数</text>
+      </view>
+      <view class="overview-card size">
+        <text class="overview-num size-num">{{totalSizeLabel}}</text>
+        <text class="overview-label">总占用空间</text>
+      </view>
+    </view>
+
+    <!-- 分类分布 -->
+    <view class="stats-section" wx:if="{{categoryList.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">📂 分类分布</text>
+      </view>
+      <view class="status-list">
+        <block wx:for="{{categoryList}}" wx:key="name">
+          <view class="status-row">
+            <view class="status-label-row">
+              <text class="status-label">{{item.label}}</text>
+              <text class="status-count">{{item.count}}</text>
+            </view>
+            <view class="status-bar-wrap">
+              <view class="status-bar-fill" style="width: {{item.pct}}%; background: {{item.color}};"></view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 文件类型分布 -->
+    <view class="stats-section" wx:if="{{typeList.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">📄 文件类型</text>
+      </view>
+      <view class="type-grid">
+        <block wx:for="{{typeList}}" wx:key="name">
+          <view class="type-card" style="border-color: {{item.color}}20; background: {{item.color}}08;">
+            <text class="type-name" style="color: {{item.color}};">{{item.label}}</text>
+            <text class="type-count">{{item.count}} 个</text>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 查看全部 -->
+    <view class="goto-section">
+      <view class="goto-btn" bindtap="goToList">
+        <text>查看全部归档文件</text>
+        <text class="goto-arrow">›</text>
+      </view>
+    </view>
+  </block>
+</view>

@@ -17,7 +17,7 @@ const DEFAULT_TOOLS = [
   { id: 'specialIssue',name: '特刊策划', desc: 'AI策划特刊话题、推荐客编', icon: 'lightbulb', iconEmoji: '💡', color: 'teal', category: 'ext',  order: 6, comingSoon: false, isPublished: true, pagePath: '/pages/specialIssue/specialIssue', isTaskType: true },
   { id: 'journal',     name: '期刊预警', desc: '预警期刊、假会议检测', icon: 'exclamation-triangle', iconEmoji: '⚠️', color: 'red', category: 'ext', order: 7, comingSoon: true,  isPublished: false, pagePath: '', isTaskType: false },
   { id: 'achievement', name: '成果汇总', desc: '自动汇总论文、导出CV', icon: 'trophy',        iconEmoji: '🏆', color: 'orange', category: 'ext', order: 8, comingSoon: true,  isPublished: false, pagePath: '', isTaskType: false }, 
-  { id: 'note',        name: '学术笔记', desc: '文献阅读笔记管理',    icon: 'sticky-note',   iconEmoji: '📝', color: 'green',  category: 'ext', order: 9, comingSoon: false, isPublished: true, pagePath: '/pages/toolbox/toolbox', isTaskType: false }
+  { id: 'note',        name: '学术笔记', desc: '文献阅读笔记管理',    icon: 'sticky-note',   iconEmoji: '📝', color: 'green',  category: 'ext', order: 9, comingSoon: false, isPublished: false, pagePath: '/pages/toolbox/toolbox', isTaskType: false }
 ];
 
 // 所有集合

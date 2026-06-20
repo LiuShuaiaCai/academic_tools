@@ -1,0 +1,174 @@
+/* pages/submissions/stats/stats.wxss */
+.stats-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 24rpx 24rpx 48rpx;
+  box-sizing: border-box;
+}
+
+/* ---- 加载态 ---- */
+.stats-loading {
+  display: flex; flex-direction: column; align-items: center; padding-top: 200rpx;
+}
+.loading-spinner {
+  width: 60rpx; height: 60rpx; border: 4rpx solid #E5E7EB;
+  border-top-color: #3B82F6; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { margin-top: 20rpx; color: #9CA3AF; font-size: 28rpx; }
+
+/* ---- 空态 ---- */
+.empty-tip {
+  text-align: center; color: #9CA3AF; font-size: 26rpx; padding: 40rpx 0;
+}
+
+/* ====== 筛选区 ====== */
+.filter-section {
+  background: #FFFFFF; border-radius: 16rpx; padding: 20rpx 24rpx;
+  margin-bottom: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+.filter-row {
+  display: flex; gap: 16rpx;
+}
+.filter-picker {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #F5F7FA; border-radius: 10rpx; padding: 16rpx 20rpx;
+  min-width: 150rpx;
+}
+.filter-picker-wide {
+  min-width: 180rpx; flex: 1;
+}
+.filter-val {
+  font-size: 26rpx; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.filter-arrow {
+  font-size: 20rpx; color: #9CA3AF; margin-left: 8rpx; flex-shrink: 0;
+}
+.filter-reset {
+  margin-top: 16rpx; text-align: center;
+  font-size: 26rpx; color: #3B82F6;
+  padding: 10rpx 0;
+}
+
+/* ====== KPI 卡片 ====== */
+.kpi-grid {
+  display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 24rpx;
+}
+.kpi-card {
+  width: calc((100% - 32rpx) / 3);
+  background: #FFFFFF; border-radius: 16rpx;
+  padding: 24rpx 12rpx; box-sizing: border-box;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+  text-align: center;
+}
+.kpi-num {
+  display: block; font-size: 44rpx; font-weight: 800; line-height: 1.2;
+}
+.kpi-label {
+  display: block; font-size: 20rpx; color: #6B7280; margin-top: 4rpx;
+}
+.kpi-blue .kpi-num { color: #3B82F6; }
+.kpi-indigo .kpi-num { color: #6366F1; }
+.kpi-green .kpi-num { color: #10B981; }
+.kpi-orange .kpi-num { color: #F59E0B; }
+.kpi-purple .kpi-num { color: #8B5CF6; }
+.kpi-emerald .kpi-num { color: #059669; }
+.kpi-red .kpi-num { color: #EF4444; }
+
+/* ====== 图表区域 ====== */
+.chart-section {
+  background: #FFFFFF; border-radius: 16rpx; padding: 24rpx;
+  margin-bottom: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+.chart-section.chart-empty {
+  padding: 24rpx 24rpx 12rpx;
+}
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20rpx;
+}
+.section-title {
+  font-size: 28rpx; font-weight: 700; color: #1F2937;
+}
+.chart-wrap {
+  width: 100%; height: 360rpx;
+}
+.chart-ring-wrap {
+  height: 400rpx;
+}
+
+/* 图例 */
+.chart-legend {
+  display: flex; justify-content: center; gap: 40rpx;
+  padding-top: 16rpx; border-top: 1rpx solid #F3F4F6; margin-top: 16rpx;
+}
+.chart-legend-col {
+  flex-wrap: wrap; gap: 16rpx;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 8rpx;
+  font-size: 24rpx; color: #6B7280;
+}
+.legend-dot {
+  width: 16rpx; height: 16rpx; border-radius: 50%;
+}
+
+/* ====== 期刊统计表格 ====== */
+.table-section {
+  background: #FFFFFF; border-radius: 16rpx; padding: 24rpx;
+  margin-bottom: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+.table-section.table-empty {
+  padding: 24rpx 24rpx 12rpx;
+}
+.table-wrap {
+  margin-top: 8rpx;
+}
+.table-row {
+  display: flex; align-items: center; padding: 16rpx 0;
+}
+.table-head {
+  border-bottom: 2rpx solid #E5E7EB; padding-bottom: 12rpx;
+}
+.table-data-row {
+  border-bottom: 1rpx solid #F3F4F6;
+}
+.table-data-row.has-divider {
+  border-top: 2rpx solid #E5E7EB;
+}
+.table-data-row:last-child {
+  border-bottom: none;
+}
+.table-cell {
+  font-size: 24rpx; color: #374151;
+}
+.cell-journal {
+  flex: 2; display: flex; flex-direction: column;
+}
+.table-journal-name {
+  font-size: 26rpx; font-weight: 500; color: #1F2937;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.table-journal-year {
+  font-size: 22rpx; color: #9CA3AF; margin-top: 2rpx;
+}
+.cell-num {
+  flex: 1; text-align: center; font-weight: 600; font-size: 28rpx;
+}
+.cell-blue { color: #3B82F6; }
+.cell-green { color: #10B981; }
+.cell-orange { color: #F59E0B; }
+.table-head .cell-num {
+  font-weight: 500; font-size: 24rpx; color: #9CA3AF;
+}
+
+/* ====== 查看全部 ====== */
+.goto-section { margin-top: 8rpx; }
+.goto-btn {
+  display: flex; justify-content: center; align-items: center;
+  padding: 28rpx; background: #FFFFFF; border-radius: 16rpx;
+  font-size: 28rpx; color: #3B82F6; font-weight: 500;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+.goto-arrow { margin-left: 8rpx; font-size: 32rpx; }

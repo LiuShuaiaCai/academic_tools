@@ -202,10 +202,12 @@ Page({
       submission: 'submissions',
       review: 'reviews',
       conference: 'conferences',
-      archive: 'archives'
+      archive: 'archives',
+      specialIssue: 'special_issue_tasks',
+      citation: 'citation_library'
     };
 
-    // 先获取用户启用的工具列表，取前4个
+    // 获取用户启用的工具列表，只显示有对应数据库集合的工具（自动排除待发布工具）
     wx.cloud.callFunction({
       name: 'academicAPI',
       data: { action: 'getUserTools' }
@@ -216,7 +218,8 @@ Page({
         var enabledTools = [];
         for (var i = 0; i < toolDefs.length; i++) {
           var t = toolDefs[i];
-          if (userTools[t.id] === true) {
+          // 只显示已启用且有对应集合的工具（citation_library / special_issue_tasks 等）
+          if (userTools[t.id] === true && TASK_COLLECTION_MAP[t.id]) {
             enabledTools.push({
               id: t.id,
               name: t.name,
@@ -225,7 +228,7 @@ Page({
             });
           }
         }
-        return enabledTools.slice(0, 4);
+        return enabledTools;
       });
     }).then(function(tools) {
       if (tools.length === 0) {
@@ -255,7 +258,22 @@ Page({
     });
   },
 
+  // 统计卡片点击 → 跳转到独立的统计页面
+  _statPageMap: {
+    submission: '/pages/submissions/stats/stats',
+    review: '/pages/reviews/stats/stats',
+    conference: '/pages/conferences/stats/stats',
+    archive: '/pages/archive/stats/stats'
+  },
+
   goToStatPage: function(e) {
+    var toolId = e.currentTarget.dataset.id;
+    var statsPage = this._statPageMap[toolId];
+    if (statsPage) {
+      wx.navigateTo({ url: statsPage });
+      return;
+    }
+    // 兜底：旧逻辑用 pagePath
     var pagePath = e.currentTarget.dataset.page;
     if (pagePath) wx.navigateTo({ url: pagePath });
   },

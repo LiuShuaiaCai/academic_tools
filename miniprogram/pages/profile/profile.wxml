@@ -37,7 +37,7 @@
   <!-- 统计数据 -->
   <view class="profile-stats" wx:if="{{statItems.length > 0}}">
     <block wx:for="{{statItems}}" wx:key="id">
-      <view class="pstat-item" bindtap="goToStatPage" data-page="{{item.pagePath}}" hover-class="pstat-item-active">
+      <view class="pstat-item" bindtap="goToStatPage" data-id="{{item.id}}" data-page="{{item.pagePath}}" hover-class="pstat-item-active">
         <view class="pstat-num {{item.color}}">{{item.count}}</view>
         <view class="pstat-label">{{item.name}}</view>
       </view>

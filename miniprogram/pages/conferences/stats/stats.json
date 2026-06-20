@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "qiun-wx-ucharts": "/components/qiun-wx-ucharts/index"
+  },
+  "navigationBarTitleText": "会议统计"
+}

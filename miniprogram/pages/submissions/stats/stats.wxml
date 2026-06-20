@@ -1,0 +1,177 @@
+<!-- pages/submissions/stats/stats.wxml - 投稿统计 -->
+<view class="stats-page">
+  <view class="stats-loading" wx:if="{{!loaded}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:if="{{loaded}}">
+
+    <!-- ====== 筛选区 ====== -->
+    <view class="filter-section">
+      <view class="filter-row">
+        <picker mode="selector" range="{{yearOptions}}" value="{{yearIdx}}" bindchange="onYearChange">
+          <view class="filter-picker">
+            <text class="filter-val">{{yearOptions[yearIdx] || '全部'}}</text>
+            <text class="filter-arrow">▼</text>
+          </view>
+        </picker>
+        <picker mode="selector" range="{{monthOptions}}" value="{{monthIdx}}" bindchange="onMonthChange">
+          <view class="filter-picker">
+            <text class="filter-val">{{monthOptions[monthIdx] || '全部'}}</text>
+            <text class="filter-arrow">▼</text>
+          </view>
+        </picker>
+        <picker mode="selector" range="{{journalOptions}}" value="{{journalIdx}}" bindchange="onJournalChange">
+          <view class="filter-picker filter-picker-wide">
+            <text class="filter-val">{{journalOptions[journalIdx] || '全部期刊'}}</text>
+            <text class="filter-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      <view class="filter-reset" bindtap="resetFilters" wx:if="{{yearIdx > 0 || monthIdx > 0 || journalIdx > 0}}">
+        <text>重置筛选</text>
+      </view>
+    </view>
+
+    <!-- ====== KPI 卡片 ====== -->
+    <view class="kpi-grid">
+      <view class="kpi-card kpi-blue">
+        <text class="kpi-num">{{total}}</text>
+        <text class="kpi-label">总投稿次数</text>
+      </view>
+      <view class="kpi-card kpi-indigo">
+        <text class="kpi-num">{{uniquePapers}}</text>
+        <text class="kpi-label">投稿篇数</text>
+      </view>
+      <view class="kpi-card kpi-orange">
+        <text class="kpi-num">{{incomplete}}</text>
+        <text class="kpi-label">进行中</text>
+      </view>
+      <view class="kpi-card kpi-green">
+        <text class="kpi-num">{{accepted}}</text>
+        <text class="kpi-label">已接收</text>
+      </view>
+      <view class="kpi-card kpi-red">
+        <text class="kpi-num">{{rejected}}</text>
+        <text class="kpi-label">被拒稿</text>
+      </view>
+      <view class="kpi-card kpi-purple">
+        <text class="kpi-num">{{avgDays}}</text>
+        <text class="kpi-label">均审稿天数</text>
+      </view>
+      <view class="kpi-card kpi-emerald">
+        <text class="kpi-num">{{acceptRate}}%</text>
+        <text class="kpi-label">接收率</text>
+      </view>
+    </view>
+
+    <!-- ====== 趋势分析 ====== -->
+    <view class="chart-section" wx:if="{{trendChartData.categories && trendChartData.categories.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">趋势分析</text>
+      </view>
+      <view class="chart-wrap">
+        <qiun-wx-ucharts
+          type="line"
+          canvasId="s_trend"
+          chartData="{{trendChartData}}"
+          canvas2d="{{false}}"
+          opts="{{lineOpts}}"
+          inScrollView="{{false}}"
+        />
+      </view>
+      <view class="chart-legend">
+        <view class="legend-item">
+          <view class="legend-dot" style="background:#3B82F6;"></view>
+          <text>投稿数</text>
+        </view>
+        <view class="legend-item">
+          <view class="legend-dot" style="background:#10B981;"></view>
+          <text>完成数</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="chart-section chart-empty" wx:if="{{!(trendChartData.categories && trendChartData.categories.length > 0)}}">
+      <view class="section-header">
+        <text class="section-title">趋势分析</text>
+      </view>
+      <view class="empty-tip">暂无趋势数据</view>
+    </view>
+
+    <!-- ====== 状态分布 ====== -->
+    <view class="chart-section" wx:if="{{statusChartData.series && statusChartData.series.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">状态分布</text>
+      </view>
+      <view class="chart-wrap chart-ring-wrap">
+        <qiun-wx-ucharts
+          type="ring"
+          canvasId="s_status"
+          chartData="{{statusChartData}}"
+          canvas2d="{{false}}"
+          opts="{{ringOpts}}"
+          inScrollView="{{false}}"
+        />
+      </view>
+      <view class="chart-legend chart-legend-col">
+        <block wx:for="{{statusChartData.series}}" wx:key="name">
+          <view class="legend-item">
+            <view class="legend-dot" style="background:{{item.color}};"></view>
+            <text>{{item.name}}  {{item.data}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <view class="chart-section chart-empty" wx:if="{{!(statusChartData.series && statusChartData.series.length > 0)}}">
+      <view class="section-header">
+        <text class="section-title">状态分布</text>
+      </view>
+      <view class="empty-tip">暂无状态数据</view>
+    </view>
+
+    <!-- ====== 期刊分年统计 ====== -->
+    <view class="table-section" wx:if="{{journalStats.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">期刊分年统计</text>
+      </view>
+      <view class="table-wrap">
+        <view class="table-row table-head">
+          <text class="table-cell cell-journal">期刊</text>
+          <text class="table-cell cell-num">投稿数</text>
+          <text class="table-cell cell-num">完成数</text>
+          <text class="table-cell cell-num">进行中</text>
+        </view>
+        <block wx:for="{{journalStats}}" wx:key="index">
+          <view class="table-row table-data-row {{item.isFirstOfGroup ? 'has-divider' : ''}}">
+            <view class="table-cell cell-journal">
+              <text class="table-journal-name">{{item.journal}}</text>
+              <text class="table-journal-year">{{item.year}}</text>
+            </view>
+            <text class="table-cell cell-num cell-blue">{{item.submitted}}</text>
+            <text class="table-cell cell-num cell-green">{{item.completed}}</text>
+            <text class="table-cell cell-num cell-orange">{{item.pending}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <view class="table-section table-empty" wx:if="{{journalStats.length === 0}}">
+      <view class="section-header">
+        <text class="section-title">期刊分年统计</text>
+      </view>
+      <view class="empty-tip">暂无期刊统计</view>
+    </view>
+
+    <!-- 查看全部 -->
+    <view class="goto-section">
+      <view class="goto-btn" bindtap="goToList">
+        <text>查看全部投稿记录</text>
+        <text class="goto-arrow">›</text>
+      </view>
+    </view>
+
+  </block>
+</view>
