@@ -750,6 +750,11 @@
   cursor: pointer;
 }
 
+.library-list {
+  max-height: 600rpx;
+  overflow-y: auto;
+}
+
 .toggle-icon {
   font-size: 24rpx;
   color: #6b7280;

@@ -160,7 +160,7 @@
       <text class="toggle-icon">{{showLibrary ? '▲' : '▼'}}</text>
     </view>
 
-    <view wx:if="{{showLibrary}}">
+    <view wx:if="{{showLibrary}}" class="library-list">
       <view wx:if="{{library.length === 0}}" class="empty-tip">文献库为空，查询后保存文献到这里</view>
 
       <view wx:for="{{library}}" wx:key="_id" class="library-item">

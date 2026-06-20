@@ -140,9 +140,11 @@ function parseCrossrefWork(work) {
     title: work.title && work.title.length > 0 ? work.title[0] : '',
     authors: authors,
     containerTitle: containerTitle,
+    journal: containerTitle,       // 别名，兼容 formatter 引用格式
     volume: work.volume || '',
     issue: work.issue || '',
     page: work.page || '',
+    pages: work.page || '',        // 别名，兼容 formatter 引用格式
     publishedDate: issuedDate,
     year: issuedDate ? parseInt(issuedDate.substring(0, 4)) : null,
     publisher: work.publisher || '',
