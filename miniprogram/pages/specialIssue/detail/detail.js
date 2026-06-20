@@ -73,8 +73,8 @@ Page({
     });
 
     // 检测 canvas2d 支持
-    var sysInfo = wx.getSystemInfoSync();
-    var SDKVersion = sysInfo.SDKVersion;
+    var appBaseInfo = wx.getAppBaseInfo();
+    var SDKVersion = appBaseInfo.SDKVersion;
     if (SDKVersion) {
       var vers = SDKVersion.split('.').map(function(v) { return parseInt(v); });
       if (vers[0] < 2 || (vers[0] === 2 && vers[1] < 9)) {
@@ -82,7 +82,8 @@ Page({
       }
     }
     // 引用柱状图 canvas2d 检测（真机用 canvas2d）
-    var platform = sysInfo.platform;
+    var deviceInfo = wx.getDeviceInfo();
+    var platform = deviceInfo.platform;
     this.setData({ citeUseCanvas2d: platform === 'ios' || platform === 'android' });
 
     this.loadSchemeDetail();

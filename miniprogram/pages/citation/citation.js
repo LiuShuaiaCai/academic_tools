@@ -104,8 +104,8 @@ Page({
     // 图片裁剪器
     showCropper: false,
     cropImagePath: '',
-    screenWidth: wx.getSystemInfoSync().windowWidth,
-    screenHeight: wx.getSystemInfoSync().windowHeight,
+    screenWidth: wx.getWindowInfo().windowWidth,
+    screenHeight: wx.getWindowInfo().windowHeight,
     cropperWidth: 250,
     cropperHeight: 250,
     cropperLockRatio: true,
@@ -231,8 +231,8 @@ Page({
     this.loadToolTheme();
     var that = this;
     // 检测平台：真机(ios/android)使用 canvas2d，模拟器(windows/mac)使用 inScrollView
-    var systemInfo = wx.getSystemInfoSync();
-    var platform = systemInfo.platform;
+    var deviceInfo = wx.getDeviceInfo();
+    var platform = deviceInfo.platform;
     var useCanvas2d = (platform === 'ios' || platform === 'android');
     this.setData({ useCanvas2d: useCanvas2d });
 
