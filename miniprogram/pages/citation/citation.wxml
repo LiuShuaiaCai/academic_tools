@@ -153,6 +153,60 @@
     </view>
   </view>
 
+  <!-- 文献库 -->
+  <view class="library-section">
+    <view class="section-title" bindtap="toggleLibrary">
+      我的文献库 ({{library.length}})
+      <text class="toggle-icon">{{showLibrary ? '▲' : '▼'}}</text>
+    </view>
+
+    <view wx:if="{{showLibrary}}">
+      <view wx:if="{{library.length === 0}}" class="empty-tip">文献库为空，查询后保存文献到这里</view>
+
+      <view wx:for="{{library}}" wx:key="_id" class="library-item">
+        <view class="lib-item-content" bindtap="useFromLibrary" data-id="{{item._id}}">
+          <view class="lib-item-title">{{item.title}}</view>
+          <view class="lib-item-meta">
+            <text wx:if="{{item.year}}">{{item.year}}  </text>
+            <text wx:if="{{item.containerTitle}}">{{item.containerTitle}}</text>
+          </view>
+          <view class="lib-item-doi" wx:if="{{item.doi}}">DOI: {{item.doi}}</view>
+        </view>
+        <view class="lib-item-delete" catchtap="deleteFromLibrary" data-id="{{item._id}}">✕</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 引用格式 -->
+  <view class="citation-section" wx:if="{{searchResult}}">
+    <view class="section-title">引用格式</view>
+
+    <!-- 格式选择 -->
+    <view class="style-select">
+      <picker mode="selector" range="{{styleOptions}}" range-key="label" value="{{selectedStyleIndex}}" bindchange="onStyleChange">
+        <view class="style-picker">{{styleOptions[selectedStyleIndex].label}} ▼</view>
+      </picker>
+    </view>
+
+    <!-- 文中引用 -->
+    <!-- <view class="citation-block" wx:if="{{citationResult}}"> -->
+    <!--   <view class="citation-header"> -->
+    <!--     <view class="citation-label">文中引用</view> -->
+    <!--     <view class="copy-btn" bindtap="copyInText">复制</view> -->
+    <!--   </view> -->
+    <!--   <view class="citation-content" bindtap="copyInText">{{citationResult}}</view> -->
+    <!-- </view> -->
+
+    <!-- 参考文献条目 -->
+    <view class="citation-block" wx:if="{{bibliographyResult}}">
+      <view class="citation-header">
+        <view class="citation-label">参考文献条目</view>
+        <view class="copy-btn" bindtap="copyBibliography">复制</view>
+      </view>
+      <view class="citation-content" bindtap="copyBibliography">{{bibliographyResult}}</view>
+    </view>
+  </view>
+
   <!-- 搜索结果 -->
   <view class="result-section" wx:if="{{searchResultReady}}">
     <view class="section-title">文献信息</view>
@@ -316,59 +370,8 @@
 
   </view>
 
-  <!-- 引用格式 -->
-  <view class="citation-section" wx:if="{{searchResult}}">
-    <view class="section-title">引用格式</view>
-
-    <!-- 格式选择 -->
-    <view class="style-select">
-      <picker mode="selector" range="{{styleOptions}}" range-key="label" value="{{selectedStyleIndex}}" bindchange="onStyleChange">
-        <view class="style-picker">{{styleOptions[selectedStyleIndex].label}} ▼</view>
-      </picker>
-    </view>
-
-    <!-- 文中引用 -->
-    <view class="citation-block" wx:if="{{citationResult}}">
-      <view class="citation-header">
-        <view class="citation-label">文中引用</view>
-        <view class="copy-btn" bindtap="copyInText">复制</view>
-      </view>
-      <view class="citation-content" bindtap="copyInText">{{citationResult}}</view>
-    </view>
-
-    <!-- 参考文献条目 -->
-    <view class="citation-block" wx:if="{{bibliographyResult}}">
-      <view class="citation-header">
-        <view class="citation-label">参考文献条目</view>
-        <view class="copy-btn" bindtap="copyBibliography">复制</view>
-      </view>
-      <view class="citation-content" bindtap="copyBibliography">{{bibliographyResult}}</view>
-    </view>
-
-    <!-- 保存到文献库 -->
-    <view class="save-btn" bindtap="saveToLibrary">💾 保存到文献库</view>
-  </view>
-
-  <!-- 文献库 -->
-  <view class="library-section">
-    <view class="section-title" bindtap="toggleLibrary">
-      我的文献库 ({{library.length}})
-      <text class="toggle-icon">{{showLibrary ? '▲' : '▼'}}</text>
-    </view>
-
-    <view wx:if="{{showLibrary}}">
-      <view wx:if="{{library.length === 0}}" class="empty-tip">文献库为空，查询后保存文献到这里</view>
-
-      <view wx:for="{{library}}" wx:key="_id" class="library-item">
-        <view class="lib-item-content" bindtap="useFromLibrary" data-id="{{item._id}}">
-          <view class="lib-item-title">{{item.title}}</view>
-          <view class="lib-item-meta">
-            <text wx:if="{{item.year}}">{{item.year}}  </text>
-            <text wx:if="{{item.containerTitle}}">{{item.containerTitle}}</text>
-          </view>
-        </view>
-        <view class="lib-item-delete" catchtap="deleteFromLibrary" data-id="{{item._id}}">✕</view>
-      </view>
-    </view>
+  <!-- 固定底部保存按钮 -->
+  <view class="fixed-save-bar" wx:if="{{searchResult}}">
+    <view class="fixed-save-btn" bindtap="saveToLibrary">💾 保存到文献库</view>
   </view>
 </view>
