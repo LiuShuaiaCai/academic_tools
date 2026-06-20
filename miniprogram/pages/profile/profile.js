@@ -35,7 +35,10 @@ Page({
   },
 
   onShow: function () {
-    this.loadStats();
+    // 避免首次加载时 currentOpenid 未就绪就查数据库（onLoad 拿到 openid 后会调 loadStats）
+    if (this.data.currentOpenid) {
+      this.loadStats();
+    }
     this.loadCreditsInfo();
     this.loadProfile();
   },
@@ -235,20 +238,22 @@ Page({
         self.setData({ statItems: [] });
         return;
       }
-      var countPromises = tools.map(function(tool) {
+      // 最多显示4个统计项，避免页面过长也减少查询
+      var displayTools = tools.slice(0, 4);
+      var countPromises = displayTools.map(function(tool) {
         var colName = TASK_COLLECTION_MAP[tool.id];
         if (!colName) return Promise.resolve({ total: 0 });
         return db.collection(colName).where({ deleteTime: null, _openid: self.data.currentOpenid }).count().catch(function() { return { total: 0 }; });
       });
       return Promise.all(countPromises).then(function(results) {
         var statItems = [];
-        for (var i = 0; i < tools.length; i++) {
+        for (var i = 0; i < displayTools.length; i++) {
           statItems.push({
-            id: tools[i].id,
-            name: tools[i].name,
+            id: displayTools[i].id,
+            name: displayTools[i].name,
             count: results[i].total,
-            color: tools[i].color,
-            pagePath: tools[i].pagePath
+            color: displayTools[i].color,
+            pagePath: displayTools[i].pagePath
           });
         }
         self.setData({ statItems: statItems });
