@@ -1,0 +1,215 @@
+<!-- pages/square/detail/detail.wxml - 动态详情 -->
+<view class="detail-page" wx:if="{{post}}">
+
+  <!-- ========== 动态内容区 ========== -->
+  <view class="post-section">
+    <!-- 头部 -->
+    <view class="post-header">
+      <image class="post-avatar" src="{{post.avatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+      <view class="post-meta">
+        <view class="post-author">{{post.nickName || '学者用户'}}</view>
+        <view class="post-time">{{post.displayTime}}</view>
+      </view>
+      <view class="post-type-badge" style="background: {{post.typeColor}}20; color: {{post.typeColor}};">
+        {{post.typeLabel}}
+      </view>
+      <!-- 征稿类型标签（仅征稿通知显示） -->
+      <view class="post-call-type" wx:if="{{post.type === 'call_for_papers' && post.callType}}" style="background: #F59E0B20; color: #F59E0B; margin-left: 8rpx;">
+        {{post.callType}}
+      </view>
+    </view>
+
+      <!-- 内容 -->
+      <view class="post-body">
+        <view class="post-title" wx:if="{{post.title}}">{{post.title}}</view>
+        <view class="post-content">{{post.content}}</view>
+
+        <!-- 图片 -->
+        <view class="post-images" wx:if="{{post.images && post.images.length > 0}}">
+          <image
+            class="post-image"
+            wx:for="{{post.images}}"
+            wx:for-item="img"
+            wx:key="index"
+            src="{{img}}"
+            mode="aspectFill"
+            lazy-load="true"
+            data-url="{{img}}"
+            data-urls="{{post.images}}"
+            bindtap="previewImage"
+          />
+        </view>
+
+        <!-- 标签 -->
+        <view class="post-tags" wx:if="{{post.tags && post.tags.length > 0}}">
+          <view class="post-tag" wx:for="{{post.tags}}" wx:key="index">#{{item}}</view>
+        </view>
+      </view>
+
+      <!-- 文献互助信息（仅文献互助类型显示） -->
+      <view class="help-info-section" wx:if="{{post.type === 'literature_help'}}">
+        <!-- 求助状态 -->
+        <view class="help-status-area">
+          <view class="help-status-badge" style="background: {{post.helpStatusColor}}; color: #FFFFFF;">
+            {{post.helpStatusLabel}}
+          </view>
+          <view class="help-remaining" wx:if="{{post.helpStatus === '求助中' && post.remainingTime}}">
+            <text class="remaining-text">{{post.remainingTime}}</text>
+          </view>
+        </view>
+
+        <!-- 文献信息 -->
+        <view class="help-detail-card">
+          <view class="help-detail-title">文献信息</view>
+          <view class="help-detail-row" wx:if="{{post.docType}}">
+            <text class="detail-label">文献类型：</text>
+            <text class="detail-value">{{post.docType === 'journal' ? '期刊论文' : post.docType === 'conference' ? '会议论文' : post.docType === 'thesis' ? '博士论文' : '其他'}}</text>
+          </view>
+          <view class="help-detail-row" wx:if="{{post.docUrl}}">
+            <text class="detail-label">文献网址：</text>
+            <text class="detail-value link" bindtap="copyText" data-text="{{post.docUrl}}">{{post.docUrl}}</text>
+          </view>
+          <view class="help-detail-row" wx:if="{{post.docDoi}}">
+            <text class="detail-label">文献DOI：</text>
+            <text class="detail-value" bindtap="copyText" data-text="{{post.docDoi}}">{{post.docDoi}}</text>
+          </view>
+          <view class="help-detail-row" wx:if="{{post.docAuthors}}">
+            <text class="detail-label">作者信息：</text>
+            <text class="detail-value">{{post.docAuthors}}</text>
+          </view>
+        </view>
+
+        <!-- 悬赏信息 -->
+        <view class="help-reward-card">
+          <view class="help-detail-title">悬赏信息</view>
+          <view class="help-detail-row">
+            <text class="detail-label">悬赏积分：</text>
+            <text class="detail-value reward">{{post.rewardPoints || 0}} 积分</text>
+          </view>
+          <view class="help-detail-row">
+            <text class="detail-label">求助时限：</text>
+            <text class="detail-value">{{post.helpDeadline || '未设置'}}</text>
+          </view>
+        </view>
+
+        <!-- 应助者信息（解决后显示） -->
+        <view class="help-helper-card" wx:if="{{post.helpStatus === '已解决' && post.helperNickName}}">
+          <view class="help-detail-title">应助者信息</view>
+          <view class="helper-info">
+            <image class="helper-avatar" src="{{post.helperAvatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+            <view class="helper-meta">
+              <text class="helper-name">{{post.helperNickName}}</text>
+              <text class="helper-time" wx:if="{{post.helpSolveTime}}">解决于 {{post.helpSolveTime}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+    <!-- 操作栏 -->
+    <view class="post-actions">
+      <view class="action-btn {{post.isLiked ? 'liked' : ''}}" bindtap="onLikeTap">
+        <image class="action-icon" src="/pages/square/icons/{{post.isLiked ? 'heart-filled' : 'heart'}}.svg" mode="aspectFit"></image>
+        <text>{{post.isLiked ? '已赞' : '点赞'}}{{post.likeCount > 0 ? ' ' + post.likeCount : ''}}</text>
+      </view>
+      <view class="action-btn" bindtap="showCommentInput">
+        <image class="action-icon" src="/pages/square/icons/message-square.svg" mode="aspectFit"></image>
+        <text>评论{{post.commentCount > 0 ? ' ' + post.commentCount : ''}}</text>
+      </view>
+      <view class="action-btn {{post.isFavorite ? 'favorited' : ''}}" bindtap="onFavoriteTap">
+        <image class="action-icon" src="/pages/square/icons/{{post.isFavorite ? 'bookmark-filled' : 'bookmark'}}.svg" mode="aspectFit"></image>
+        <text>{{post.isFavorite ? '已收藏' : '收藏'}}</text>
+      </view>
+    </view>
+
+    <!-- 文献互助操作按钮（仅文献互助类型显示） -->
+    <view class="help-actions" wx:if="{{post.type === 'literature_help'}}">
+      <button class="help-btn respond-btn" wx:if="{{post.canRespond}}" bindtap="onHelpRespond">
+        📚 应助此求助
+      </button>
+      <button class="help-btn download-btn" wx:if="{{post.canDownload}}" bindtap="onDownloadFile">
+        📥 下载文献
+      </button>
+      <button class="help-btn extend-btn" wx:if="{{post.canExtend}}" bindtap="onExtendDeadline">
+        ⏰ 延长求助时限
+      </button>
+    </view>
+  </view>
+
+  <!-- ========== 评论列表 ========== -->
+  <view class="comments-section">
+    <view class="comments-header">
+      <text class="comments-title">评论 ({{post.commentCount || 0}})</text>
+    </view>
+
+    <!-- 评论列表 -->
+    <view class="comments-list" wx:if="{{comments.length > 0}}">
+      <view class="comment-item" wx:for="{{comments}}" wx:key="_id">
+        <image class="comment-avatar" src="{{item.avatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+        <view class="comment-body">
+          <view class="comment-author">
+            <text>{{item.nickName || '学者用户'}}</text>
+            <text class="comment-time">{{item.displayTime}}</text>
+          </view>
+          <view class="comment-content">
+            <text wx:if="{{item.parentId}}">
+              <text class="reply-hint">回复 </text>
+              <text class="reply-target">@{{item.replyToNickName || '用户'}}</text>
+              <text>：</text>
+            </text>
+            {{item.content}}
+          </view>
+          <view class="comment-reply-btn"
+                data-comment-id="{{item._id}}"
+                data-author="{{item.nickName || '学者用户'}}"
+                bindtap="showCommentInput">
+            回复
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空评论 -->
+    <view class="comments-empty" wx:if="{{comments.length === 0 && !commentLoading}}">
+      <text class="empty-icon">💬</text>
+      <text class="empty-text">暂无评论，来说点什么吧</text>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{commentLoading}}">
+      <text>加载中...</text>
+    </view>
+    <view class="load-more no-more" wx:elif="{{!commentHasMore && comments.length > 0}}">
+      <text>— 没有更多评论了 —</text>
+    </view>
+  </view>
+
+</view>
+
+<!-- 加载中 -->
+<view class="page-loading" wx:if="{{!post}}">
+  <text>加载中...</text>
+</view>
+
+<!-- ========== 底部评论输入区域 ========== -->
+<view class="comment-input-area" wx:if="{{showInput}}">
+  <view class="input-mask" bindtap="hideCommentInput"></view>
+  <view class="input-bar">
+    <view class="input-reply-hint" wx:if="{{replyTo}}">
+      回复 @{{replyTo.author}}
+      <text class="cancel-reply" bindtap="hideCommentInput">取消</text>
+    </view>
+    <view class="input-row">
+      <input
+        class="comment-input"
+        placeholder="写下你的评论..."
+        placeholder-class="input-placeholder"
+        value="{{commentText}}"
+        focus="{{true}}"
+        bindinput="onCommentInput"
+        bindconfirm="submitComment"
+      />
+      <button class="send-btn" bindtap="submitComment" size="mini">发送</button>
+    </view>
+  </view>
+</view>
+

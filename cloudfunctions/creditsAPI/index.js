@@ -249,9 +249,27 @@ async function calculateValidCredits(openid) {
       console.log('[calculateValidCredits] 记录' + i + ': 已过期, 跳过');
     }
   }
-  console.log('[calculateValidCredits] 最终有效积分:', totalEarn);
 
-  return Math.max(0, totalEarn);
+  // 减去冻结积分
+  var frozenRes = await db.collection('credits')
+    .where({
+      _openid: openid,
+      deleteTime: null,
+      type: 'frozen'
+    })
+    .field({
+      remainPoints: true
+    })
+    .get();
+
+  var totalFrozen = 0;
+  for (var j = 0; j < frozenRes.data.length; j++) {
+    totalFrozen += frozenRes.data[j].remainPoints || 0;
+  }
+
+  console.log('[calculateValidCredits] 收入积分:', totalEarn, '冻结积分:', totalFrozen, '最终可用:', Math.max(0, totalEarn - totalFrozen));
+
+  return Math.max(0, totalEarn - totalFrozen);
 }
 
 // 执行签到
@@ -1017,6 +1035,151 @@ async function spendCredits(event) {
   };
 }
 
+// ==================== 文献互助积分相关函数 ====================
+
+// 冻结积分（用于文献互助悬赏）
+async function freezeCredits(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = (event && event._openid) || wxContext.OPENID;
+  var points = event.points || 0;
+  var relatedId = event.relatedId || '';
+  var description = event.description || '积分冻结';
+
+  if (points <= 0) {
+    return { success: false, error: '冻结积分必须大于0' };
+  }
+
+  // 检查用户可用积分
+  var creditsInfo = await getCreditsInfo({ _openid: openid });
+  if (!creditsInfo || creditsInfo.success === false) {
+    return { success: false, error: (creditsInfo && creditsInfo.error) || '获取积分信息失败' };
+  }
+  var availablePoints = creditsInfo.credits || 0;
+
+  if (availablePoints < points) {
+    return { success: false, error: '积分余额不足（可用' + availablePoints + '，需要' + points + '）' };
+  }
+
+  var now = formatTime();
+
+  // 创建冻结记录
+  await db.collection('credits').add({
+    data: {
+      _openid: openid,
+      type: 'frozen',
+      action: 'help_reward',
+      points: points,
+      remainPoints: points,  // 剩余冻结积分
+      description: description,
+      relatedId: relatedId,
+      createTime: now,
+      updateTime: now,
+      deleteTime: null
+    }
+  });
+
+  return { success: true, frozenPoints: points };
+}
+
+// 转移积分（从求助者到应助者）
+async function transferCredits(event) {
+  var fromOpenid = event.fromOpenid || '';
+  var toOpenid = event.toOpenid || '';
+  var points = event.points || 0;
+  var relatedId = event.relatedId || '';
+  var description = event.description || '积分转移';
+
+  if (!fromOpenid || !toOpenid) {
+    return { success: false, error: '缺少用户OpenID' };
+  }
+
+  if (points <= 0) {
+    return { success: false, error: '转移积分必须大于0' };
+  }
+
+  var now = formatTime();
+
+  // 1. 更新冻结记录（标记为已使用）
+  var frozenRes = await db.collection('credits')
+    .where({
+      _openid: fromOpenid,
+      type: 'frozen',
+      relatedId: relatedId
+    })
+    .limit(1)
+    .get();
+
+  if (frozenRes.data && frozenRes.data.length > 0) {
+    await db.collection('credits').doc(frozenRes.data[0]._id).update({
+      data: {
+        type: 'frozen_used',
+        updateTime: now
+      }
+    });
+  }
+
+  // 2. 为应助者添加积分记录
+  await db.collection('credits').add({
+    data: {
+      _openid: toOpenid,
+      type: 'earn',
+      action: 'help_reward',
+      points: points,
+      remainPoints: points,
+      description: description,
+      relatedId: relatedId,
+      createTime: now,
+      updateTime: now,
+      deleteTime: null,
+      expireTime: getExpireTime()  // 设置过期时间
+    }
+  });
+
+  return { success: true, transferredPoints: points };
+}
+
+// 退还冻结积分（求助过期时）
+async function refundFrozenCredits(event) {
+  var relatedId = event.relatedId || '';
+  var description = event.description || '冻结积分退还';
+
+  if (!relatedId) {
+    return { success: false, error: '缺少relatedId' };
+  }
+
+  var now = formatTime();
+
+  // 查找冻结记录
+  var frozenRes = await db.collection('credits')
+    .where({
+      type: 'frozen',
+      relatedId: relatedId
+    })
+    .get();
+
+  if (!frozenRes.data || frozenRes.data.length === 0) {
+    return { success: true, refunded: 0 };  // 没有冻结记录，视为已处理
+  }
+
+  var refunded = 0;
+
+  for (var i = 0; i < frozenRes.data.length; i++) {
+    var record = frozenRes.data[i];
+    refunded += record.points || 0;
+
+    // 更新为已退还状态
+    await db.collection('credits').doc(record._id).update({
+      data: {
+        type: 'frozen_refunded',
+        description: description,
+        updateTime: now
+      }
+    });
+  }
+
+  return { success: true, refunded: refunded };
+}
+
 // ==================== 入口 ====================
 
 exports.main = async (event, context) => {
@@ -1051,6 +1214,10 @@ exports.main = async (event, context) => {
         rules: CREDITS_RULES,
         labels: ACTION_LABELS
       };
+      // 文献互助积分
+      case 'freezeCredits':     return await freezeCredits(event);
+      case 'transferCredits':   return await transferCredits(event);
+      case 'refundFrozenCredits': return await refundFrozenCredits(event);
       default: return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

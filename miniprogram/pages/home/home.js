@@ -376,7 +376,7 @@ Page({
   },
 
   goToToolManager: function() { wx.navigateTo({ url: '/pages/toolManager/toolManager' }); },
-  goToToolbox: function() { wx.switchTab({ url: '/pages/toolbox/toolbox' }); },
+  goToToolbox: function() { wx.navigateTo({ url: '/pages/toolbox/toolbox' }); },
   goToCalendar: function() { wx.switchTab({ url: '/pages/calendar/calendar' }); },
 
   goToItem: function(e) {

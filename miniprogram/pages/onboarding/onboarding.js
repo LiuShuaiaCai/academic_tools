@@ -31,8 +31,8 @@ Page({
     step: 1,
     selectedRole: '',
     roleOptions: [
-      { id: 'researcher', name: '科研人员', desc: '以投稿、审稿论文，参加学术会议为主', icon: '🎓', color: 'blue' },
-      { id: 'editor', name: '学术编辑', desc: '以统筹稿件、策划特刊为主', icon: '💼', color: 'orange' }
+      { id: 'researcher', name: '科研人员', desc: '统筹管理论文投稿、审稿、学术会议等', icon: '🎓', color: 'blue' },
+      { id: 'editor', name: '学术编辑', desc: '统筹稿件编审，策划期刊特刊等', icon: '💼', color: 'orange' }
     ],
     enabledTools: [],
     disabledTools: []

@@ -1,0 +1,438 @@
+/* pages/square/publish/publish.wxss - 发布动态样式 */
+page { background: #F3F4F6; }
+
+.publish-page {
+  min-height: 100vh;
+  padding-bottom: 60rpx;
+}
+
+/* ========== 表单区域 ========== */
+.form-section {
+  background: #fff;
+  margin: 16rpx 0;
+  padding: 24rpx 32rpx;
+}
+
+.section-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+/* ========== 类型选择 ========== */
+.type-section {
+  background: #fff;
+  padding: 24rpx 32rpx;
+}
+
+.type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.type-option {
+  flex: 0 0 calc(33.33% - 8rpx);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  padding: 16rpx 8rpx;
+  border-radius: 12rpx;
+  border: 2rpx solid #E5E7EB;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.type-option-icon {
+  font-size: 36rpx;
+}
+
+.type-option-label {
+  font-size: 24rpx;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+/* ========== 征集类型选择器 ========== */
+.call-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.call-type-option {
+  padding: 12rpx 28rpx;
+  font-size: 26rpx;
+  color: #6B7280;
+  background: #F9FAFB;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 24rpx;
+  transition: all 0.2s;
+}
+
+.call-type-option.active {
+  color: #2563eb;
+  background: #EFF6FF;
+  border-color: #2563eb;
+  font-weight: 500;
+}
+
+.call-type-custom {
+  margin-top: 16rpx;
+}
+
+.call-type-input {
+  width: 100%;
+  font-size: 28rpx;
+  color: #374151;
+  padding: 16rpx 20rpx;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  background: #F9FAFB;
+}
+
+/* ========== 输入框 ========== */
+.title-input {
+  width: 100%;
+  font-size: 30rpx;
+  color: #111827;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #F3F4F6;
+  min-height: 80rpx;
+  line-height: 1.5;
+}
+
+.content-input {
+  width: 100%;
+  min-height: 200rpx;
+  font-size: 28rpx;
+  color: #374151;
+  line-height: 1.6;
+  padding: 16rpx 0;
+}
+
+.input-placeholder {
+  color: #D1D5DB;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 22rpx;
+  color: #9CA3AF;
+  margin-top: 8rpx;
+}
+
+.char-count.warn {
+  color: #EF4444;
+}
+
+/* ========== 图片上传 ========== */
+.image-upload-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.image-item {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.image-delete {
+  position: absolute;
+  top: -6rpx;
+  right: -6rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.image-add {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 8rpx;
+  border: 2rpx dashed #D1D5DB;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #F9FAFB;
+  gap: 4rpx;
+}
+
+.add-icon {
+  font-size: 44rpx;
+  color: #9CA3AF;
+}
+
+.add-text {
+  font-size: 20rpx;
+  color: #D1D5DB;
+}
+
+.upload-tip {
+  font-size: 22rpx;
+  color: #2563eb;
+  margin-top: 12rpx;
+}
+
+/* ========== 标签 ========== */
+.tag-area {
+  margin-top: 4rpx;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 8rpx 16rpx;
+  background: #EFF6FF;
+  color: #2563eb;
+  font-size: 24rpx;
+  border-radius: 8rpx;
+}
+
+.tag-close {
+  font-size: 28rpx;
+  color: #93C5FD;
+  margin-left: 4rpx;
+}
+
+.tag-input-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.tag-input {
+  flex: 1;
+  font-size: 26rpx;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.tag-add-btn {
+  flex-shrink: 0;
+  padding: 10rpx 24rpx;
+  background: #2563eb;
+  color: #fff;
+  font-size: 24rpx;
+  border-radius: 8rpx;
+}
+
+/* ========== 推荐标签 ========== */
+.tag-suggest-section {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #F3F4F6;
+}
+
+.tag-suggest-title {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  margin-bottom: 12rpx;
+}
+
+.tag-suggest-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.tag-suggest-item {
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
+  color: #6B7280;
+  background: #F3F4F6;
+  border-radius: 20rpx;
+  border: 2rpx solid #E5E7EB;
+  transition: all 0.15s;
+}
+
+.tag-suggest-item:active {
+  background: #EFF6FF;
+  color: #2563eb;
+  border-color: #93C5FD;
+}
+
+/* ========== 发布按钮 ========== */
+.submit-section {
+  padding: 32rpx;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 92rpx;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(37, 99, 235, 0.3);
+  transition: all 0.2s;
+}
+
+.submit-btn[disabled] {
+  opacity: 0.5;
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
+}
+
+/* ========= 文献互助表单 ========= */
+.help-section {
+  margin-top: 16rpx;
+}
+
+/* 文献类型选择 */
+.doc-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.doc-type-option {
+  padding: 12rpx 28rpx;
+  font-size: 26rpx;
+  color: #6B7280;
+  background: #F9FAFB;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 24rpx;
+  transition: all 0.2s;
+}
+
+.doc-type-option.active {
+  color: #f59e0b;
+  background: #FFFBEB;
+  border-color: #f59e0b;
+  font-weight: 500;
+}
+
+/* 文本输入框 */
+.text-input {
+  width: 100%;
+  font-size: 28rpx;
+  color: #374151;
+  padding: 16rpx 20rpx;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  background: #F9FAFB;
+  box-sizing: border-box;
+  min-height: 80rpx;
+  line-height: 1.5;
+}
+
+/* 积分输入 */
+.points-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.points-input {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #f59e0b;
+  padding: 16rpx 20rpx;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  background: #F9FAFB;
+}
+
+.points-balance {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  white-space: nowrap;
+}
+
+/* 快速选择积分 */
+.quick-points {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.quick-point {
+  flex: 1;
+  text-align: center;
+  padding: 12rpx 0;
+  font-size: 26rpx;
+  color: #f59e0b;
+  background: #FFFBEB;
+  border: 2rpx solid #FDE68A;
+  border-radius: 8rpx;
+  transition: all 0.2s;
+}
+
+.quick-point.active {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #f59e0b;
+}
+
+/* 日期选择器 */
+.date-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 20rpx;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  background: #F9FAFB;
+}
+
+.date-text {
+  font-size: 28rpx;
+  color: #374151;
+}
+
+.date-text:empty::before {
+  content: '请选择关闭时间';
+  color: #9CA3AF;
+}
+
+.date-picker-loading .date-text {
+  color: #9CA3AF;
+}
+
+.date-arrow {
+  font-size: 20rpx;
+  color: #9CA3AF;
+}
+
+/* 必填标记 */
+.required {
+  color: #EF4444;
+  margin-left: 4rpx;
+}

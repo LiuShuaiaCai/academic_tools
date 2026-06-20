@@ -158,6 +158,7 @@
 
 .menu-item:last-child { border-bottom: none; }
 .menu-icon { font-size: 32rpx; margin-right: 16rpx; }
+.menu-icon-svg { width: 40rpx; height: 40rpx; margin-right: 16rpx; flex-shrink: 0; }
 .menu-text { flex: 1; font-size: 28rpx; color: #374151; }
 .menu-arrow { font-size: 32rpx; color: #9CA3AF; }
 

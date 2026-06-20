@@ -380,6 +380,802 @@ async function fixCompleted() {
 
 // AI 审稿功能已迁移至小程序端 aiRecognizer.js
 
+// ==================== 学术动态 ====================
+
+// 获取动态列表（分页、筛选、排序）
+async function squareGetPosts(event) {
+  var page = event.page || 1;
+  var pageSize = event.pageSize || 20;
+  var sortBy = event.sortBy || 'recommend';
+  var type = event.type || '';
+
+  var where = { deleteTime: null };
+  if (type) where.type = type;
+
+  var orderField = 'createTime';
+  var orderDir = 'desc';
+
+  if (sortBy === 'hot') {
+    orderField = 'likeCount';
+    orderDir = 'desc';
+  } else if (sortBy === 'latest') {
+    orderField = 'createTime';
+    orderDir = 'desc';
+  } else {
+    // recommend: 按最新发布时间排序
+    orderField = 'createTime';
+    orderDir = 'desc';
+  }
+
+  var skip = (page - 1) * pageSize;
+  var res = await db.collection('square_posts')
+    .where(where)
+    .orderBy(orderField, orderDir)
+    .orderBy('createTime', 'desc')
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+
+  return { success: true, posts: res.data || [], page: page };
+}
+
+// 获取动态详情
+async function squareGetPostDetail(event) {
+  var postId = event.postId;
+  if (!postId) return { success: false, error: '缺少 postId' };
+
+  var res = await db.collection('square_posts').doc(postId).get();
+  var post = res.data;
+
+  if (!post || post.deleteTime) {
+    return { success: false, error: '动态不存在' };
+  }
+
+  return { success: true, post: post };
+}
+
+// 创建动态
+async function squareCreatePost(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
+  var type = event.type || 'discussion';
+  var title = (event.title || '').trim();
+  var content = (event.content || '').trim();
+  var images = event.images || [];
+  var tags = event.tags || [];
+  var callType = event.callType || '';  // 征集类型（仅征稿通知）
+  var avatarUrl = event.avatarUrl || '';
+  var nickName = event.nickName || '';
+
+  if (type !== 'literature_help' && !content) {
+    return { success: false, error: '内容不能为空' };
+  }
+
+  // 频率限制：检查用户最近1分钟内发布数量
+  var oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+  var recentCount = await db.collection('square_posts')
+    .where({
+      _openid: openid,
+      deleteTime: null,
+      createTime: db.command.gt(formatTime(oneMinuteAgo))
+    })
+    .count();
+
+  if (recentCount.total >= 3) {
+    return { success: false, error: '发布过于频繁，请稍后再试' };
+  }
+
+  var now = formatTime();
+  var data = {
+    _openid: openid,
+    type: type,
+    title: title,
+    content: content,
+    images: images,
+    tags: tags,
+    callType: callType,  // 征集类型
+    avatarUrl: avatarUrl,
+    nickName: nickName,
+    likeCount: 0,
+    commentCount: 0,
+    createTime: now,
+    updateTime: now,
+    deleteTime: null
+  };
+
+  // 文献互助类型：添加相关字段并冻结积分
+  if (type === 'literature_help') {
+    var rewardPoints = event.rewardPoints || 0;
+    if (rewardPoints <= 0) {
+      return { success: false, error: '悬赏积分必须大于0' };
+    }
+
+    // 检查用户积分余额
+    var creditsRes = await cloud.callFunction({
+      name: 'creditsAPI',
+      data: { action: 'getCreditsInfo', _openid: openid }
+    });
+    var availablePoints = (creditsRes.result && creditsRes.result.credits) || 0;
+
+    if (availablePoints < rewardPoints) {
+      return { success: false, error: '积分余额不足' };
+    }
+
+    // 冻结积分
+    var freezeRes = await cloud.callFunction({
+      name: 'creditsAPI',
+      data: {
+        action: 'freezeCredits',
+        _openid: openid,
+        points: rewardPoints,
+        relatedId: '',  // 暂时为空，创建动态后再更新
+        description: '文献互助悬赏冻结'
+      }
+    });
+    if (!freezeRes.result || !freezeRes.result.success) {
+      return { success: false, error: freezeRes.result && freezeRes.result.error ? freezeRes.result.error : '积分冻结失败' };
+    }
+
+    data.docType = event.docType || '';
+    data.docUrl = event.docUrl || '';
+    data.docDoi = event.docDoi || '';
+    data.docNotes = event.docNotes || '';
+    data.rewardPoints = rewardPoints;
+    data.helpDeadline = event.helpDeadline || '';
+    data.helpStatus = event.helpStatus || '求助中';
+    data.helperOpenid = '';
+    data.helperAvatarUrl = '';
+    data.helperNickName = '';
+    data.helpSolveTime = '';
+    data.docFileId = '';
+  }
+
+  var addRes = await db.collection('square_posts').add({ data: data });
+  console.log('[square] 创建动态成功', addRes._id);
+
+  // 更新冻结记录的 relatedId
+  if (type === 'literature_help') {
+    await db.collection('credits').where({
+      _openid: openid,
+      type: 'frozen',
+      relatedId: ''
+    }).update({
+      data: { relatedId: addRes._id }
+    });
+  }
+
+  return { success: true, postId: addRes._id };
+}
+
+// 更新动态
+async function squareUpdatePost(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var postId = event.postId;
+
+  if (!postId) return { success: false, error: '缺少 postId' };
+
+  // 验证所有权
+  var post = await db.collection('square_posts').doc(postId).get();
+  if (!post.data || post.data._openid !== openid) {
+    return { success: false, error: '无权修改他人动态' };
+  }
+
+  var updateData = { updateTime: formatTime() };
+  if (event.title !== undefined) updateData.title = (event.title || '').trim();
+  if (event.content !== undefined) updateData.content = (event.content || '').trim();
+  if (event.images !== undefined) updateData.images = event.images;
+  if (event.tags !== undefined) updateData.tags = event.tags;
+
+  await db.collection('square_posts').doc(postId).update({ data: updateData });
+  return { success: true };
+}
+
+// 删除动态（软删除）
+async function squareDeletePost(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var postId = event.postId;
+
+  if (!postId) return { success: false, error: '缺少 postId' };
+
+  // 验证所有权
+  var post = await db.collection('square_posts').doc(postId).get();
+  if (!post.data || post.data._openid !== openid) {
+    return { success: false, error: '无权删除他人动态' };
+  }
+
+  await db.collection('square_posts').doc(postId).update({
+    data: { deleteTime: formatTime() }
+  });
+  return { success: true };
+}
+
+// 获取评论列表
+async function squareGetComments(event) {
+  var postId = event.postId;
+  var page = event.page || 1;
+  var pageSize = event.pageSize || 20;
+
+  if (!postId) return { success: false, error: '缺少 postId' };
+
+  var skip = (page - 1) * pageSize;
+  var res = await db.collection('square_comments')
+    .where({ postId: postId, deleteTime: null })
+    .orderBy('createTime', 'asc')
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+
+  return { success: true, comments: res.data || [], page: page };
+}
+
+// 发表评论
+async function squareCreateComment(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
+  var postId = event.postId;
+  var content = (event.content || '').trim();
+  var parentId = event.parentId || null;
+  var avatarUrl = event.avatarUrl || '';
+  var nickName = event.nickName || '';
+
+  if (!postId) return { success: false, error: '缺少 postId' };
+  if (!content) return { success: false, error: '评论内容不能为空' };
+  if (content.length > 500) return { success: false, error: '评论内容不能超过500字' };
+
+  // 获取父评论信息（回复时）
+  var replyToNickName = '';
+  if (parentId) {
+    var parentRes = await db.collection('square_comments').doc(parentId).get();
+    if (parentRes.data) {
+      replyToNickName = parentRes.data.nickName || '';
+    }
+  }
+
+  var now = formatTime();
+  var data = {
+    _openid: openid,
+    postId: postId,
+    content: content,
+    parentId: parentId,
+    avatarUrl: avatarUrl,
+    nickName: nickName,
+    replyToNickName: replyToNickName,
+    likeCount: 0,
+    createTime: now,
+    deleteTime: null
+  };
+
+  var addRes = await db.collection('square_comments').add({ data: data });
+
+  // 更新动态的评论计数
+  await db.collection('square_posts').doc(postId).update({
+    data: {
+      commentCount: db.command.inc(1),
+      updateTime: now
+    }
+  });
+
+  console.log('[square] 创建评论成功', addRes._id);
+  return { success: true, commentId: addRes._id };
+}
+
+// 删除评论
+async function squareDeleteComment(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var commentId = event.commentId;
+
+  if (!commentId) return { success: false, error: '缺少 commentId' };
+
+  // 验证所有权
+  var comment = await db.collection('square_comments').doc(commentId).get();
+  if (!comment.data || comment.data._openid !== openid) {
+    return { success: false, error: '无权删除他人评论' };
+  }
+
+  await db.collection('square_comments').doc(commentId).update({
+    data: { deleteTime: formatTime() }
+  });
+
+  // 更新动态的评论计数
+  if (comment.data && comment.data.postId) {
+    await db.collection('square_posts').doc(comment.data.postId).update({
+      data: { commentCount: db.command.inc(-1) }
+    });
+  }
+
+  return { success: true };
+}
+
+// 点赞/取消点赞
+async function squareToggleLike(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
+  var postId = event.postId;
+  var commentId = event.commentId;
+  var isLiked = event.isLiked !== undefined ? event.isLiked : true;
+
+  var targetTable = postId ? 'square_posts' : (commentId ? 'square_comments' : null);
+  var targetId = postId || commentId;
+  var likeField = postId ? 'postId' : 'commentId';
+
+  if (!targetTable || !targetId) {
+    return { success: false, error: '缺少 targetId' };
+  }
+
+  if (isLiked) {
+    // 点赞：先检查是否已经点赞（幂等）
+    var existing = await db.collection('square_likes')
+      .where({ _openid: openid, [likeField]: targetId })
+      .limit(1)
+      .get();
+
+    if (existing.data.length === 0) {
+      await db.collection('square_likes').add({
+        data: {
+          _openid: openid,
+          [likeField]: targetId,
+          createTime: formatTime()
+        }
+      });
+
+      // 更新计数
+      await db.collection(targetTable).doc(targetId).update({
+        data: { likeCount: db.command.inc(1) }
+      });
+    }
+  } else {
+    // 取消点赞
+    var likeRes = await db.collection('square_likes')
+      .where({ _openid: openid, [likeField]: targetId })
+      .limit(1)
+      .get();
+
+    if (likeRes.data.length > 0) {
+      await db.collection('square_likes').doc(likeRes.data[0]._id).remove();
+
+      await db.collection(targetTable).doc(targetId).update({
+        data: { likeCount: db.command.inc(-1) }
+      });
+    }
+  }
+
+  return { success: true };
+}
+
+// 批量获取点赞状态
+async function squareGetLikeStatus(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
+  var postIds = event.postIds || [];
+  var commentIds = event.commentIds || [];
+
+  var likeMap = {};
+
+  // 查询动态点赞状态
+  if (postIds.length > 0) {
+    var res = await db.collection('square_likes')
+      .where({
+        _openid: openid,
+        postId: db.command.in(postIds)
+      })
+      .get();
+
+    for (var i = 0; i < (res.data || []).length; i++) {
+      likeMap[res.data[i].postId] = true;
+    }
+  }
+
+  // 查询评论点赞状态
+  if (commentIds.length > 0) {
+    var commentRes = await db.collection('square_likes')
+      .where({
+        _openid: openid,
+        commentId: db.command.in(commentIds)
+      })
+      .get();
+
+    for (var j = 0; j < (commentRes.data || []).length; j++) {
+      likeMap[commentRes.data[j].commentId] = true;
+    }
+  }
+
+  return { success: true, likeMap: likeMap };
+}
+
+// ==================== 收藏功能 ====================
+
+// 收藏/取消收藏
+async function squareToggleFavorite(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var postId = event.postId;
+  var isFavorite = event.isFavorite !== undefined ? event.isFavorite : true;
+
+  if (!postId) return { success: false, error: '缺少 postId' };
+
+  if (isFavorite) {
+    // 收藏：先检查是否已收藏（幂等）
+    var existing = await db.collection('square_favorites')
+      .where({ _openid: openid, postId: postId })
+      .limit(1)
+      .get();
+
+    if (existing.data.length === 0) {
+      await db.collection('square_favorites').add({
+        data: {
+          _openid: openid,
+          postId: postId,
+          createTime: formatTime()
+        }
+      });
+    }
+  } else {
+    // 取消收藏
+    var favRes = await db.collection('square_favorites')
+      .where({ _openid: openid, postId: postId })
+      .limit(1)
+      .get();
+
+    if (favRes.data.length > 0) {
+      await db.collection('square_favorites').doc(favRes.data[0]._id).remove();
+    }
+  }
+
+  return { success: true };
+}
+
+// 批量获取收藏状态
+async function squareGetFavoriteStatus(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var postIds = event.postIds || [];
+
+  var favMap = {};
+
+  if (postIds.length > 0) {
+    var res = await db.collection('square_favorites')
+      .where({
+        _openid: openid,
+        postId: db.command.in(postIds)
+      })
+      .get();
+
+    for (var i = 0; i < (res.data || []).length; i++) {
+      favMap[res.data[i].postId] = true;
+    }
+  }
+
+  return { success: true, favMap: favMap };
+}
+
+// 获取用户收藏列表（分页）
+async function squareGetFavorites(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var page = event.page || 1;
+  var pageSize = event.pageSize || 20;
+
+  var skip = (page - 1) * pageSize;
+  var favRes = await db.collection('square_favorites')
+    .where({ _openid: openid })
+    .orderBy('createTime', 'desc')
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+
+  var favorites = favRes.data || [];
+  var postIds = favorites.map(function(f) { return f.postId; });
+
+  // 查询对应的动态
+  var posts = [];
+  if (postIds.length > 0) {
+    for (var i = 0; i < postIds.length; i++) {
+      try {
+        var postRes = await db.collection('square_posts').doc(postIds[i]).get();
+        if (postRes.data && !postRes.data.deleteTime) {
+          posts.push(postRes.data);
+        }
+      } catch (e) {
+        // 动态可能已被删除
+      }
+    }
+  }
+
+  return { success: true, posts: posts, page: page };
+}
+
+// 获取用户点赞的帖子列表
+async function squareGetMyLiked(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var page = event.page || 1;
+  var pageSize = event.pageSize || 20;
+
+  var skip = (page - 1) * pageSize;
+  var likeRes = await db.collection('square_likes')
+    .where({ _openid: openid, postId: db.command.exists(true) })
+    .orderBy('createTime', 'desc')
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+
+  var likes = likeRes.data || [];
+  var postIds = likes.map(function(l) { return l.postId; });
+
+  var posts = [];
+  if (postIds.length > 0) {
+    for (var i = 0; i < postIds.length; i++) {
+      try {
+        var postRes = await db.collection('square_posts').doc(postIds[i]).get();
+        if (postRes.data && !postRes.data.deleteTime) {
+          posts.push(postRes.data);
+        }
+      } catch (e) {}
+    }
+  }
+
+  return { success: true, posts: posts, page: page };
+}
+
+// 获取用户参与评论的帖子列表
+async function squareGetMyCommented(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var page = event.page || 1;
+  var pageSize = event.pageSize || 20;
+
+  var skip = (page - 1) * pageSize;
+  var commentRes = await db.collection('square_comments')
+    .where({ _openid: openid })
+    .orderBy('createTime', 'desc')
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+
+  var comments = commentRes.data || [];
+
+  // 按 postId 去重
+  var postIdSet = {};
+  var dedupedPostIds = [];
+  for (var i = 0; i < comments.length; i++) {
+    var pid = comments[i].postId;
+    if (pid && !postIdSet[pid]) {
+      postIdSet[pid] = true;
+      dedupedPostIds.push(pid);
+    }
+  }
+
+  var posts = [];
+  if (dedupedPostIds.length > 0) {
+    for (var i = 0; i < dedupedPostIds.length; i++) {
+      try {
+        var postRes = await db.collection('square_posts').doc(dedupedPostIds[i]).get();
+        if (postRes.data && !postRes.data.deleteTime) {
+          posts.push(postRes.data);
+        }
+      } catch (e) {}
+    }
+  }
+
+  return { success: true, posts: posts, page: page };
+}
+
+// 获取用户发布的帖子列表
+async function squareGetMyPosts(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var page = event.page || 1;
+  var pageSize = event.pageSize || 20;
+
+  var skip = (page - 1) * pageSize;
+  var postRes = await db.collection('square_posts')
+    .where({ _openid: openid, deleteTime: null })
+    .orderBy('createTime', 'desc')
+    .skip(skip)
+    .limit(pageSize)
+    .get();
+
+  var posts = postRes.data || [];
+  return { success: true, posts: posts, page: page };
+}
+
+// ==================== 文献互助相关函数 ====================
+
+// 应助文献求助
+async function squareHelpRespond(event) {
+  var wxContext = cloud.getWXContext();
+  var helperOpenid = wxContext.OPENID;
+  var postId = event.postId;
+  var fileID = event.fileID;
+
+  if (!postId || !fileID) {
+    return { success: false, error: '参数不完整' };
+  }
+
+  // 获取动态详情
+  var postRes = await db.collection('square_posts').doc(postId).get();
+  var post = postRes.data;
+
+  if (!post) {
+    return { success: false, error: '动态不存在' };
+  }
+
+  if (post.type !== 'literature_help') {
+    return { success: false, error: '该动态不是文献互助类型' };
+  }
+
+  if (post.helpStatus !== '求助中') {
+    return { success: false, error: '该求助不在求助中状态' };
+  }
+
+  if (post._openid === helperOpenid) {
+    return { success: false, error: '不能应助自己的求助' };
+  }
+
+  var now = formatTime();
+
+  // 更新动态状态
+  await db.collection('square_posts').doc(postId).update({
+    data: {
+      helpStatus: '已解决',
+      helperOpenid: helperOpenid,
+      helpSolveTime: now,
+      docFileId: fileID,
+      updateTime: now
+    }
+  });
+
+  // 获取应助者信息
+  var helperInfo = await db.collection('user_config').where({ _openid: helperOpenid }).limit(1).get();
+  var helperAvatarUrl = '';
+  var helperNickName = '';
+
+  if (helperInfo.data && helperInfo.data.length > 0) {
+    // 从用户的朋友圈或其他地方获取头像昵称
+    // 这里简化处理，使用默认值
+  }
+
+  // 转移积分给应助者
+  try {
+    await cloud.callFunction({
+      name: 'creditsAPI',
+      data: {
+        action: 'transferCredits',
+        fromOpenid: post._openid,
+        toOpenid: helperOpenid,
+        points: post.rewardPoints,
+        relatedId: postId,
+        description: '文献互助应助奖励'
+      }
+    });
+  } catch (err) {
+    console.error('[square] 积分转移失败', err);
+    // 积分转移失败，记录日志，但不影响应助完成
+  }
+
+  // 更新应助者信息到动态
+  await db.collection('square_posts').doc(postId).update({
+    data: {
+      helperAvatarUrl: helperAvatarUrl,
+      helperNickName: helperNickName
+    }
+  });
+
+  return { success: true };
+}
+
+// 延长求助时限
+async function squareExtendDeadline(event) {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+  var postId = event.postId;
+  var extendDays = event.extendDays || 1;
+
+  if (!postId) {
+    return { success: false, error: '缺少 postId' };
+  }
+
+  // 获取动态详情
+  var postRes = await db.collection('square_posts').doc(postId).get();
+  var post = postRes.data;
+
+  if (!post) {
+    return { success: false, error: '动态不存在' };
+  }
+
+  if (post._openid !== openid) {
+    return { success: false, error: '无权操作他人求助' };
+  }
+
+  if (post.type !== 'literature_help') {
+    return { success: false, error: '该动态不是文献互助类型' };
+  }
+
+  if (post.helpStatus !== '已过期') {
+    return { success: false, error: '只能延长已过期求助的时限' };
+  }
+
+  // 计算新的截止时间
+  var currentDeadline = new Date(post.helpDeadline.replace(/-/g, '/'));
+  var newDeadline = new Date(currentDeadline.getTime() + extendDays * 24 * 60 * 60 * 1000);
+  var newDeadlineStr = formatTime(newDeadline).split(' ')[0];  // 只取日期部分
+
+  // 更新动态状态
+  await db.collection('square_posts').doc(postId).update({
+    data: {
+      helpStatus: '求助中',
+      helpDeadline: newDeadlineStr,
+      updateTime: formatTime()
+    }
+  });
+
+  return { success: true, newDeadline: newDeadlineStr };
+}
+
+// 检查并标记过期的求助（定时触发器调用）
+async function squareCheckHelpExpiry() {
+  var now = formatTime();
+  var nowDate = now.split(' ')[0];  // 当前日期 YYYY-MM-DD
+
+  // 查询所有求助中且截止日期小于今天的动态
+  var postRes = await db.collection('square_posts')
+    .where({
+      type: 'literature_help',
+      helpStatus: '求助中',
+      deleteTime: null
+    })
+    .get();
+
+  var expiredPosts = [];
+  for (var i = 0; i < postRes.data.length; i++) {
+    var post = postRes.data[i];
+    var deadline = (post.helpDeadline || '').split(' ')[0];
+
+    if (deadline && deadline < nowDate) {
+      expiredPosts.push(post);
+    }
+  }
+
+  // 批量更新过期状态并退还积分
+  var updated = 0;
+  for (var j = 0; j < expiredPosts.length; j++) {
+    var expiredPost = expiredPosts[j];
+
+    try {
+      // 更新状态为已过期
+      await db.collection('square_posts').doc(expiredPost._id).update({
+        data: {
+          helpStatus: '已过期',
+          updateTime: formatTime()
+        }
+      });
+
+      // 退还冻结积分
+      await cloud.callFunction({
+        name: 'creditsAPI',
+        data: {
+          action: 'refundFrozenCredits',
+          relatedId: expiredPost._id,
+          description: '文献互助过期退还'
+        }
+      });
+
+      updated++;
+    } catch (err) {
+      console.error('[square] 处理过期求助失败', expiredPost._id, err);
+    }
+  }
+
+  return { success: true, checked: expiredPosts.length, updated: updated };
+}
+
 // ==================== 工具函数 ====================
 
 // ==================== 入口 ====================
@@ -388,6 +1184,14 @@ async function fixCompleted() {
 
 exports.main = async (event) => {
   try {
+    // 检测是否为定时触发器调用
+    var isTimerTrigger = event && (event.Type === 'timer' || event.triggeredBy === 'timer');
+
+    // 如果是定时触发器，执行过期检查
+    if (isTimerTrigger) {
+      return await squareCheckHelpExpiry();
+    }
+
     switch (event.action) {
       case 'getAllTools':       return await getAllTools();
       case 'migrateTools':      return await migrateTools();
@@ -402,6 +1206,28 @@ exports.main = async (event) => {
       case 'reviewStats':     return await reviewStats(event);
       case 'conferenceStats': return await conferenceStats(event);
       case 'fixCompleted':   return await fixCompleted();
+      // 学术动态
+      case 'squareGetPosts':       return await squareGetPosts(event);
+      case 'squareGetPostDetail':  return await squareGetPostDetail(event);
+      case 'squareCreatePost':     return await squareCreatePost(event);
+      case 'squareUpdatePost':     return await squareUpdatePost(event);
+      case 'squareDeletePost':     return await squareDeletePost(event);
+      case 'squareGetComments':    return await squareGetComments(event);
+      case 'squareCreateComment':  return await squareCreateComment(event);
+      case 'squareDeleteComment':  return await squareDeleteComment(event);
+      case 'squareToggleLike':     return await squareToggleLike(event);
+      case 'squareGetLikeStatus':  return await squareGetLikeStatus(event);
+      // 收藏
+      case 'squareToggleFavorite':      return await squareToggleFavorite(event);
+      case 'squareGetFavoriteStatus':   return await squareGetFavoriteStatus(event);
+      case 'squareGetFavorites':        return await squareGetFavorites(event);
+      case 'squareGetMyLiked':          return await squareGetMyLiked(event);
+      case 'squareGetMyCommented':      return await squareGetMyCommented(event);
+      case 'squareGetMyPosts':          return await squareGetMyPosts(event);
+      // 文献互助
+      case 'squareHelpRespond':         return await squareHelpRespond(event);
+      case 'squareExtendDeadline':     return await squareExtendDeadline(event);
+      case 'squareCheckHelpExpiry':    return await squareCheckHelpExpiry();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

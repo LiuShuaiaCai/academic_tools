@@ -1,0 +1,179 @@
+<!-- pages/square/square.wxml - 学术动态首页 -->
+<view class="square-page">
+
+  <!-- ========== 顶部 Tab 切换（推荐/最新/热门） ========== -->
+  <view class="tab-bar">
+    <view
+      class="tab-item {{currentTab === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      data-tab="{{item.key}}"
+      bindtap="onTabTap"
+    >
+      {{item.label}}
+      <view class="tab-indicator" wx:if="{{currentTab === item.key}}"></view>
+    </view>
+  </view>
+
+  <!-- ========== 分类过滤 ========== -->
+  <view wx:if="{{currentTab !== 'mine'}}">
+    <scroll-view class="type-filter" scroll-x="true" enable-flex="true">
+      <view class="type-list">
+        <view
+          class="type-item {{currentType === item.key ? 'active' : ''}}"
+          wx:for="{{types}}"
+          wx:key="key"
+          data-type="{{item.key}}"
+          bindtap="onTypeTap"
+        >
+          {{item.label}}
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- ========== 我的子选项卡 ========== -->
+  <view class="type-filter" wx:if="{{currentTab === 'mine'}}">
+    <view class="type-list">
+      <view
+        class="type-item {{mySubTab === item.key ? 'active' : ''}}"
+        wx:for="{{mySubTabs}}"
+        wx:key="key"
+        data-sub="{{item.key}}"
+        bindtap="onMySubTabTap"
+      >
+        {{item.label}}
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 动态列表 ========== -->
+  <view class="post-list" wx:if="{{posts.length > 0}}">
+
+    <view
+      class="post-card"
+      wx:for="{{posts}}"
+      wx:key="_id"
+      data-id="{{item._id}}"
+      data-index="{{index}}"
+    >
+
+      <!-- 卡片头部：用户信息 -->
+      <view class="post-header" data-id="{{item._id}}" bindtap="navigateToDetail">
+        <image class="post-avatar" src="{{item.avatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+        <view class="post-meta">
+          <view class="post-author">{{item.nickName || '学者用户'}}</view>
+          <view class="post-time">{{item.displayTime}}</view>
+        </view>
+        <view class="post-type-badge" style="background: {{item.typeColor}}20; color: {{item.typeColor}};">
+          {{item.typeLabel}}
+        </view>
+        <!-- 征稿类型标签（仅征稿通知显示） -->
+        <view class="post-call-type" wx:if="{{item.type === 'call_for_papers' && item.callType}}" style="background: #F59E0B20; color: #F59E0B; margin-left: 8rpx;">
+          {{item.callType}}
+        </view>
+        <!-- 求助状态标签（仅文献互助显示） -->
+        <view class="post-help-status" wx:if="{{item.type === 'literature_help'}}" style="background: {{item.helpStatusColor}}20; color: {{item.helpStatusColor}}; margin-left: 8rpx;">
+          {{item.helpStatusLabel}}
+        </view>
+      </view>
+
+      <!-- 卡片内容 -->
+      <view class="post-body" data-id="{{item._id}}" bindtap="navigateToDetail">
+        <view class="post-title" wx:if="{{item.title}}">{{item.title}}</view>
+        <view class="post-content">{{item.content}}</view>
+
+        <!-- 图片九宫格 -->
+        <view class="post-images" wx:if="{{item.images && item.images.length > 0}}">
+          <image
+            class="post-image"
+            wx:for="{{item.images}}"
+            wx:for-item="img"
+            wx:key="index"
+            src="{{img}}"
+            mode="aspectFill"
+            lazy-load="true"
+            data-url="{{img}}"
+            data-urls="{{item.images}}"
+            bindtap="previewImage"
+          />
+        </view>
+
+        <!-- 标签 -->
+        <view class="post-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+          <view class="post-tag" wx:for="{{item.tags}}" wx:key="index">#{{item}}</view>
+        </view>
+
+        <!-- 文献互助信息（仅文献互助类型显示） -->
+        <view class="post-help-info" wx:if="{{item.type === 'literature_help'}}">
+          <view class="help-reward" wx:if="{{item.rewardPoints > 0}}">
+            <text class="reward-icon">🎁</text>
+            <text class="reward-text">悬赏 {{item.rewardPoints}} 积分</text>
+          </view>
+          <view class="help-deadline" wx:if="{{item.helpStatus === '求助中' && item.remainingTime}}">
+            <text class="deadline-icon">⏰</text>
+            <text class="deadline-text">{{item.remainingTime}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 卡片底部：操作按钮 -->
+      <view class="post-footer">
+        <view class="footer-action {{item.isLiked ? 'liked' : ''}}" data-index="{{index}}" bindtap="onLikeTap">
+          <image class="action-icon" src="/pages/square/icons/{{item.isLiked ? 'heart-filled' : 'heart'}}.svg" mode="aspectFit"></image>
+          <text class="action-text">{{item.isLiked ? '已赞' : '点赞'}}{{item.likeCount > 0 ? ' ' + item.likeCount : ''}}</text>
+        </view>
+        <view class="footer-action" data-id="{{item._id}}" bindtap="navigateToDetail">
+          <image class="action-icon" src="/pages/square/icons/message-square.svg" mode="aspectFit"></image>
+          <text class="action-text">评论{{item.commentCount > 0 ? ' ' + item.commentCount : ''}}</text>
+        </view>
+        <view class="footer-action {{item.isFavorite ? 'favorited' : ''}}" data-index="{{index}}" bindtap="onFavoriteTap">
+          <image class="action-icon" src="/pages/square/icons/{{item.isFavorite ? 'bookmark-filled' : 'bookmark'}}.svg" mode="aspectFit"></image>
+          <text class="action-text">{{item.isFavorite ? '已收藏' : '收藏'}}</text>
+        </view>
+      </view>
+
+    </view>
+
+    <!-- 加载更多提示 -->
+    <view class="load-more" wx:if="{{loading}}">
+      <view class="loading-dot"></view>
+      <text>加载中...</text>
+    </view>
+    <view class="load-more no-more" wx:elif="{{!hasMore && posts.length > 0}}">
+      <text>— 没有更多了 —</text>
+    </view>
+
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{posts.length === 0 && !loading}}">
+    <view class="empty-icon">📚</view>
+    <view class="empty-text">还没有动态</view>
+    <view class="empty-sub">快来分享第一个学术成果吧</view>
+  </view>
+
+  <!-- 加载骨架屏 -->
+  <view class="skeleton-list" wx:if="{{loading && posts.length === 0}}">
+    <view class="skeleton-card" wx:for="{{[1,2,3]}}" wx:key="index">
+      <view class="sk-header">
+        <view class="sk-avatar skeleton-pulse"></view>
+        <view class="sk-meta">
+          <view class="sk-line short skeleton-pulse"></view>
+          <view class="sk-line mini skeleton-pulse"></view>
+        </view>
+      </view>
+      <view class="sk-body">
+        <view class="sk-line long skeleton-pulse"></view>
+        <view class="sk-line long skeleton-pulse"></view>
+        <view class="sk-line medium skeleton-pulse"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 发布按钮 -->
+  <view class="publish-fab" bindtap="navigateToPublish">
+    <text class="fab-icon">+</text>
+  </view>
+
+</view>
