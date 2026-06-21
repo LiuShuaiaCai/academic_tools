@@ -1159,8 +1159,9 @@ async function squareHelpRespond(event) {
   });
 
   // 转移积分给应助者
+  var transferResult = null;
   try {
-    await cloud.callFunction({
+    transferResult = await cloud.callFunction({
       name: 'creditsAPI',
       data: {
         action: 'transferCredits',
@@ -1171,12 +1172,132 @@ async function squareHelpRespond(event) {
         description: '文献互助应助奖励'
       }
     });
+    console.log('[squareHelpRespond] 积分转移结果:', JSON.stringify(transferResult.result));
+    if (!transferResult.result || !transferResult.result.success) {
+      console.error('[squareHelpRespond] 积分转移返回失败:', transferResult.result);
+    }
   } catch (err) {
-    console.error('[square] 积分转移失败', err);
+    console.error('[squareHelpRespond] 积分转移调用异常:', err.message || err, 'postId:', postId);
     // 积分转移失败，记录日志，但不影响应助完成
   }
 
-  return { success: true };
+  return { success: true, transferResult: transferResult && transferResult.result };
+}
+
+// 修复已完成的文献互助积分转移（幂等安全，可重复调用）
+async function fixCreditTransfer(event) {
+  var postId = event.postId;
+
+  if (!postId) {
+    return { success: false, error: '缺少 postId' };
+  }
+
+  // 获取动态详情
+  var postRes = await db.collection('square_posts').doc(postId).get();
+  var post = postRes.data;
+
+  if (!post) {
+    return { success: false, error: '动态不存在' };
+  }
+
+  if (post.type !== 'literature_help') {
+    return { success: false, error: '该动态不是文献互助类型' };
+  }
+
+  if (post.helpStatus !== '已解决') {
+    return { success: false, error: '该求助尚未解决，无法修复积分转移' };
+  }
+
+  if (!post.helperOpenid) {
+    return { success: false, error: '未找到应助者信息' };
+  }
+
+  // 调用 transferCredits（已有幂等保护：不会重复扣减或重复奖励）
+  var transferRes = await cloud.callFunction({
+    name: 'creditsAPI',
+    data: {
+      action: 'transferCredits',
+      fromOpenid: post._openid,
+      toOpenid: post.helperOpenid,
+      points: post.rewardPoints,
+      relatedId: postId,
+      description: '文献互助应助奖励'
+    }
+  });
+
+  return {
+    success: true,
+    transferResult: transferRes.result,
+    message: '积分转移修复完成'
+  };
+}
+
+// 批量修复所有已解决但缺少 spend 记录的文献互助积分
+async function repairAllHelpCredits() {
+  var wxContext = cloud.getWXContext();
+  var openid = wxContext.OPENID;
+
+  // 查找该用户所有 type=literature_help 且 helpStatus=已解决 的帖子
+  var postRes = await db.collection('square_posts')
+    .where({
+      _openid: openid,
+      type: 'literature_help',
+      helpStatus: '已解决',
+      deleteTime: null
+    })
+    .field({ _id: true, helperOpenid: true, rewardPoints: true })
+    .get();
+
+  var posts = postRes.data || [];
+  var fixed = 0;
+  var skipped = 0;
+
+  for (var i = 0; i < posts.length; i++) {
+    var post = posts[i];
+    if (!post.helperOpenid) continue;
+
+    // 检查是否已有 spend 记录
+    var spendRes = await db.collection('credits')
+      .where({
+        _openid: openid,
+        type: 'spend',
+        action: 'help_reward',
+        relatedId: post._id
+      })
+      .limit(1)
+      .get();
+
+    if (spendRes.data && spendRes.data.length > 0) {
+      skipped++;
+      continue;
+    }
+
+    // 没有 spend 记录，调用 transferCredits 修复
+    try {
+      await cloud.callFunction({
+        name: 'creditsAPI',
+        data: {
+          action: 'transferCredits',
+          fromOpenid: openid,
+          toOpenid: post.helperOpenid,
+          points: post.rewardPoints,
+          relatedId: post._id,
+          description: '文献互助应助奖励'
+        }
+      });
+      fixed++;
+    } catch (err) {
+      console.error('[repairAllHelpCredits] 修复失败', post._id, err);
+    }
+  }
+
+  return {
+    success: true,
+    fixed: fixed,
+    skipped: skipped,
+    total: posts.length,
+    message: '修复完成：' + fixed + '条，跳过' + skipped + '条'
+  };
 }
 
 // 延长求助时限
@@ -1336,6 +1457,8 @@ exports.main = async (event) => {
       case 'squareHelpRespond':         return await squareHelpRespond(event);
       case 'squareExtendDeadline':     return await squareExtendDeadline(event);
       case 'squareCheckHelpExpiry':    return await squareCheckHelpExpiry();
+      case 'fixCreditTransfer':         return await fixCreditTransfer(event);
+      case 'repairAllHelpCredits':      return await repairAllHelpCredits();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

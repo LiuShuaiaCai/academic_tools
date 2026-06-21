@@ -81,7 +81,8 @@ var ACTION_LABELS = {
   new_review: '新增审稿',
   new_conference: '新增会议',
   complete_profile: '完善资料',
-  special_issue: '特刊策划'
+  special_issue: '特刊策划',
+  help_reward: '文献互助'
 };
 
 // 获取今日日期字符串 YYYY-MM-DD（北京时间）
@@ -250,26 +251,10 @@ async function calculateValidCredits(openid) {
     }
   }
 
-  // 减去冻结积分
-  var frozenRes = await db.collection('credits')
-    .where({
-      _openid: openid,
-      deleteTime: null,
-      type: 'frozen'
-    })
-    .field({
-      remainPoints: true
-    })
-    .get();
-
-  var totalFrozen = 0;
-  for (var j = 0; j < frozenRes.data.length; j++) {
-    totalFrozen += frozenRes.data[j].remainPoints || 0;
-  }
-
-  console.log('[calculateValidCredits] 收入积分:', totalEarn, '冻结积分:', totalFrozen, '最终可用:', Math.max(0, totalEarn - totalFrozen));
-
-  return Math.max(0, totalEarn - totalFrozen);
+  // 总积分 = Σ(earn.remainPoints)，冻结积分仍属用户所有，只是不可使用
+  // 冻结扣减逻辑：不在总积分中扣除，仅冻结时检查可用性，求助成功时通过 transferCredits 真正扣减
+  console.log('[calculateValidCredits] 总积分:', totalEarn);
+  return Math.max(0, totalEarn);
 }
 
 // 执行签到
@@ -1038,6 +1023,8 @@ async function spendCredits(event) {
 // ==================== 文献互助积分相关函数 ====================
 
 // 冻结积分（用于文献互助悬赏）
+// 设计：冻结只是锁定积分，不扣减余额。求助成功时由 transferCredits 真正扣减。
+// 总积分 = earn 总额（包含冻结），可用积分 = 总积分 - 已冻结积分
 async function freezeCredits(event) {
   var wxContext = cloud.getWXContext();
   var openid = (event && event._openid) || wxContext.OPENID;
@@ -1049,27 +1036,58 @@ async function freezeCredits(event) {
     return { success: false, error: '冻结积分必须大于0' };
   }
 
-  // 检查用户可用积分
-  var creditsInfo = await getCreditsInfo({ _openid: openid });
-  if (!creditsInfo || creditsInfo.success === false) {
-    return { success: false, error: (creditsInfo && creditsInfo.error) || '获取积分信息失败' };
-  }
-  var availablePoints = creditsInfo.credits || 0;
-
-  if (availablePoints < points) {
-    return { success: false, error: '积分余额不足（可用' + availablePoints + '，需要' + points + '）' };
-  }
-
   var now = formatTime();
+  var nowWithTime = getBeijingDateStr() + ' 23:59:59';
 
-  // 创建冻结记录
+  // 计算可用积分 = 总 earn - 已冻结（冻结积分仍在总积分中但不可使用）
+  var earnTotal = await db.collection('credits')
+    .where({
+      _openid: openid,
+      deleteTime: null,
+      type: 'earn'
+    })
+    .field({ remainPoints: true, expireTime: true, points: true })
+    .get();
+
+  var totalEarn = 0;
+  for (var i = 0; i < earnTotal.data.length; i++) {
+    var e = earnTotal.data[i];
+    if (!e.expireTime || e.expireTime >= nowWithTime) {
+      totalEarn += e.remainPoints !== undefined ? e.remainPoints : (e.points || 0);
+    }
+  }
+
+  var frozenTotal = 0;
+  var frozenRes = await db.collection('credits')
+    .where({
+      _openid: openid,
+      deleteTime: null,
+      type: 'frozen'
+    })
+    .field({ remainPoints: true })
+    .get();
+  for (var j = 0; j < frozenRes.data.length; j++) {
+    frozenTotal += frozenRes.data[j].remainPoints || 0;
+  }
+
+  var availablePoints = totalEarn - frozenTotal;
+  if (availablePoints < points) {
+    return {
+      success: false,
+      error: '积分余额不足（总积分' + totalEarn + '，冻结' + frozenTotal + '，可用' + availablePoints + '，需要' + points + '）'
+    };
+  }
+
+  // 创建冻结记录（只加锁，不扣减 earn）
+  // balanceDeducted=false 表示余额未扣减，transfer 时需扣减
   await db.collection('credits').add({
     data: {
       _openid: openid,
       type: 'frozen',
       action: 'help_reward',
       points: points,
-      remainPoints: points,  // 剩余冻结积分
+      remainPoints: points,
+      balanceDeducted: false,  // 余额未扣减，transferCredits 时需真正扣减 earn
       description: description,
       relatedId: relatedId,
       createTime: now,
@@ -1078,10 +1096,11 @@ async function freezeCredits(event) {
     }
   });
 
-  return { success: true, frozenPoints: points };
+  return { success: true, frozenPoints: points, totalCredits: totalEarn, availableCredits: availablePoints - points };
 }
 
-// 转移积分（从求助者到应助者）
+// 转移积分（从求助者到应助者）- 求助成功时调用
+// 设计：freeze 只锁不扣，此处真正扣减 earn.remainPoints，并将冻结记录直接转为 spend 记录（不新建）
 async function transferCredits(event) {
   var fromOpenid = event.fromOpenid || '';
   var toOpenid = event.toOpenid || '';
@@ -1098,8 +1117,11 @@ async function transferCredits(event) {
   }
 
   var now = formatTime();
+  var nowWithTime = getBeijingDateStr() + ' 23:59:59';
 
-  // 1. 更新冻结记录（标记为已使用）
+  // 1. 查找冻结记录
+  var frozenRecord = null;
+  var frozenId = null;
   var frozenRes = await db.collection('credits')
     .where({
       _openid: fromOpenid,
@@ -1110,35 +1132,145 @@ async function transferCredits(event) {
     .get();
 
   if (frozenRes.data && frozenRes.data.length > 0) {
-    await db.collection('credits').doc(frozenRes.data[0]._id).update({
+    frozenRecord = frozenRes.data[0];
+    frozenId = frozenRecord._id;
+  } else {
+    // 没找到 frozen 记录，尝试查找 spend（已转状态、幂等调用）
+    var existingSpend = await db.collection('credits')
+      .where({
+        _openid: fromOpenid,
+        type: 'spend',
+        action: 'help_reward',
+        relatedId: relatedId
+      })
+      .limit(1)
+      .get();
+    if (existingSpend.data && existingSpend.data.length > 0) {
+      frozenRecord = existingSpend.data[0];
+      frozenId = frozenRecord._id;
+    }
+  }
+
+  if (!frozenRecord) {
+    return { success: false, error: '未找到对应的冻结记录' };
+  }
+
+  // balanceDeducted=true：旧版本 freeze 已扣减余额，此处跳过；false/不存在：需在此真正扣减
+  var balanceAlreadyDeducted = frozenRecord.balanceDeducted === true;
+
+  // 2. 如果当前是 frozen 类型且余额未扣减，从 earn 中扣减
+  if (frozenRecord.type === 'frozen' && !balanceAlreadyDeducted) {
+    var remainToDeduct = points;
+    var earnRes = await db.collection('credits')
+      .where({
+        _openid: fromOpenid,
+        deleteTime: null,
+        type: 'earn'
+      })
+      .field({
+        _id: true,
+        points: true,
+        remainPoints: true,
+        expireTime: true
+      })
+      .get();
+
+    var availableItems = [];
+    for (var i = 0; i < earnRes.data.length; i++) {
+      var item = earnRes.data[i];
+      var remain = item.remainPoints !== undefined ? item.remainPoints : (item.points || 0);
+      if (remain > 0 && (!item.expireTime || item.expireTime >= nowWithTime)) {
+        availableItems.push({
+          _id: item._id,
+          remainPoints: remain,
+          expireTime: item.expireTime || '9999-12-31 23:59:59'
+        });
+      }
+    }
+
+    availableItems.sort(function(a, b) {
+      return a.expireTime.localeCompare(b.expireTime);
+    });
+
+    for (var j = 0; j < availableItems.length && remainToDeduct > 0; j++) {
+      var earnItem = availableItems[j];
+      var deduct = Math.min(earnItem.remainPoints, remainToDeduct);
+      if (deduct > 0) {
+        var newRemain = earnItem.remainPoints - deduct;
+        await db.collection('credits').doc(earnItem._id).update({
+          data: { remainPoints: newRemain }
+        });
+        remainToDeduct -= deduct;
+      }
+    }
+  }
+
+  // 3. 重新计算求助者有效积分
+  var fromValidCredits = await calculateValidCredits(fromOpenid);
+  var fromConfig = await findRecord('user_config', { _openid: fromOpenid });
+  if (fromConfig) {
+    await db.collection('user_config').doc(fromConfig._id).update({
+      data: { credits: fromValidCredits, updateTime: now }
+    });
+  }
+
+  // 4. 将冻结记录直接转为支出记录（不新建，避免重复显示两条）
+  //    只有当前仍是 frozen 类型时才需要转换（幂等保护）
+  if (frozenRecord.type === 'frozen') {
+    await db.collection('credits').doc(frozenId).update({
       data: {
-        type: 'frozen_used',
+        type: 'spend',
+        remainPoints: 0,
+        balance: fromValidCredits,
+        description: '文献互助悬赏支出 -' + points,
         updateTime: now
       }
     });
   }
 
-  // 2. 为应助者添加积分记录
-  await db.collection('credits').add({
-    data: {
+  // 5. 为应助者添加积分记录（幂等：已存在则跳过）
+  var existingHelperEarn = await db.collection('credits')
+    .where({
       _openid: toOpenid,
       type: 'earn',
       action: 'help_reward',
-      points: points,
-      remainPoints: points,
-      description: description,
-      relatedId: relatedId,
-      createTime: now,
-      updateTime: now,
-      deleteTime: null,
-      expireTime: getExpireTime()  // 设置过期时间
-    }
-  });
+      relatedId: relatedId
+    })
+    .limit(1)
+    .get();
+
+  if (!existingHelperEarn.data || existingHelperEarn.data.length === 0) {
+    await db.collection('credits').add({
+      data: {
+        _openid: toOpenid,
+        type: 'earn',
+        action: 'help_reward',
+        points: points,
+        remainPoints: points,
+        description: description,
+        relatedId: relatedId,
+        createTime: now,
+        updateTime: now,
+        deleteTime: null,
+        expireTime: getExpireTime()
+      }
+    });
+  }
+
+  // 6. 重新计算应助者有效积分并更新 user_config
+  var toValidCredits = await calculateValidCredits(toOpenid);
+  var toConfig = await findRecord('user_config', { _openid: toOpenid });
+  if (toConfig) {
+    await db.collection('user_config').doc(toConfig._id).update({
+      data: { credits: toValidCredits, updateTime: now }
+    });
+  }
 
   return { success: true, transferredPoints: points };
 }
 
 // 退还冻结积分（求助过期时）
+// 新设计：freeze 只锁不扣，退款只需标记状态即可（balanceDeducted=true 的旧记录需恢复 earn）
 async function refundFrozenCredits(event) {
   var relatedId = event.relatedId || '';
   var description = event.description || '冻结积分退还';
@@ -1158,14 +1290,37 @@ async function refundFrozenCredits(event) {
     .get();
 
   if (!frozenRes.data || frozenRes.data.length === 0) {
-    return { success: true, refunded: 0 };  // 没有冻结记录，视为已处理
+    return { success: true, refunded: 0 };
   }
 
   var refunded = 0;
+  var affectedOpenids = {};
 
   for (var i = 0; i < frozenRes.data.length; i++) {
     var record = frozenRes.data[i];
-    refunded += record.points || 0;
+    var recordPoints = record.points || 0;
+    refunded += recordPoints;
+
+    // 如果冻结时已实际扣减余额（balanceDeducted=true），需恢复积分
+    if (record.balanceDeducted === true && recordPoints > 0) {
+      // 创建退还 earn 记录，恢复积分
+      await db.collection('credits').add({
+        data: {
+          _openid: record._openid,
+          type: 'earn',
+          action: 'help_refund',
+          points: recordPoints,
+          remainPoints: recordPoints,
+          description: description,
+          relatedId: relatedId,
+          createTime: now,
+          updateTime: now,
+          deleteTime: null,
+          expireTime: getExpireTime()
+        }
+      });
+      affectedOpenids[record._openid] = true;
+    }
 
     // 更新为已退还状态
     await db.collection('credits').doc(record._id).update({
@@ -1175,6 +1330,19 @@ async function refundFrozenCredits(event) {
         updateTime: now
       }
     });
+  }
+
+  // 重新计算各受影响用户的有效积分
+  for (var openid in affectedOpenids) {
+    if (affectedOpenids.hasOwnProperty(openid)) {
+      var validCredits = await calculateValidCredits(openid);
+      var config = await findRecord('user_config', { _openid: openid });
+      if (config) {
+        await db.collection('user_config').doc(config._id).update({
+          data: { credits: validCredits, updateTime: now }
+        });
+      }
+    }
   }
 
   return { success: true, refunded: refunded };
