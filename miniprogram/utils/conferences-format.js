@@ -62,6 +62,7 @@ function formatItem(item) {
     note: item.note || '',
     status: item.status || status,
     statusLabel: config.getStatusLabel(item.status) || '',
+    completed: item.completed || false,
     createTime: item.createTime,
     updateTime: item.updateTime,
     daysLeft: daysLeft,

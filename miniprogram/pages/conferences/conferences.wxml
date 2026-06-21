@@ -12,6 +12,7 @@
   <!-- 快速筛选 -->
   <view class="filter-tips">
     <view class="tip-btn tip-all {{quickFilter === 'all' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="all">全部 {{totalCount}}</view>
+    <view class="tip-btn tip-completed {{quickFilter === 'completed' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="completed">已完成 {{completedCount}}</view>
     <view class="tip-btn tip-active {{quickFilter === 'active' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="active">进行中 {{activeCount}}</view>
     <view class="tip-btn tip-urgent {{quickFilter === 'urgent' ? 'active' : ''}}" bindtap="onTipFilter" data-filter="urgent">急需处理 {{urgentCount}}</view>
     <view class="adv-toggle {{showAdvanced ? 'active' : ''}}" bindtap="toggleAdvanced">
@@ -175,6 +176,11 @@
           <view class="card-date-item" wx:if="{{item.dateRangeLabel}}">
             📅 会议时间 {{item.dateRangeLabel}}
             <view class="card-timeline-status {{item.timelineStatusLabel === '进行中' ? 'timeline-active' : item.timelineStatusLabel === '已结束' ? 'timeline-ended' : 'timeline-upcoming'}}" wx:if="{{item.timelineStatusLabel}}">{{item.timelineStatusLabel}}</view>
+          </view>
+          <view class="card-switch" catchtap="toggleComplete" data-id="{{item._id}}" data-completed="{{item.completed}}">
+            <view class="card-switch-track {{item.completed ? 'on' : ''}}">
+              <view class="card-switch-knob"></view>
+            </view>
           </view>
         </view>
 

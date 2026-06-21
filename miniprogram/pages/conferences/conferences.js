@@ -26,6 +26,7 @@ Page({
     totalCount: 0,
     activeCount: 0,
     urgentCount: 0,
+    completedCount: 0,
     // 高级筛选（原高级筛选）
     showAdvanced: false,
     // 会议类型
@@ -135,7 +136,8 @@ Page({
         that.setData({
           totalCount: res.result.total,
           activeCount: res.result.active,
-          urgentCount: res.result.urgent
+          urgentCount: res.result.urgent,
+          completedCount: res.result.completed || 0
         });
       } else {
         console.warn('[会议] loadStats 返回不成功:', res.result);
@@ -220,6 +222,9 @@ Page({
           listConditions.push({ status: _.neq(null).and(_.neq('')) });
           listConditions.push({ startDate: _.gte(todayStr + ' 00:00:00') });
           listConditions.push({ startDate: _.lte(toStr + ' 23:59:59') });
+        } else if (qf === 'completed') {
+          // 已完成
+          listConditions.push({ completed: _.eq(true) });
         }
       }
 
@@ -527,6 +532,38 @@ Page({
 
   onFormCancel: function() {
     this.setData({ showForm: false, isEdit: false, editId: '' });
+  },
+
+  /* ======== 完成/取消完成 ======== */
+  toggleComplete: function(e) {
+    var that = this;
+    var id = e.currentTarget.dataset.id;
+    var currentlyCompleted = e.currentTarget.dataset.completed;
+    var newCompleted = !currentlyCompleted;
+    var db = wx.cloud.database();
+    var openid = that.data.currentOpenid;
+
+    if (!openid) {
+      wx.showToast({ title: '用户信息获取中，请稍后重试', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask: true });
+
+    db.collection('conferences')
+      .where({ _id: id, _openid: openid })
+      .update({ data: { completed: newCompleted } })
+      .then(function() {
+        wx.hideLoading();
+        wx.showToast({ title: newCompleted ? '已完成' : '已取消', icon: 'success' });
+        that.loadList(false);
+        that.loadStats();
+      })
+      .catch(function(err) {
+        wx.hideLoading();
+        console.error('[会议] 标记完成失败', err);
+        wx.showToast({ title: '操作失败', icon: 'none' });
+      });
   },
 
   /* ======== 删除 ======== */

@@ -33,9 +33,11 @@ page { background: #F6F6F6; }
 .tip-all        { color: #065F46; background: transparent; border: 1rpx solid #6EE7B7; }
 .tip-active     { color: #1E3A8A; background: transparent; border: 1rpx solid #93C5FD; }
 .tip-urgent     { color: #991B1B; background: transparent; border: 1rpx solid #FCA5A5; }
+.tip-completed  { color: #6B7280; background: transparent; border: 1rpx solid #D1D5DB; }
 .tip-all.active        { background: #ECFDF5; border-color: #059669; color: #064E3B; font-weight: 700; }
 .tip-active.active     { background: #DBEAFE; border-color: #2563EB; color: #1E3A8A; font-weight: 700; }
 .tip-urgent.active     { background: #FEE2E2; border-color: #DC2626; color: #7F1D1D; font-weight: 700; }
+.tip-completed.active  { background: #E5E7EB; border-color: #6B7280; color: #374151; font-weight: 700; }
 
 .filter-tips .adv-toggle {
   font-size: 24rpx; padding: 8rpx 14rpx; border-radius: 8rpx;
@@ -112,6 +114,13 @@ page { background: #F6F6F6; }
 .footer-btn { font-size: 24rpx; color: var(--primary-color, #2563eb); padding: 8rpx 0; }
 .footer-edit { color: var(--primary-color, #2563eb); }
 .footer-del { font-size: 24rpx; color: #EF4444; padding: 8rpx 0; }
+
+/* 完成开关 */
+.card-switch { display: inline-flex; align-items: center; }
+.card-switch-track { width: 72rpx; height: 36rpx; border-radius: 18rpx; background: #D1D5DB; position: relative; transition: background 0.25s ease; }
+.card-switch-track.on { background: #10B981; }
+.card-switch-knob { width: 28rpx; height: 28rpx; border-radius: 50%; background: #fff; position: absolute; top: 4rpx; left: 4rpx; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: transform 0.25s ease; }
+.card-switch-track.on .card-switch-knob { transform: translateX(36rpx); }
 
 /* ========== 空状态 ========== */
 .empty-box { text-align: center; padding: 100rpx 40rpx; display: flex; flex-direction: column; align-items: center; gap: 16rpx; }

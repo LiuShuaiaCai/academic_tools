@@ -356,11 +356,13 @@ async function conferenceStats(event) {
 
   var res = await db.collection('conferences').where(where).limit(1000).get();
   var list = res.data || [];
-  var total = 0, active = 0, urgent = 0;
+  var total = 0, active = 0, urgent = 0, completed = 0;
   for (var i = 0; i < list.length; i++) {
     var item = list[i];
     // total: 全部计数，不过滤 completed
     total++;
+    // completed: 已完成计数
+    if (item.completed) completed++;
     // active: 进行中（startDate <= today <= endDate），不过滤 completed
     if (item.startDate && item.endDate) {
       var sd = new Date(extractDateStr(item.startDate) + 'T00:00:00');
@@ -376,8 +378,8 @@ async function conferenceStats(event) {
       if (days2 >= 0 && days2 <= 3) urgent++;
     }
   }
-  console.log('[conferenceStats] keyword=' + keyword + ' total=' + total + ' active=' + active + ' urgent=' + urgent);
-  return { success: true, total: total, active: active, urgent: urgent };
+  console.log('[conferenceStats] keyword=' + keyword + ' total=' + total + ' active=' + active + ' urgent=' + urgent + ' completed=' + completed);
+  return { success: true, total: total, active: active, urgent: urgent, completed: completed };
 }
 
 // 修复被错误标记为 completed=true 的投稿（没有终态事件的应改为 false）
