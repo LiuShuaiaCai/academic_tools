@@ -1,23 +1,24 @@
 <!-- pages/square/square.wxml - 学术动态首页 -->
 <view class="square-page">
 
-  <!-- ========== 顶部 Tab 切换（推荐/最新/热门） ========== -->
-  <view class="tab-bar">
-    <view
-      class="tab-item {{currentTab === item.key ? 'active' : ''}}"
-      wx:for="{{tabs}}"
-      wx:key="key"
-      data-tab="{{item.key}}"
-      bindtap="onTabTap"
-    >
-      {{item.label}}
-      <view class="tab-indicator" wx:if="{{currentTab === item.key}}"></view>
+  <!-- ========== 筛选区（整体固定） ========== -->
+  <view class="filter-bar-wrap">
+    <!-- Tab 切换 -->
+    <view class="tab-bar">
+      <view
+        class="tab-item {{currentTab === item.key ? 'active' : ''}}"
+        wx:for="{{tabs}}"
+        wx:key="key"
+        data-tab="{{item.key}}"
+        bindtap="onTabTap"
+      >
+        {{item.label}}
+        <view class="tab-indicator" wx:if="{{currentTab === item.key}}"></view>
+      </view>
     </view>
-  </view>
 
-  <!-- ========== 分类过滤 ========== -->
-  <view wx:if="{{currentTab !== 'mine'}}">
-    <scroll-view class="type-filter" scroll-x="true" enable-flex="true">
+    <!-- 分类过滤 -->
+    <view class="type-filter" wx:if="{{currentTab !== 'mine'}}">
       <view class="type-list">
         <view
           class="type-item {{currentType === item.key ? 'active' : ''}}"
@@ -29,8 +30,7 @@
           {{item.label}}
         </view>
       </view>
-    </scroll-view>
-  </view>
+    </view>
 
   <!-- ========== 我的子选项卡 ========== -->
   <view class="type-filter" wx:if="{{currentTab === 'mine'}}">
@@ -46,6 +46,8 @@
       </view>
     </view>
   </view>
+
+  </view><!-- .filter-bar-wrap 结束 -->
 
   <!-- ========== 动态列表 ========== -->
   <view class="post-list" wx:if="{{posts.length > 0}}">

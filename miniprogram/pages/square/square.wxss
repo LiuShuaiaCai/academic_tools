@@ -6,71 +6,78 @@ page { background: #F3F4F6; }
   padding-bottom: 120rpx;
 }
 
-/* ========== Tab Bar ========== */
-.tab-bar {
-  display: flex;
-  background: #fff;
-  padding: 0 32rpx;
-  box-shadow: 0 1rpx 4rpx rgba(0,0,0,0.04);
+/* ========== 筛选区整体容器 ========== */
+.filter-bar-wrap {
   position: sticky;
   top: 0;
   z-index: 100;
+  background: #fff;
+  padding: 16rpx 20rpx 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+}
+
+/* ========== Tab Bar ========== */
+.tab-bar {
+  display: flex;
+  background: #F3F4F6;
+  padding: 6rpx;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
 }
 
 .tab-item {
   flex: 1;
   text-align: center;
-  padding: 24rpx 0 20rpx;
-  font-size: 30rpx;
+  padding: 14rpx 0;
+  font-size: 26rpx;
   color: #6B7280;
+  border-radius: 12rpx;
+  transition: all 0.25s;
   position: relative;
-  transition: color 0.2s;
 }
 
 .tab-item.active {
   color: #2563eb;
+  background: #fff;
   font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.08);
 }
 
 .tab-indicator {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40rpx;
-  height: 4rpx;
-  background: #2563eb;
-  border-radius: 2rpx;
+  display: none;
 }
 
 /* ========== 分类过滤 ========== */
+
 .type-filter {
-  background: #fff;
+  background: transparent;
   white-space: nowrap;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #F3F4F6;
+  padding: 0;
 }
 
 .type-list {
   display: flex;
-  padding: 0 32rpx;
+  justify-content: flex-start;
   gap: 16rpx;
 }
 
 .type-item {
   flex-shrink: 0;
   padding: 10rpx 28rpx;
-  border-radius: 32rpx;
-  font-size: 26rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
   color: #6B7280;
-  background: #F3F4F6;
+  background: transparent;
   transition: all 0.2s;
 }
 
 .type-item.active {
-  color: #fff;
-  background: #2563eb;
+  color: #2563eb;
+  background: #EFF6FF;
+  font-weight: 600;
+  border-radius: 8rpx;
 }
+
 
 /* ========== 动态卡片 ========== */
 .post-list {

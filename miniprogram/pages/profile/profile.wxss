@@ -162,7 +162,6 @@
   background: #fff;
   border-radius: 16rpx;
   margin: 0 24rpx;
-  overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
 }
 
@@ -174,7 +173,23 @@
   display: flex;
   align-items: center;
   padding: 34rpx 28rpx;
-  border-bottom: 1rpx solid #E5E7EB;
+  position: relative;
+}
+
+/* 分割线：用 margin 缩进，避免被 overflow 裁掉 */
+.menu-item::after {
+  content: '';
+  position: absolute;
+  left: 28rpx;
+  right: 28rpx;
+  bottom: 0;
+  height: 1px;
+  background: #E5E7EB;
+  transform: scaleY(0.5);
+}
+
+.menu-item:last-child::after {
+  display: none;
 }
 
 .profile-badge {

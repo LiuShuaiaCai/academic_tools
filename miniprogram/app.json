@@ -52,8 +52,8 @@
       {
         "pagePath": "pages/square/square",
         "text": "学术动态",
-        "iconPath": "images/icons/goods.png",
-        "selectedIconPath": "images/icons/goods-active.png"
+        "iconPath": "images/icons/business.png",
+        "selectedIconPath": "images/icons/business-active.png"
       },
       {
         "pagePath": "pages/calendar/calendar",
