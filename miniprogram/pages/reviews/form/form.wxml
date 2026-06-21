@@ -10,12 +10,9 @@
 
       <!-- 基本信息区 -->
       <view class="form-section">
-        <view class="section-label-row">
-          <view class="section-label">基本信息</view>
-          <view class="recognize-btn {{emailRecognizing ? 'recognizing' : ''}}" bindtap="recognizeEmail">
-            <text class="recognize-icon">{{emailRecognizing ? '⏳' : '🔍'}}</text>
-            <text class="recognize-text">{{emailRecognizing ? '识别中...' : '智能识别'}}</text>
-          </view>
+        <view class="recognize-btn {{emailRecognizing ? 'recognizing' : ''}}" bindtap="recognizeEmail" style="margin-bottom:20rpx;">
+          <text class="recognize-icon">{{emailRecognizing ? '⏳' : '🔍'}}</text>
+          <text class="recognize-text">{{emailRecognizing ? '识别中...' : '智能识别'}}</text>
         </view>
 
         <!-- 1. 论文标题* -->
@@ -55,7 +52,6 @@
 
       <!-- 详细信息区 -->
       <view class="form-section">
-        <view class="section-label">详细信息</view>
 
         <!-- 5. 审稿ID -->
         <view class="form-group">
@@ -100,7 +96,6 @@
 
       <!-- 决定与稿件区 -->
       <view class="form-section">
-        <view class="section-label">决定与稿件</view>
 
         <!-- 10. 审稿决定 -->
         <view class="form-group">
@@ -243,7 +238,6 @@
     </view>
     <view class="form-body">
       <view class="form-group">
-        <view class="form-label">审稿决定</view>
         <view class="decision-options decision-options-grid">
           <view
             class="decision-btn {{item.value}} {{decision === item.value ? 'selected' : ''}}"

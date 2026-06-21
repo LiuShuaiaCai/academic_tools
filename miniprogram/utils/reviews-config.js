@@ -29,11 +29,11 @@ var DECISION_OPTIONS = [
 
 var ROUND_OPTIONS = [
   { value: 0, label: '不指定' },
-  { value: 1, label: 'R1（第一轮）' },
-  { value: 2, label: 'R2（第二轮）' },
-  { value: 3, label: 'R3（第三轮）' },
-  { value: 4, label: 'R4（第四轮）' },
-  { value: 5, label: 'R5+（第五轮及以上）' }
+  { value: 1, label: 'R1' },
+  { value: 2, label: 'R2' },
+  { value: 3, label: 'R3' },
+  { value: 4, label: 'R4' },
+  { value: 5, label: 'R5+' }
 ];
 
 var TL_EVENT_OPTIONS = [
@@ -83,8 +83,7 @@ function getDecisionFromValue(value) {
 
 function getRoundLabel(round) {
   if (round === undefined || round === null || round === 0) return '';
-  var opt = ROUND_OPTIONS.find(function(o) { return o.value === round; });
-  return opt ? opt.label : 'R' + round;
+  return round >= 5 ? '#R5+' : ('#R' + round);
 }
 
 module.exports = {

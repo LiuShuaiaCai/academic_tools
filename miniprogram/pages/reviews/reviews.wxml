@@ -82,19 +82,18 @@
       bindtap="showEditForm"
       data-id="{{item._id}}"
     >
-      <!-- 顶部彩色状态条 -->
-      <view class="card-topbar" style="background:{{item.statusColor}}"></view>
+      <!-- 顶部主题色条 -->
+      <view class="card-topbar" style="background:{{theme.primary}}"></view>
 
       <view class="card-body">
-        <!-- 标题 + 轮次 -->
+        <!-- 标题 -->
         <view class="card-title-row">
           <text class="card-title" user-select="true">{{item.paperTitle}}</text>
-          <text class="card-round" wx:if="{{item.round}}">{{item.roundLabel}}</text>
         </view>
 
         <!-- 期刊 -->
         <view class="card-journal-row">
-          <text class="card-journal" user-select="true">{{item.journal || '未设置期刊'}}<text wx:if="{{item.reviewId}}"> #{{item.reviewId}}</text></text>
+          <text class="card-journal" user-select="true">{{item.journal || '未设置期刊'}}<text wx:if="{{item.reviewId}}"> #{{item.reviewId}}</text><text wx:if="{{item.roundLabel}}"> {{item.roundLabel}}</text></text>
         </view>
 
         <!-- 决定 + 状态 同一行 -->
