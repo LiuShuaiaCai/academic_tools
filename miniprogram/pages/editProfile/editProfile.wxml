@@ -1,15 +1,17 @@
 <!--pages/editProfile/editProfile.wxml-->
 <view class="edit-profile-page">
-  <!-- 头像区域 -->
+  <!-- 头像区域 - 对齐个人主页样式 -->
   <view class="avatar-section">
-    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-      <view class="avatar-wrapper">
-        <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{isWechatAvatar}}"></image>
-        <text class="avatar-emoji" wx:else>{{avatarUrl}}</text>
-        <view class="avatar-edit-icon">📷</view>
-      </view>
-    </button>
-    <view class="avatar-tip">点击更换头像</view>
+    <view class="avatar-wrapper">
+      <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{isWechatAvatar}}"></image>
+      <text class="avatar-emoji" wx:else>{{avatarUrl}}</text>
+      <view class="avatar-edit-icon">📷</view>
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
+    </view>
+    <view class="avatar-info">
+      <view class="avatar-name">{{profile.nickname || '未设置昵称'}}</view>
+      <view class="avatar-tip">点击头像更换</view>
+    </view>
   </view>
 
   <!-- 资料表单 -->
