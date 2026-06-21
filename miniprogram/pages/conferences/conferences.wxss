@@ -53,6 +53,7 @@ page { background: #F6F6F6; }
   background: #fff; padding: 16rpx 24rpx 24rpx;
   border-bottom: 1rpx solid #E5E7EB;
 }
+.adv-panel[hidden] { display: none !important; }
 .adv-row {
   display: flex; align-items: center; gap: 16rpx;
   padding: 16rpx 0; border-bottom: 1rpx solid #F3F4F6;

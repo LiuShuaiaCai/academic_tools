@@ -82,31 +82,37 @@ Page({
       name: 'academicAPI',
       data: { action: 'getUserId' }
     }).then(function(res) {
-      that.setData({ currentOpenid: res.result.openid });
-      if (options && options.targetId) {
-        that.setData({
-          targetId: options.targetId,
-          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-          pendingAutoEdit: options.autoEdit === 'true',
-          isTargetMode: true
-        });
-        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
-      } else {
-        that.loadList();
-      }
+      // 先 setData 确保 currentOpenid 就绪，在回调中再执行业务逻辑
+      that.setData({ currentOpenid: res.result.openid }, function() {
+        if (options && options.targetId) {
+          that.setData({
+            targetId: options.targetId,
+            targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+            pendingAutoEdit: options.autoEdit === 'true',
+            isTargetMode: true
+          }, function() {
+            that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+          });
+        } else {
+          that.loadList();
+        }
+      });
     }).catch(function() {
       // 获取 openid 失败，仍然加载列表
-      if (options && options.targetId) {
-        that.setData({
-          targetId: options.targetId,
-          targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
-          pendingAutoEdit: options.autoEdit === 'true',
-          isTargetMode: true
-        });
-        that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
-      } else {
-        that.loadList();
-      }
+      that.setData({ currentOpenid: 'anonymous' }, function() {
+        if (options && options.targetId) {
+          that.setData({
+            targetId: options.targetId,
+            targetTitle: options.targetTitle ? decodeURIComponent(options.targetTitle) : '',
+            pendingAutoEdit: options.autoEdit === 'true',
+            isTargetMode: true
+          }, function() {
+            that.locateById(options.targetId, options.targetTitle ? decodeURIComponent(options.targetTitle) : '');
+          });
+        } else {
+          that.loadList();
+        }
+      });
     });
   },
 
@@ -118,7 +124,7 @@ Page({
   },
 
   onShow: function() {
-    if (!this.data.targetId && !this.data.isTargetMode) this.loadList();
+    if (this.data.currentOpenid && !this.data.targetId && !this.data.isTargetMode) this.loadList(false);
   },
 
   /* ======== 统计（云函数，支持搜索关键词联动）======= */
@@ -149,8 +155,12 @@ Page({
 
   /* ======== 数据加载（服务端分页 + 模糊搜索，按 deadline 升序）======= */
   loadList: async function(isLoadMore) {
-    if (this.data.loadingMore) return;
+    // 翻页时才做防并发保护，筛选/刷新覆盖进行中的请求
+    if (isLoadMore && this.data.loadingMore) return;
+    // 未获取到 openid 时跳过，等待云函数回调后再加载
+    if (!this.data.currentOpenid) return;
     var that = this;
+    var reqId = ++this._loadReqId || (this._loadReqId = 1); // 请求序号，防止旧结果覆盖新结果
     var page = isLoadMore ? this.data.page + 1 : 0;
     var pageSize = this.data.pageSize;
     var skip = page * pageSize;
@@ -239,38 +249,58 @@ Page({
         .get();
 
       var rawData = Array.isArray(listRes.data) ? listRes.data : [];
-      var newItems = rawData.map(function(item) { return formatUtil.formatItem(item); });
+      var newItems = rawData.map(function(item) { return formatUtil.formatItem(item); }).filter(function(item) { return item && item._id; });
 
       var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
       var hasMore = newItems.length >= pageSize;
 
-      that.setData({
+      // 如果已有更新的请求发出，丢弃本次结果
+      if (that._loadReqId !== reqId) {
+        console.log('[会议] 丢弃过期请求 #' + reqId + ', 当前 #' + that._loadReqId);
+        that.setData({ loadingMore: false, searchLoading: false });
+        return;
+      }
+
+      // 保存 targetId 信息，避免 setData 覆盖后丢失
+      var targetId = that.data.targetId;
+      var targetTitle = that.data.targetTitle;
+      var pendingAutoEdit = that.data.pendingAutoEdit;
+
+      // 构建一次性的 setData 数据（filteredList 与 list 同次更新，消除渲染竞态）
+      var updateData = {
         list: list,
+        filteredList: list,
         page: isLoadMore ? page : 0,
         hasMore: hasMore,
         loadingMore: false,
         searchLoading: false
-      }, function() {
-        that.applyFilter();
-        // 处理首页跳转：用 targetId 精确定位
-        if (that.data.targetId) {
-          var targetTitle = that.data.targetTitle;
-          var found = list.find(function(i) { return i._id === that.data.targetId; });
-          if (found) {
-            if (targetTitle) that.setData({ searchKeyword: targetTitle });
-            if (that.data.pendingAutoEdit) {
-              that.setData({
-                showForm: true,
-                isEdit: true,
-                editId: that.data.targetId
-              });
-            }
-            that.setData({ targetId: '', targetTitle: '', pendingAutoEdit: false });
-          } else {
-            that.locateById(that.data.targetId, targetTitle);
+      };
+
+      // 处理首页跳转
+      var foundInCurList = false;
+      if (targetId) {
+        var found = list.find(function(i) { return i._id === targetId; });
+        if (found) {
+          foundInCurList = true;
+          if (targetTitle) updateData.searchKeyword = targetTitle;
+          if (pendingAutoEdit) {
+            updateData.showForm = true;
+            updateData.isEdit = true;
+            updateData.editId = targetId;
           }
+          updateData.targetId = '';
+          updateData.targetTitle = '';
+          updateData.pendingAutoEdit = false;
         }
-      });
+      }
+
+      that.setData(updateData);
+
+      // targetId 不在当前列表中，通过 locateById 单独加载
+      if (targetId && !foundInCurList) {
+        that.locateById(targetId, targetTitle);
+      }
+
       // 每次加载完成后更新统计
       if (!isLoadMore) that.loadStats();
     } catch (e) {
@@ -506,6 +536,10 @@ Page({
   // 客户端过滤（服务端已完成，只同步 filteredList）
   applyFilter: function() {
     var baseList = Array.isArray(this.data.list) ? this.data.list : [];
+    // 过滤非法条目，避免渲染层 clickCheckTask 等框架内部报错
+    if (baseList.length > 0) {
+      baseList = baseList.filter(function(item) { return item && item._id; });
+    }
     this.setData({ filteredList: baseList });
   },
 
@@ -534,11 +568,12 @@ Page({
     this.setData({ showForm: false, isEdit: false, editId: '' });
   },
 
-  /* ======== 完成/取消完成 ======== */
+  /* ======== 完成/取消完成（乐观更新：先改本地再异步存 DB）======== */
   toggleComplete: function(e) {
     var that = this;
     var id = e.currentTarget.dataset.id;
-    var currentlyCompleted = e.currentTarget.dataset.completed;
+    // dataset 中 boolean 会变成字符串 "true"/"false"
+    var currentlyCompleted = e.currentTarget.dataset.completed === true || e.currentTarget.dataset.completed === 'true';
     var newCompleted = !currentlyCompleted;
     var db = wx.cloud.database();
     var openid = that.data.currentOpenid;
@@ -548,21 +583,73 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: newCompleted ? '标记完成...' : '取消完成...', mask: true });
+    // 1. 乐观更新：立即修改本地 list 和 filteredList（UI 渲染用 filteredList）
+    var list = this.data.list.slice();
+    var filteredList = this.data.filteredList.slice();
+    var idx = -1, fidx = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i]._id === id) { idx = i; break; }
+    }
+    for (var j = 0; j < filteredList.length; j++) {
+      if (filteredList[j]._id === id) { fidx = j; break; }
+    }
+    if (idx !== -1) {
+      list[idx] = Object.assign({}, list[idx], { completed: newCompleted });
+    }
+    if (fidx !== -1) {
+      filteredList[fidx] = Object.assign({}, filteredList[fidx], { completed: newCompleted });
+    }
+    that.setData({ list: list, filteredList: filteredList });
 
+    // 更新统计数字
+    var delta = newCompleted ? 1 : -1;
+    var totalCount = this.data.totalCount;
+    var completedCount = this.data.completedCount + delta;
+    that.setData({
+      completedCount: completedCount,
+      totalCount: totalCount
+    });
+
+    // 2. 后台写数据库
     db.collection('conferences')
       .where({ _id: id, _openid: openid })
       .update({ data: { completed: newCompleted } })
       .then(function() {
-        wx.hideLoading();
-        wx.showToast({ title: newCompleted ? '已完成' : '已取消', icon: 'success' });
-        that.loadList(false);
+        // 成功后刷新统计数据（保证精确），列表如果不在已完成筛选下则不需要重刷
         that.loadStats();
+        // 如果当前处于「已完成」或「全部」筛选，需要重刷列表以移除/增加条目
+        var qf = that.data.quickFilter;
+        if (qf === 'completed' || qf === 'all') {
+          that.setData({ page: 0, hasMore: true });
+          that.loadList(false);
+        }
       })
       .catch(function(err) {
-        wx.hideLoading();
         console.error('[会议] 标记完成失败', err);
         wx.showToast({ title: '操作失败', icon: 'none' });
+        // 失败时回滚本地状态（list + filteredList）
+        if (idx !== -1 || fidx !== -1) {
+          var rollbackList = that.data.list.slice();
+          var rollbackFiltered = that.data.filteredList.slice();
+          var ri = -1, rfi = -1;
+          for (var k = 0; k < rollbackList.length; k++) {
+            if (rollbackList[k]._id === id) { ri = k; break; }
+          }
+          for (var m = 0; m < rollbackFiltered.length; m++) {
+            if (rollbackFiltered[m]._id === id) { rfi = m; break; }
+          }
+          if (ri !== -1) {
+            rollbackList[ri] = Object.assign({}, rollbackList[ri], { completed: !newCompleted });
+          }
+          if (rfi !== -1) {
+            rollbackFiltered[rfi] = Object.assign({}, rollbackFiltered[rfi], { completed: !newCompleted });
+          }
+          that.setData({
+            list: rollbackList,
+            filteredList: rollbackFiltered,
+            completedCount: that.data.completedCount - delta
+          });
+        }
       });
   },
 

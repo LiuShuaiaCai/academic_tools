@@ -1,4 +1,11 @@
 <!--pages/conferences/conferences.wxml-->
+<wxs module="s">
+  module.exports = {
+    safeList: function(arr) {
+      return arr != null ? arr : [];
+    }
+  };
+</wxs>
 <view class="sub-page" style="--primary-color:{{theme.primary}};--primary-dark:{{theme.primaryDark}};--primary-light:{{theme.primaryLight}};--primary-light-text:{{theme.primaryLightText}};--primary-shadow:{{theme.primaryShadow}}">
   <!-- 搜索栏 -->
   <view class="search-bar">
@@ -134,14 +141,14 @@
 
   <!-- 列表 -->
   <view class="sub-list">
-    <view wx:if="{{!filteredList.length && !searchLoading}}" class="empty-box">
+    <view wx:if="{{s.safeList(filteredList).length === 0 && !searchLoading}}" class="empty-box">
       <text class="empty-icon">🎤</text>
       <text class="empty-text">暂无会议记录</text>
     </view>
 
     <view
       class="conf-card {{item.urgent ? 'urgent' : ''}} {{item.critical ? 'critical' : ''}}"
-      wx:for="{{filteredList}}"
+      wx:for="{{s.safeList(filteredList)}}"
       wx:key="_id"
       bindtap="showEditForm"
       data-id="{{item._id}}"
@@ -194,7 +201,7 @@
   </view>
 
   <!-- 加载状态 -->
-  <view class="load-more" wx:if="{{filteredList.length > 0}}">
+  <view class="load-more" wx:if="{{s.safeList(filteredList).length > 0}}">
     <text wx:if="{{loadingMore}}">加载中...</text>
     <text wx:elif="{{!searchKeyword && !hasMore}}">— 没有更多了 —</text>
   </view>
