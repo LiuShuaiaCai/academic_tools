@@ -153,6 +153,44 @@ Page({
     });
   },
 
+  /* ======== 统计计数：本地计算（与卡片渲染用同一 parseDate/时间逻辑，保证一致性）======= */
+  _doRefreshCounts: async function() {
+    var that = this;
+    var openid = this.data.currentOpenid;
+    if (!openid) return;
+    var kw = (this.data.searchKeyword || '').trim();
+    try {
+      var db = wx.cloud.database();
+      var conds = [{ deleteTime: null, _openid: openid }];
+      if (kw) {
+        var reg = db.RegExp({ regexp: kw, options: 'i' });
+        conds.push(db.command.or([{ name: reg }, { location: reg }]));
+      }
+      var where = conds.length === 1 ? conds[0] : db.command.and(conds);
+      var res = await db.collection('conferences').where(where).limit(1000).get();
+      var items = res.data || [];
+
+      var now = new Date();
+      var total = items.length;
+      var completed = 0, active = 0, urgent = 0;
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        if (it.completed) completed++;
+        var s = it.startDate ? parseDate(it.startDate) : null;
+        var e = it.endDate ? parseDate(it.endDate) : null;
+        // active: 与 buildTimelineStatusLabel 一致 — start已到 + (无end 或 end未过)
+        if (s && now >= s && (!e || now <= e) && !it.completed) active++;
+        if (!it.completed && it.status && s) {
+          var ds = Math.ceil((s - now) / 86400000);
+          if (ds >= 0 && ds <= 3) urgent++;
+        }
+      }
+      that.setData({ totalCount: total, completedCount: completed, activeCount: active, urgentCount: urgent });
+    } catch(e) {
+      console.error('[会议] 统计计算失败', e);
+    }
+  },
+
   /* ======== 数据加载（服务端分页 + 模糊搜索，按 deadline 升序）======= */
   loadList: async function(isLoadMore) {
     // 翻页时才做防并发保护，筛选/刷新覆盖进行中的请求
@@ -301,8 +339,8 @@ Page({
         that.locateById(targetId, targetTitle);
       }
 
-      // 每次加载完成后更新统计
-      if (!isLoadMore) that.loadStats();
+      // 统计计数：本地计算，与卡片渲染用同一 parseDate/时间，保证一致性
+      if (!isLoadMore) that._doRefreshCounts();
     } catch (e) {
       console.error('[会议] 加载失败', e);
       that.setData({ loadingMore: false, searchLoading: false });
@@ -334,7 +372,7 @@ Page({
             that.setData({ showForm: true, isEdit: true, editId: id });
           }
         });
-        that.loadStats();
+        that._doRefreshCounts();
       }
     }).catch(function(e) {
       console.error('[会议] 定位失败', e);
@@ -616,7 +654,7 @@ Page({
       .update({ data: { completed: newCompleted } })
       .then(function() {
         // 成功后刷新统计数据（保证精确），列表如果不在已完成筛选下则不需要重刷
-        that.loadStats();
+        that._doRefreshCounts();
         // 如果当前处于「已完成」或「全部」筛选，需要重刷列表以移除/增加条目
         var qf = that.data.quickFilter;
         if (qf === 'completed' || qf === 'all') {
