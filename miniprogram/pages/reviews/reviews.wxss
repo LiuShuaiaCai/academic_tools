@@ -80,9 +80,10 @@ page { background: #F6F6F6; }
 .sub-list { padding: 16rpx; }
 .paper-card {
   background: #fff; border-radius: 16rpx; margin-bottom: 20rpx;
+  border-top: 4rpx solid #D1D5DB;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08); overflow: hidden; position: relative;
 }
-.card-topbar { height: 4rpx; width: 100%; }
+
 .card-body { padding: 24rpx; }
 
 .card-title { font-size: 30rpx; font-weight: 600; color: #111827; line-height: 1.5; margin-bottom: 12rpx; text-align: justify; }

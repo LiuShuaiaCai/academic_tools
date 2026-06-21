@@ -76,15 +76,12 @@
     </view>
 
     <view
-      class="paper-card {{item.urgent ? 'urgent' : ''}}"
+      class="paper-card"
       wx:for="{{filteredList}}"
       wx:key="_id"
       bindtap="showEditForm"
       data-id="{{item._id}}"
     >
-      <!-- 顶部主题色条 -->
-      <view class="card-topbar" style="background:{{theme.primary}}"></view>
-
       <view class="card-body">
         <!-- 标题 -->
         <view class="card-title-row">
