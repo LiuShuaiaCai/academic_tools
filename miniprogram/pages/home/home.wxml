@@ -1,17 +1,34 @@
 <!--pages/home/home.wxml-->
 <view class="home-page">
-  <!-- 顶部 Header -->
+  <!-- 顶部 Header 轮播区 -->
   <view class="home-header">
-    <view class="header-left">
-      <view class="header-title">学术管理</view>
+    <!-- 轮播背景 -->
+    <view class="header-swiper-container" wx:if="{{banners.length > 0}}">
+      <swiper class="header-swiper" indicator-dots="{{banners.length > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#fff" autoplay="{{banners.length > 1}}" circular="{{banners.length > 1}}" interval="4000" duration="500">
+        <swiper-item wx:for="{{banners}}" wx:key="_id">
+          <image class="header-banner-img" src="{{item.image}}" mode="aspectFill" bindtap="onBannerTap" data-item="{{item}}"></image>
+          <view class="header-banner-text" wx:if="{{item.title || item.subTitle}}">
+            <view class="header-banner-title" wx:if="{{item.title}}">{{item.title}}</view>
+            <view class="header-banner-subtitle" wx:if="{{item.subTitle}}">{{item.subTitle}}</view>
+          </view>
+        </swiper-item>
+      </swiper>
     </view>
-    <view class="header-right">
-      <view class="header-btn" bindtap="showSearch">
-        <text>🔍</text>
+    <!-- 默认渐变背景（无 banner 时） -->
+    <view class="header-default-bg" wx:else></view>
+    <!-- 内容覆盖层 -->
+    <view class="header-overlay" style="display:none;">
+      <view class="header-left">
+        <view class="header-title">学术管理</view>
       </view>
-      <view class="header-btn" bindtap="showNotifications">
-        <text>🔔</text>
-        <view class="notif-badge" wx:if="{{notifCount > 0}}">{{notifCount}}</view>
+      <view class="header-right">
+        <view class="header-btn" bindtap="showSearch">
+          <text>🔍</text>
+        </view>
+        <view class="header-btn" bindtap="showNotifications">
+          <text>🔔</text>
+          <view class="notif-badge" wx:if="{{notifCount > 0}}">{{notifCount}}</view>
+        </view>
       </view>
     </view>
   </view>

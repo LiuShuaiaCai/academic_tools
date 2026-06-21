@@ -14,11 +14,14 @@ Page({
     continuousDays: 0,
     showSigninModal: false,
     creditsInfoLoaded: false,  // 积分信息是否已加载完成（防止加载中误弹窗）
-    currentOpenid: ''  // 当前用户的 openid
+    currentOpenid: '',  // 当前用户的 openid
+    banners: []  // 轮播图数据
   },
 
   onLoad: function() {
     var that = this;
+    // 加载轮播图
+    that.loadBanners();
     // 获取当前用户的 openid
     wx.cloud.callFunction({
       name: 'academicAPI',
@@ -419,6 +422,60 @@ Page({
       var url = pagePath + '?targetId=' + id;
       if (title) url += '&targetTitle=' + encodeURIComponent(title) + '&autoEdit=true';
       wx.navigateTo({ url: url });
+    }
+  },
+
+  // 加载轮播图（公告/广告）
+  loadBanners: function() {
+    var that = this;
+    var db = wx.cloud.database();
+    db.collection('banners')
+      .where({ enabled: true })
+      .orderBy('sort', 'asc')
+      .get()
+      .then(function(res) {
+        var list = res.data || [];
+        that.setData({ banners: list.length > 0 ? list : [] });
+      })
+      .catch(function(err) {
+        // 集合不存在则自动创建
+        if (err.errCode === -502005 || String(err.message || '').indexOf('not exist') > -1) {
+          that.initBannersCollection();
+        }
+        that.setData({ banners: [] });
+      });
+  },
+
+  // 初始化 banners 集合（首次写入自动建集合）
+  initBannersCollection: function() {
+    var db = wx.cloud.database();
+    db.collection('banners').add({
+      data: {
+        image: '',
+        title: '公告示例',
+        subTitle: '',
+        enabled: false,
+        sort: 1,
+        linkType: '',
+        linkTarget: '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    }).then(function() {
+      console.log('[home] banners 集合已创建');
+    }).catch(function(e) {
+      console.error('[home] banners 创建失败:', e);
+    });
+  },
+
+  // 点击轮播图
+  onBannerTap: function(e) {
+    var item = e.currentTarget.dataset.item;
+    if (!item) return;
+    if (item.linkType === 'miniprogram' && item.linkTarget) {
+      wx.navigateTo({ url: item.linkTarget });
+    } else if (item.linkType === 'webview' && item.linkTarget) {
+      wx.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(item.linkTarget) });
     }
   },
 
