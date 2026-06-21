@@ -2,121 +2,41 @@
   height: 100vh;
   width: 100%;
   background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
 }
 
-.zoom-wrapper {
+.scroll-body {
+  flex: 1;
+  height: 0;
   width: 100%;
-  height: 100vh;
 }
 
-.zoom-area {
-  width: 100%;
-  height: 100%;
-}
-
-.zoom-view {
-  width: 100%;
-  height: 100%;
-  background: #fff;
-  padding: 40rpx;
-  box-sizing: border-box;
-}
-
-.md-preview {
-  height: 100vh;
+.content-wrap {
   padding: 30rpx;
   background: #fff;
-}
-
-.md-content {
+  min-height: 100%;
   font-size: 28rpx;
   line-height: 1.8;
   color: #333;
-}
-
-.md-content h1 {
-  font-size: 40rpx;
-  font-weight: bold;
-  margin: 30rpx 0 20rpx;
-  padding-bottom: 10rpx;
-  border-bottom: 2rpx solid #eee;
-}
-
-.md-content h2 {
-  font-size: 36rpx;
-  font-weight: bold;
-  margin: 25rpx 0 15rpx;
-}
-
-.md-content h3 {
-  font-size: 32rpx;
-  font-weight: bold;
-  margin: 20rpx 0 10rpx;
-}
-
-.md-content p {
-  margin: 15rpx 0;
-}
-
-.md-content code {
-  background: #f5f5f5;
-  padding: 4rpx 8rpx;
-  border-radius: 4rpx;
-  font-size: 24rpx;
-}
-
-.md-content pre {
-  background: #f5f5f5;
-  padding: 20rpx;
-  border-radius: 8rpx;
-  overflow-x: auto;
-  margin: 15rpx 0;
-  white-space: pre-wrap;
   word-break: break-all;
+  overflow-wrap: break-word;
 }
 
-.md-content pre code {
-  background: transparent;
-  padding: 0;
-}
-
-.md-content ul, .md-content ol {
-  padding-left: 40rpx;
-  margin: 15rpx 0;
-}
-
-.md-content li {
-  margin: 8rpx 0;
-}
-
-.md-content blockquote {
-  border-left: 6rpx solid #ddd;
-  padding-left: 20rpx;
-  color: #666;
-  margin: 15rpx 0;
-}
-
-.md-content table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 15rpx 0;
-}
-
-.md-content th, .md-content td {
-  border: 1px solid #ddd;
-  padding: 12rpx;
-  text-align: left;
-}
-
-.md-content th {
-  background: #f5f5f5;
-  font-weight: bold;
-}
-
-.md-content a {
-  color: #576b95;
-}
-
-.md-content img {
-  max-width: 100%;
-}
+/* MD/HTML 通用样式 - rich-text 内部生效 */
+.content-wrap h1 { font-size: 40rpx; font-weight: bold; margin: 30rpx 0 20rpx; padding-bottom: 10rpx; border-bottom: 2rpx solid #eee; }
+.content-wrap h2 { font-size: 36rpx; font-weight: bold; margin: 25rpx 0 15rpx; }
+.content-wrap h3 { font-size: 32rpx; font-weight: bold; margin: 20rpx 0 10rpx; }
+.content-wrap p { margin: 15rpx 0; }
+.content-wrap code { background: #f0f0f0; padding: 4rpx 8rpx; border-radius: 4rpx; font-size: 24rpx; font-family: monospace; }
+.content-wrap pre { background: #f0f0f0; padding: 20rpx; border-radius: 8rpx; overflow-x: auto; margin: 15rpx 0; white-space: pre-wrap; word-break: break-all; }
+.content-wrap pre code { background: transparent; padding: 0; }
+.content-wrap ul, .content-wrap ol { padding-left: 40rpx; margin: 15rpx 0; }
+.content-wrap li { margin: 8rpx 0; }
+.content-wrap blockquote { border-left: 6rpx solid #ddd; padding-left: 20rpx; color: #666; margin: 15rpx 0; }
+.content-wrap table { border-collapse: collapse; width: 100%; margin: 15rpx 0; }
+.content-wrap th, .content-wrap td { border: 1px solid #ddd; padding: 12rpx; text-align: left; }
+.content-wrap th { background: #f5f5f5; font-weight: bold; }
+.content-wrap a { color: #576b95; }
+.content-wrap img { max-width: 100%; height: auto; }
+.content-wrap hr { border: none; border-top: 1px solid #eee; margin: 20rpx 0; }
