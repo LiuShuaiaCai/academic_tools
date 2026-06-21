@@ -347,31 +347,46 @@ Page({
         date: todayDateStr
       }).limit(5).orderBy('time', 'asc').get().catch(function() { return { data: [] }; })
     ]).then(function(results) {
+      // 从数据库工具配置中查找对应工具的图标
+      var tools = that.data.enabledTools || [];
+      var toolMap = {};
+      for (var k = 0; k < tools.length; k++) {
+        if (tools[k].pagePath) {
+          toolMap[tools[k].pagePath] = tools[k];
+        }
+      }
+
       var items = [];
       var i;
+
+      function getIcon(pagePath, fallback) {
+        var tool = toolMap[pagePath];
+        return (tool && tool.iconEmoji) || fallback;
+      }
+
       for (i = 0; i < results[0].data.length; i++) {
         var s = results[0].data[i];
-        items.push({ _id: s._id, title: s.title, type: 'submission', typeLabel: '投稿', icon: '📄', pagePath: '/pages/submissions/submissions', deadline: s.deadline });
+        items.push({ _id: s._id, title: s.title, type: 'submission', typeLabel: '投稿', icon: getIcon('/pages/submissions/submissions', '📄'), pagePath: '/pages/submissions/submissions', deadline: s.deadline });
       }
       for (i = 0; i < results[1].data.length; i++) {
         var r = results[1].data[i];
-        items.push({ _id: r._id, title: r.paperTitle, type: 'review', typeLabel: '审稿', icon: '📝', pagePath: '/pages/reviews/reviews', deadline: r.deadline });
+        items.push({ _id: r._id, title: r.paperTitle, type: 'review', typeLabel: '审稿', icon: getIcon('/pages/reviews/reviews', '📝'), pagePath: '/pages/reviews/reviews', deadline: r.deadline });
       }
       for (i = 0; i < results[2].data.length; i++) {
         var c = results[2].data[i];
-        items.push({ _id: c._id, title: c.name, type: 'conference', typeLabel: '会议', icon: '🎤', pagePath: '/pages/conferences/conferences', deadline: c.deadline });
+        items.push({ _id: c._id, title: c.name, type: 'conference', typeLabel: '会议', icon: getIcon('/pages/conferences/conferences', '🎤'), pagePath: '/pages/conferences/conferences', deadline: c.deadline });
       }
       // 急需处理的会议（有状态 + startDate 在 0-3 天）
       for (i = 0; i < results[3].data.length; i++) {
         var cu = results[3].data[i];
         // 用 startDate 作为排序日期
-        items.push({ _id: cu._id, title: cu.name, type: 'conference', typeLabel: '会议', icon: '🎤', pagePath: '/pages/conferences/conferences', deadline: cu.startDate });
+        items.push({ _id: cu._id, title: cu.name, type: 'conference', typeLabel: '会议', icon: getIcon('/pages/conferences/conferences', '🎤'), pagePath: '/pages/conferences/conferences', deadline: cu.startDate });
       }
       // 今天任务（点击跳转日历）
       for (i = 0; i < results[4].data.length; i++) {
         var t = results[4].data[i];
         var taskDeadline = t.date + (t.time ? ' ' + t.time : ' 00:00:00');
-        items.push({ _id: t._id, title: t.title, type: 'task', typeLabel: '任务', icon: '📋', pagePath: '/pages/calendar/calendar', deadline: taskDeadline });
+        items.push({ _id: t._id, title: t.title, type: 'task', typeLabel: '任务', icon: getIcon('/pages/calendar/calendar', '📋'), pagePath: '/pages/calendar/calendar', deadline: taskDeadline });
       }
 
       items.sort(function(a, b) { return new Date(String(a.deadline).replace(' ', 'T')) - new Date(String(b.deadline).replace(' ', 'T')); });

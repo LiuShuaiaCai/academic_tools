@@ -374,8 +374,34 @@ page { background: #F6F6F6; }
 .upcoming-item.urgent { }
 
 .upcoming-icon {
-  font-size: 40rpx;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
   flex-shrink: 0;
+}
+
+/* 投稿 - 蓝色 */
+.upcoming-item.type-blue .upcoming-icon {
+  background: #DBEAFE;
+}
+
+/* 审稿 - 红色 */
+.upcoming-item.type-red .upcoming-icon {
+  background: #FEE2E2;
+}
+
+/* 会议 - 绿色 */
+.upcoming-item.type-green .upcoming-icon {
+  background: #D1FAE5;
+}
+
+/* 任务 - 紫色 */
+.upcoming-item.type-purple .upcoming-icon {
+  background: #EDE9FE;
 }
 
 .upcoming-info {
