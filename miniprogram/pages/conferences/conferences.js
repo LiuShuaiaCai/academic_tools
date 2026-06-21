@@ -290,6 +290,8 @@ Page({
       var newItems = rawData.map(function(item) { return formatUtil.formatItem(item); }).filter(function(item) { return item && item._id; });
 
       var list = isLoadMore ? that.data.list.concat(newItems) : newItems;
+      // 二次过滤，避免合并旧列表时混入非法条目导致 clickCheckTask 报错
+      list = list.filter(function(item) { return item && item._id; });
       var hasMore = newItems.length >= pageSize;
 
       // 如果已有更新的请求发出，丢弃本次结果
@@ -357,7 +359,7 @@ Page({
       var item = (res.data && res.data.length > 0) ? res.data[0] : null;
       if (item) {
         var formatted = formatUtil.formatItem(item);
-        var list = [formatted];
+        var list = [formatted].filter(function(i) { return i && i._id; });
         if (title) that.setData({ searchKeyword: title });
         var shouldAutoEdit = that.data.pendingAutoEdit;
         that.setData({

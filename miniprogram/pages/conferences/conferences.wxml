@@ -2,7 +2,8 @@
 <wxs module="s">
   module.exports = {
     safeList: function(arr) {
-      return arr != null ? arr : [];
+      if (arr == null) return [];
+      return arr.filter(function(item) { return item != null && item._id; });
     }
   };
 </wxs>
