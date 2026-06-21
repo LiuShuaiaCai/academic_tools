@@ -86,7 +86,7 @@ page { background: #F6F6F6; }
   background: #fff; border-radius: 16rpx; margin-bottom: 20rpx;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08); overflow: hidden; position: relative;
 }
-.card-topbar { height: 8rpx; width: 100%; }
+.card-topbar { height: 4rpx; width: 100%; }
 .card-body { padding: 16rpx 24rpx; }
 
 .card-title { font-size: 30rpx; font-weight: 600; color: #111827; line-height: 1.5; }

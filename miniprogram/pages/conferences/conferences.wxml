@@ -155,7 +155,7 @@
       data-id="{{item._id}}"
     >
       <!-- 顶部彩色状态条 -->
-      <view class="card-topbar" style="background:{{item.daysLeft < 0 ? '#10B981' : item.daysLeft <= 3 ? '#EF4444' : item.daysLeft <= 14 ? '#F59E0B' : '#3B82F6'}}"></view>
+      <view class="card-topbar" style="background:{{item.daysLeft < 0 ? '#10B981' : item.daysLeft <= 3 ? theme.primary : item.daysLeft <= 14 ? '#F59E0B' : '#3B82F6'}}"></view>
 
       <view class="card-body">
         <!-- 名称 -->
