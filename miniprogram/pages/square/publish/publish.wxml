@@ -13,7 +13,7 @@
         bindtap="onTypeSelect"
         style="{{postType === item.key ? 'border-color:' + item.color + '; background:' + item.color + '15;' : ''}}"
       >
-        <text class="type-option-icon">{{item.icon}}</text>
+        <image class="type-option-icon" src="{{item.icon}}" mode="aspectFit"></image>
         <text class="type-option-label" style="{{postType === item.key ? 'color:' + item.color : ''}}">{{item.label}}</text>
       </view>
     </view>

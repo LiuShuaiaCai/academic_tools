@@ -7,11 +7,11 @@ Page({
     // 发布类型
     postType: 'discussion',
     typeOptions: [
-      { key: 'discussion', label: '学术讨论', icon: '💬', color: '#7c3aed' },
-      { key: 'call_for_papers', label: '征稿通知', icon: '📢', color: '#ea580c' },
-      { key: 'review', label: '学术审稿', icon: '🔍', color: '#dc2626' },
-      { key: 'journal', label: '学术会议', icon: '📰', color: '#0891b2' },
-      { key: 'literature_help', label: '文献互助', icon: '📚', color: '#f59e0b' }
+      { key: 'discussion', label: '学术讨论', icon: '/pages/square/icons/type-discussion.svg', color: '#7C3AED' },
+      { key: 'call_for_papers', label: '征稿通知', icon: '/pages/square/icons/type-call.svg', color: '#F97316' },
+      { key: 'review', label: '学术审稿', icon: '/pages/square/icons/type-review.svg', color: '#10B981' },
+      { key: 'journal', label: '学术会议', icon: '/pages/square/icons/type-conference.svg', color: '#06B6D4' },
+      { key: 'literature_help', label: '文献互助', icon: '/pages/square/icons/type-literature.svg', color: '#F43F5E' }
     ],
 
     // 推荐标签
@@ -100,13 +100,8 @@ Page({
       data: { action: 'getUserId' }
     }).then(function (res) {
       that.setData({ currentOpenid: res.result.openid });
-      var userInfo = app.globalData.userInfo || {};
-      that.setData({
-        avatarUrl: userInfo.avatarUrl || '',
-        nickName: userInfo.nickName || '',
-        // 未登录时默认匿名学者
-        userInfo: userInfo
-      });
+    }).catch(function (err) {
+      console.error('[publish] 获取用户 ID 失败', err);
     });
   },
 
@@ -356,9 +351,7 @@ Page({
       title: this.data.title.trim(),
       content: this.data.content.trim(),
       images: this.data.images,
-      tags: this.data.tags,
-      avatarUrl: this.data.avatarUrl,
-      nickName: this.data.nickName
+      tags: this.data.tags
     };
 
     // 征稿通知时传递征集类型

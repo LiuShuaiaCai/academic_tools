@@ -5,7 +5,11 @@
   <view class="post-section">
     <!-- 头部 -->
     <view class="post-header">
-      <image class="post-avatar" src="{{post.avatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+      <view class="post-avatar">
+        <image class="post-avatar-img" wx:if="{{post.isUrlAvatar}}" src="{{post.avatarUrl}}" mode="aspectFill" />
+        <text class="post-avatar-text" wx:elif="{{post.avatarUrl}}">{{post.avatarUrl}}</text>
+        <image class="post-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
+      </view>
       <view class="post-meta">
         <view class="post-author">{{post.nickName || '学者用户'}}</view>
         <view class="post-time">{{post.displayTime}}</view>
@@ -96,7 +100,11 @@
         <view class="help-helper-card" wx:if="{{post.helpStatus === '已解决' && post.helperNickName}}">
           <view class="help-detail-title">应助者信息</view>
           <view class="helper-info">
-            <image class="helper-avatar" src="{{post.helperAvatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+            <view class="helper-avatar">
+              <image class="helper-avatar-img" wx:if="{{post.helperIsUrlAvatar}}" src="{{post.helperAvatarUrl}}" mode="aspectFill" />
+              <text class="helper-avatar-text" wx:elif="{{post.helperAvatarUrl}}">{{post.helperAvatarUrl}}</text>
+              <image class="helper-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
+            </view>
             <view class="helper-meta">
               <text class="helper-name">{{post.helperNickName}}</text>
               <text class="helper-time" wx:if="{{post.helpSolveTime}}">解决于 {{post.helpSolveTime}}</text>
@@ -127,7 +135,9 @@
         📚 应助此求助
       </button>
       <button class="help-btn download-btn" wx:if="{{post.canDownload}}" bindtap="onDownloadFile">
-        📥 下载文献
+        <image class="download-icon" src="/pages/square/icons/download.svg" mode="aspectFit"></image>
+        <text class="download-label">{{post.docFileName ? '下载:' : '下载文献'}}</text>
+        <text class="download-filename" wx:if="{{post.docFileName}}">{{post.docFileName}}</text>
       </button>
       <button class="help-btn extend-btn" wx:if="{{post.canExtend}}" bindtap="onExtendDeadline">
         ⏰ 延长求助时限
@@ -141,35 +151,110 @@
       <text class="comments-title">评论 ({{post.commentCount || 0}})</text>
     </view>
 
-    <!-- 评论列表 -->
-    <view class="comments-list" wx:if="{{comments.length > 0}}">
-      <view class="comment-item" wx:for="{{comments}}" wx:key="_id">
-        <image class="comment-avatar" src="{{item.avatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
-        <view class="comment-body">
-          <view class="comment-author">
-            <text>{{item.nickName || '学者用户'}}</text>
-            <text class="comment-time">{{item.displayTime}}</text>
+    <!-- 评论列表（树形结构） -->
+    <view class="comments-list" wx:if="{{displayComments.length > 0}}">
+      <block wx:for="{{displayComments}}" wx:key="_id" wx:for-index="parentIndex" wx:for-item="parentItem">
+        <!-- ===== 主评论 ===== -->
+        <view class="comment-item">
+          <view class="comment-avatar">
+            <image class="comment-avatar-img" wx:if="{{parentItem.isUrlAvatar}}" src="{{parentItem.avatarUrl}}" mode="aspectFill" />
+            <text class="comment-avatar-text" wx:elif="{{parentItem.avatarUrl}}">{{parentItem.avatarUrl}}</text>
+            <image class="comment-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
           </view>
-          <view class="comment-content">
-            <text wx:if="{{item.parentId}}">
-              <text class="reply-hint">回复 </text>
-              <text class="reply-target">@{{item.replyToNickName || '用户'}}</text>
-              <text>：</text>
-            </text>
-            {{item.content}}
-          </view>
-          <view class="comment-reply-btn"
-                data-comment-id="{{item._id}}"
-                data-author="{{item.nickName || '学者用户'}}"
-                bindtap="showCommentInput">
-            回复
+          <view class="comment-body">
+            <view class="comment-author">
+              <text class="comment-nickname">{{parentItem.nickName || '学者用户'}}</text>
+              <text class="comment-time">{{parentItem.displayTime}}</text>
+            </view>
+
+            <view class="comment-content">{{parentItem.content}}</view>
+
+            <image class="comment-image" wx:if="{{parentItem.imageUrl}}" src="{{parentItem.imageUrl}}" mode="aspectFill" data-url="{{parentItem.imageUrl}}" bindtap="previewCommentImage" />
+
+            <!-- 评论操作栏 -->
+            <view class="comment-actions">
+              <view class="comment-action-btn {{parentItem.isLiked ? 'liked' : ''}}"
+                    data-comment-id="{{parentItem._id}}"
+                    bindtap="onCommentLikeTap">
+                <image class="action-icon-small" src="/pages/square/icons/{{parentItem.isLiked ? 'heart-filled' : 'heart'}}.svg" mode="aspectFit"></image>
+                <text>{{parentItem.likeCount > 0 ? parentItem.likeCount : ''}} 赞</text>
+              </view>
+              <view class="comment-action-btn"
+                    data-comment-id="{{parentItem._id}}"
+                    data-author="{{parentItem.nickName || '学者用户'}}"
+                    bindtap="showCommentInput">
+                <image class="action-icon-small" src="/pages/square/icons/message-square.svg" mode="aspectFit"></image>
+                <text>回复</text>
+              </view>
+              <view class="comment-action-btn delete-btn"
+                    wx:if="{{parentItem._openid === currentOpenid}}"
+                    data-comment-id="{{parentItem._id}}"
+                    bindtap="onCommentDeleteTap">
+                <text>删除</text>
+              </view>
+            </view>
           </view>
         </view>
-      </view>
+
+        <!-- ===== 嵌套回复区域 ===== -->
+        <view class="comment-replies" wx:if="{{parentItem._replies.length > 0}}">
+          <!-- 展开按钮 -->
+          <view class="replies-toggle" wx:if="{{!parentItem._showReplies}}" data-index="{{parentIndex}}" bindtap="toggleReplies">
+            <text>展开{{parentItem._replies.length}}条回复</text>
+            <text class="toggle-arrow">∨</text>
+          </view>
+
+          <!-- 回复列表（展开状态） -->
+          <block wx:if="{{parentItem._showReplies}}">
+            <view class="reply-item" wx:for="{{parentItem._replies}}" wx:key="_id" wx:for-item="reply">
+              <view class="reply-avatar">
+                <image class="reply-avatar-img" wx:if="{{reply.isUrlAvatar}}" src="{{reply.avatarUrl}}" mode="aspectFill" />
+                <text class="reply-avatar-text" wx:elif="{{reply.avatarUrl}}">{{reply.avatarUrl}}</text>
+                <image class="reply-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
+              </view>
+              <view class="reply-body">
+                <view class="reply-author">
+                  <text class="reply-nickname">{{reply.nickName || '学者用户'}}</text>
+                  <text class="reply-time">{{reply.displayTime}}</text>
+                </view>
+
+                <!-- 被回复者提示 -->
+                <text class="reply-to-hint" wx:if="{{reply.replyToNickName}}">回复 <text class="reply-to-name">@{{reply.replyToNickName}}</text></text>
+
+                <view class="reply-content">{{reply.content}}</view>
+
+                <image class="reply-image" wx:if="{{reply.imageUrl}}" src="{{reply.imageUrl}}" mode="aspectFill" data-url="{{reply.imageUrl}}" bindtap="previewCommentImage" />
+
+                <!-- 回复操作栏 -->
+                <view class="reply-actions">
+                  <view class="comment-action-btn small {{reply.isLiked ? 'liked' : ''}}"
+                        data-comment-id="{{reply._id}}"
+                        bindtap="onCommentLikeTap">
+                    <image class="action-icon-tiny" src="/pages/square/icons/{{reply.isLiked ? 'heart-filled' : 'heart'}}.svg" mode="aspectFit"></image>
+                    <text>{{reply.likeCount > 0 ? reply.likeCount : '赞'}}</text>
+                  </view>
+                  <view class="comment-action-btn delete-btn small"
+                        wx:if="{{reply._openid === currentOpenid}}"
+                        data-comment-id="{{reply._id}}"
+                        bindtap="onCommentDeleteTap">
+                    <text>删除</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+
+            <!-- 收起按钮 -->
+            <view class="replies-toggle" data-index="{{parentIndex}}" bindtap="toggleReplies">
+              <text>收起回复</text>
+              <text class="toggle-arrow">∧</text>
+            </view>
+          </block>
+        </view>
+      </block>
     </view>
 
     <!-- 空评论 -->
-    <view class="comments-empty" wx:if="{{comments.length === 0 && !commentLoading}}">
+    <view class="comments-empty" wx:if="{{displayComments.length === 0 && !commentLoading}}">
       <text class="empty-icon">💬</text>
       <text class="empty-text">暂无评论，来说点什么吧</text>
     </view>
@@ -178,7 +263,7 @@
     <view class="load-more" wx:if="{{commentLoading}}">
       <text>加载中...</text>
     </view>
-    <view class="load-more no-more" wx:elif="{{!commentHasMore && comments.length > 0}}">
+    <view class="load-more no-more" wx:elif="{{!commentHasMore && displayComments.length > 0}}">
       <text>— 没有更多评论了 —</text>
     </view>
   </view>
@@ -198,18 +283,62 @@
       回复 @{{replyTo.author}}
       <text class="cancel-reply" bindtap="hideCommentInput">取消</text>
     </view>
+
+    <!-- 输入框行：输入框通栏 + 右侧图标（未激活时） -->
     <view class="input-row">
       <input
         class="comment-input"
         placeholder="写下你的评论..."
         placeholder-class="input-placeholder"
         value="{{commentText}}"
-        focus="{{true}}"
+        focus="{{inputActive}}"
+        bindfocus="onInputFocus"
         bindinput="onCommentInput"
         bindconfirm="submitComment"
       />
-      <button class="send-btn" bindtap="submitComment" size="mini">发送</button>
+      <!-- 未激活：图标在输入框右侧 -->
+      <view class="input-row-icons" wx:if="{{!inputActive}}">
+        <view class="comment-tool-btn" bindtap="toggleEmojiPanel">
+          <image class="tool-icon" src="/pages/square/icons/smile.svg" mode="aspectFit"></image>
+        </view>
+        <view class="comment-tool-btn" bindtap="chooseCommentImage">
+          <image class="tool-icon" src="/pages/square/icons/image.svg" mode="aspectFit"></image>
+        </view>
+        <view class="comment-tool-btn" bindtap="insertAtMention">
+          <image class="tool-icon" src="/pages/square/icons/at-sign.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部工具栏：激活时显示 -->
+    <view class="input-toolbar" wx:if="{{inputActive}}">
+      <view class="toolbar-left">
+        <view class="comment-tool-btn" bindtap="toggleEmojiPanel">
+          <image class="tool-icon" src="/pages/square/icons/smile.svg" mode="aspectFit"></image>
+        </view>
+        <view class="comment-tool-btn" bindtap="chooseCommentImage">
+          <image class="tool-icon" src="/pages/square/icons/image.svg" mode="aspectFit"></image>
+        </view>
+        <view class="comment-tool-btn" bindtap="insertAtMention">
+          <image class="tool-icon" src="/pages/square/icons/at-sign.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+      <view class="send-btn {{commentText ? 'send-active' : ''}}" bindtap="submitComment">发送</view>
+    </view>
+
+    <!-- 已选图片预览 -->
+    <view class="comment-image-preview" wx:if="{{commentImageUrl}}">
+      <image class="preview-image" src="{{commentImageUrl}}" mode="aspectFill" bindtap="previewCommentImage" data-url="{{commentImageUrl}}" />
+      <view class="remove-image" bindtap="removeCommentImage">×</view>
+    </view>
+
+    <!-- 表情包面板 -->
+    <view class="emoji-panel" wx:if="{{showEmojiPanel}}">
+      <view class="emoji-grid">
+        <view class="emoji-item" wx:for="{{emojiList}}" wx:for-item="emoji" wx:key="*this" bindtap="insertEmoji" data-emoji="{{emoji}}">{{emoji}}</view>
+      </view>
     </view>
   </view>
 </view>
+
 

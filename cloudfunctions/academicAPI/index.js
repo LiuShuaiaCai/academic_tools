@@ -382,6 +382,91 @@ async function fixCompleted() {
 
 // ==================== 学术动态 ====================
 
+// 批量查询用户资料（返回 openid -> profile 映射）
+async function getUserProfiles(openids) {
+  var profileMap = {};
+  if (!openids || openids.length === 0) return profileMap;
+
+  var _ = db.command;
+  var profileRes = await db.collection('user_config')
+    .where({ _openid: _.in(openids) })
+    .field({ _openid: true, 'profile.nickname': true, 'profile.avatar': true })
+    .get();
+
+  // 先收集所有 cloud:// 头像URL，批量转换成临时链接
+  var cloudAvatarIds = [];
+  profileRes.data.forEach(function (config) {
+    var profile = config.profile || {};
+    var avatar = profile.avatar || '';
+    if (avatar && avatar.indexOf('cloud://') === 0 && cloudAvatarIds.indexOf(avatar) === -1) {
+      cloudAvatarIds.push(avatar);
+    }
+  });
+
+  var avatarUrlMap = {};
+  if (cloudAvatarIds.length > 0) {
+    try {
+      var tempRes = await cloud.getTempFileURL({ fileList: cloudAvatarIds });
+      tempRes.fileList.forEach(function (item) {
+        if (item.tempFileURL) {
+          avatarUrlMap[item.fileID] = item.tempFileURL;
+        }
+      });
+    } catch (e) {
+      console.error('[getUserProfiles] 转换头像临时链接失败', e);
+    }
+  }
+
+  profileRes.data.forEach(function (config) {
+    var profile = config.profile || {};
+    var avatar = profile.avatar || '';
+    // 如果 cloud:// 头像已转换成功，使用 https 临时链接
+    if (avatar && avatarUrlMap[avatar]) {
+      avatar = avatarUrlMap[avatar];
+    }
+    profileMap[config._openid] = {
+      nickname: profile.nickname || '',
+      avatar: avatar,
+      isUrlAvatar: !!(avatar && avatar.indexOf('http') === 0)
+    };
+  });
+
+  return profileMap;
+}
+
+// 从 user_config 实时查询并填充动态作者、应助者昵称和头像
+async function fillPostAuthorInfo(posts) {
+  if (!posts || posts.length === 0) return posts;
+
+  var openids = [];
+  posts.forEach(function (post) {
+    if (post._openid && openids.indexOf(post._openid) === -1) {
+      openids.push(post._openid);
+    }
+    if (post.helperOpenid && openids.indexOf(post.helperOpenid) === -1) {
+      openids.push(post.helperOpenid);
+    }
+  });
+
+  var profileMap = await getUserProfiles(openids);
+
+  posts.forEach(function (post) {
+    var profile = profileMap[post._openid] || {};
+    post.nickName = profile.nickname || '';
+    post.avatarUrl = profile.avatar || '';
+    post.isUrlAvatar = profile.isUrlAvatar || false;
+
+    if (post.helperOpenid) {
+      var helperProfile = profileMap[post.helperOpenid] || {};
+      post.helperNickName = helperProfile.nickname || '';
+      post.helperAvatarUrl = helperProfile.avatar || '';
+      post.helperIsUrlAvatar = helperProfile.isUrlAvatar || false;
+    }
+  });
+
+  return posts;
+}
+
 // 获取动态列表（分页、筛选、排序）
 async function squareGetPosts(event) {
   var page = event.page || 1;
@@ -416,7 +501,8 @@ async function squareGetPosts(event) {
     .limit(pageSize)
     .get();
 
-  return { success: true, posts: res.data || [], page: page };
+  var posts = await fillPostAuthorInfo(res.data || []);
+  return { success: true, posts: posts, page: page };
 }
 
 // 获取动态详情
@@ -431,7 +517,8 @@ async function squareGetPostDetail(event) {
     return { success: false, error: '动态不存在' };
   }
 
-  return { success: true, post: post };
+  var posts = await fillPostAuthorInfo([post]);
+  return { success: true, post: posts[0] };
 }
 
 // 创建动态
@@ -445,8 +532,6 @@ async function squareCreatePost(event) {
   var images = event.images || [];
   var tags = event.tags || [];
   var callType = event.callType || '';  // 征集类型（仅征稿通知）
-  var avatarUrl = event.avatarUrl || '';
-  var nickName = event.nickName || '';
 
   if (type !== 'literature_help' && !content) {
     return { success: false, error: '内容不能为空' };
@@ -475,8 +560,6 @@ async function squareCreatePost(event) {
     images: images,
     tags: tags,
     callType: callType,  // 征集类型
-    avatarUrl: avatarUrl,
-    nickName: nickName,
     likeCount: 0,
     commentCount: 0,
     createTime: now,
@@ -525,8 +608,6 @@ async function squareCreatePost(event) {
     data.helpDeadline = event.helpDeadline || '';
     data.helpStatus = event.helpStatus || '求助中';
     data.helperOpenid = '';
-    data.helperAvatarUrl = '';
-    data.helperNickName = '';
     data.helpSolveTime = '';
     data.docFileId = '';
   }
@@ -608,7 +689,59 @@ async function squareGetComments(event) {
     .limit(pageSize)
     .get();
 
-  return { success: true, comments: res.data || [], page: page };
+  var comments = res.data || [];
+
+  // 收集需要查询的用户 openid（评论作者 + 父评论作者）
+  var openids = [];
+  var parentIds = [];
+  comments.forEach(function (c) {
+    if (c._openid && openids.indexOf(c._openid) === -1) {
+      openids.push(c._openid);
+    }
+    if (c.parentId && parentIds.indexOf(c.parentId) === -1) {
+      parentIds.push(c.parentId);
+    }
+  });
+
+  // 查询父评论，获取父评论作者 openid
+  var parentCommentMap = {};
+  if (parentIds.length > 0) {
+    for (var i = 0; i < parentIds.length; i++) {
+      try {
+        var parentRes = await db.collection('square_comments').doc(parentIds[i]).get();
+        if (parentRes.data) {
+          parentCommentMap[parentIds[i]] = parentRes.data;
+          var parentOpenid = parentRes.data._openid;
+          if (parentOpenid && openids.indexOf(parentOpenid) === -1) {
+            openids.push(parentOpenid);
+          }
+        }
+      } catch (e) {
+        // 父评论可能已被删除
+      }
+    }
+  }
+
+  // 从 user_config 实时查询用户资料
+  var profileMap = await getUserProfiles(openids);
+
+  comments.forEach(function (c) {
+    var profile = profileMap[c._openid] || {};
+    c.nickName = profile.nickname || '';
+    c.avatarUrl = profile.avatar || '';
+    c.isUrlAvatar = profile.isUrlAvatar || false;
+
+    // 实时填充回复目标昵称
+    if (c.parentId && parentCommentMap[c.parentId]) {
+      var parentOpenid = parentCommentMap[c.parentId]._openid;
+      var parentProfile = profileMap[parentOpenid] || {};
+      c.replyToNickName = parentProfile.nickname || '';
+    } else {
+      c.replyToNickName = '';
+    }
+  });
+
+  return { success: true, comments: comments, page: page };
 }
 
 // 发表评论
@@ -618,32 +751,20 @@ async function squareCreateComment(event) {
 
   var postId = event.postId;
   var content = (event.content || '').trim();
+  var imageUrl = event.imageUrl || '';
   var parentId = event.parentId || null;
-  var avatarUrl = event.avatarUrl || '';
-  var nickName = event.nickName || '';
 
   if (!postId) return { success: false, error: '缺少 postId' };
-  if (!content) return { success: false, error: '评论内容不能为空' };
+  if (!content && !imageUrl) return { success: false, error: '评论内容不能为空' };
   if (content.length > 500) return { success: false, error: '评论内容不能超过500字' };
-
-  // 获取父评论信息（回复时）
-  var replyToNickName = '';
-  if (parentId) {
-    var parentRes = await db.collection('square_comments').doc(parentId).get();
-    if (parentRes.data) {
-      replyToNickName = parentRes.data.nickName || '';
-    }
-  }
 
   var now = formatTime();
   var data = {
     _openid: openid,
     postId: postId,
     content: content,
+    imageUrl: imageUrl,
     parentId: parentId,
-    avatarUrl: avatarUrl,
-    nickName: nickName,
-    replyToNickName: replyToNickName,
     likeCount: 0,
     createTime: now,
     deleteTime: null
@@ -888,6 +1009,7 @@ async function squareGetFavorites(event) {
     }
   }
 
+  posts = await fillPostAuthorInfo(posts);
   return { success: true, posts: posts, page: page };
 }
 
@@ -921,6 +1043,7 @@ async function squareGetMyLiked(event) {
     }
   }
 
+  posts = await fillPostAuthorInfo(posts);
   return { success: true, posts: posts, page: page };
 }
 
@@ -964,6 +1087,7 @@ async function squareGetMyCommented(event) {
     }
   }
 
+  posts = await fillPostAuthorInfo(posts);
   return { success: true, posts: posts, page: page };
 }
 
@@ -982,7 +1106,7 @@ async function squareGetMyPosts(event) {
     .limit(pageSize)
     .get();
 
-  var posts = postRes.data || [];
+  var posts = await fillPostAuthorInfo(postRes.data || []);
   return { success: true, posts: posts, page: page };
 }
 
@@ -994,6 +1118,7 @@ async function squareHelpRespond(event) {
   var helperOpenid = wxContext.OPENID;
   var postId = event.postId;
   var fileID = event.fileID;
+  var fileName = event.fileName || '';
 
   if (!postId || !fileID) {
     return { success: false, error: '参数不完整' };
@@ -1028,19 +1153,10 @@ async function squareHelpRespond(event) {
       helperOpenid: helperOpenid,
       helpSolveTime: now,
       docFileId: fileID,
+      docFileName: fileName,
       updateTime: now
     }
   });
-
-  // 获取应助者信息
-  var helperInfo = await db.collection('user_config').where({ _openid: helperOpenid }).limit(1).get();
-  var helperAvatarUrl = '';
-  var helperNickName = '';
-
-  if (helperInfo.data && helperInfo.data.length > 0) {
-    // 从用户的朋友圈或其他地方获取头像昵称
-    // 这里简化处理，使用默认值
-  }
 
   // 转移积分给应助者
   try {
@@ -1059,14 +1175,6 @@ async function squareHelpRespond(event) {
     console.error('[square] 积分转移失败', err);
     // 积分转移失败，记录日志，但不影响应助完成
   }
-
-  // 更新应助者信息到动态
-  await db.collection('square_posts').doc(postId).update({
-    data: {
-      helperAvatarUrl: helperAvatarUrl,
-      helperNickName: helperNickName
-    }
-  });
 
   return { success: true };
 }

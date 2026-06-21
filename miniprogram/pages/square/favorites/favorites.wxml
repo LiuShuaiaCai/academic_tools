@@ -11,7 +11,11 @@
     >
       <!-- 卡片头部 -->
       <view class="post-header" bindtap="navigateToDetail">
-        <image class="post-avatar" src="{{item.avatarUrl || '/images/icons/usercenter.png'}}" mode="aspectFill" />
+        <view class="post-avatar">
+          <image class="post-avatar-img" wx:if="{{item.isUrlAvatar}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <text class="post-avatar-text" wx:elif="{{item.avatarUrl}}">{{item.avatarUrl}}</text>
+          <image class="post-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
+        </view>
         <view class="post-meta">
           <view class="post-author">{{item.nickName || '学者用户'}}</view>
           <view class="post-time">{{item.displayTime}}</view>

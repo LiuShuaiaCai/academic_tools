@@ -33,6 +33,20 @@ page { background: #F3F4F6; }
   margin-right: 16rpx;
   background: #E5E7EB;
   flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.post-avatar-text {
+  font-size: 45rpx;
+  line-height: 1;
 }
 
 .post-meta {

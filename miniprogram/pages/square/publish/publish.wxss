@@ -37,16 +37,18 @@ page { background: #F3F4F6; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
-  padding: 16rpx 8rpx;
-  border-radius: 12rpx;
-  border: 2rpx solid #E5E7EB;
+  gap: 8rpx;
+  padding: 20rpx 10rpx 16rpx;
+  border-radius: 14rpx;
+  border: 2rpx solid transparent;
   transition: all 0.2s;
   box-sizing: border-box;
 }
 
 .type-option-icon {
-  font-size: 36rpx;
+  width: 72rpx;
+  height: 72rpx;
+  flex-shrink: 0;
 }
 
 .type-option-label {

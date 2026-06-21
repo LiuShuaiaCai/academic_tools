@@ -44,8 +44,23 @@ Page({
     // 用户信息
     currentOpenid: '',
     avatarUrl: '',
-    nickName: ''
-  },
+    nickName: '',
+
+    // 当前展开评论的动态索引
+    activeCommentIndex: -1,
+    activeCommentPostId: '',
+    // 评论输入
+    commentText: '',
+    showInput: false,
+    inputActive: false,     // 输入框是否激活
+    // 回复目标
+    replyTo: null,          // { id, nickName }
+    // 表情包
+    showEmojiPanel: false,
+    emojiList: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😝','😜','🤪','🤔','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👍','👎','👏','🙌','👐','🤝','🤗','🤭','🤫','🌹','❤️','💔','💖','💙','💚','💛','💜','🖤','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','🗨️','🗯️','💭','💤'],
+    // 评论图片
+    commentImageUrl: ''
+},
 
   onLoad: function () {
     this.getUserId();
@@ -67,12 +82,8 @@ Page({
       data: { action: 'getUserId' }
     }).then(function (res) {
       that.setData({ currentOpenid: res.result.openid });
-      // 获取用户头像昵称
-      var userInfo = app.globalData.userInfo || {};
-      that.setData({
-        avatarUrl: userInfo.avatarUrl || '',
-        nickName: userInfo.nickName || ''
-      });
+    }).catch(function (err) {
+      console.error('[square] 获取用户 ID 失败', err);
     });
   },
 
@@ -132,6 +143,7 @@ Page({
           post.helpStatusLabel = that.getHelpStatusLabel(post.helpStatus);
           post.helpStatusColor = that.getHelpStatusColor(post.helpStatus);
           post.remainingTime = that.formatRemainingTime(post.helpDeadline);
+          post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid;
         }
 
         // 「我的」子选项卡自动标记状态（我喜欢/我收藏可直接确定；我的发布需单独查询）
@@ -144,19 +156,41 @@ Page({
       });
 
       var posts = reset ? newPosts : that.data.posts.concat(newPosts);
-      that.setData({
-        posts: posts,
-        page: page + 1,
-        hasMore: newPosts.length >= that.data.pageSize,
-        loading: false,
-        refreshing: false
-      });
+
+      // 转换帖子列表中的 cloud:// 头像 URL 为临时 URL，再渲染
+      return that.convertPostsCloudUrls(posts).then(function (convertedPosts) {
+        that.setData({
+          posts: convertedPosts,
+          page: page + 1,
+          hasMore: newPosts.length >= that.data.pageSize,
+          loading: false,
+          refreshing: false
+        });
+
+        // 刷新列表后，如果当前有展开的评论区，恢复评论预览
+        if (reset && that.data.activeCommentPostId) {
+          var newActiveIndex = -1;
+          for (var i = 0; i < convertedPosts.length; i++) {
+            if (convertedPosts[i]._id === that.data.activeCommentPostId) {
+              newActiveIndex = i;
+              break;
+            }
+        }
+        if (newActiveIndex >= 0) {
+          that.setData({ activeCommentIndex: newActiveIndex });
+          that.loadCommentsPreview(newActiveIndex);
+        } else {
+          // 帖子已不在当前列表中，收起评论区
+          that.setData({ activeCommentIndex: -1, activeCommentPostId: '' });
+        }
+      }
 
       // 获取点赞状态和收藏状态（非「我的」或「我的发布」才需要补充加载）
       if (posts.length > 0 && (!isMine || that.data.mySubTab === 'published')) {
         that.loadLikeStatus(posts);
         that.loadFavoriteStatus(posts);
       }
+      });  // 关闭 convertPostsCloudUrls 内部 .then
     }).catch(function (err) {
       console.error('[square] 加载动态失败', err);
       that.setData({ loading: false, refreshing: false });
@@ -178,8 +212,7 @@ Page({
     }).then(function (res) {
       var likeMap = res.result.likeMap || {};
       var updatedPosts = that.data.posts.map(function (post) {
-        post.isLiked = !!likeMap[post._id];
-        return post;
+        return Object.assign({}, post, { isLiked: !!likeMap[post._id] });
       });
       that.setData({ posts: updatedPosts });
     });
@@ -190,9 +223,9 @@ Page({
     var tab = e.currentTarget.dataset.tab;
     if (tab === this.data.currentTab) return;
     if (tab === 'mine') {
-      this.setData({ currentTab: tab, mySubTab: 'liked', page: 1, hasMore: true });
+      this.setData({ currentTab: tab, mySubTab: 'liked', page: 1, hasMore: true, activeCommentIndex: -1, activeCommentPostId: '' });
     } else {
-      this.setData({ currentTab: tab, page: 1, hasMore: true });
+      this.setData({ currentTab: tab, page: 1, hasMore: true, activeCommentIndex: -1, activeCommentPostId: '' });
     }
     this.loadPosts(true);
   },
@@ -201,7 +234,7 @@ Page({
   onMySubTabTap: function (e) {
     var sub = e.currentTarget.dataset.sub;
     if (sub === this.data.mySubTab) return;
-    this.setData({ mySubTab: sub, page: 1, hasMore: true });
+    this.setData({ mySubTab: sub, page: 1, hasMore: true, activeCommentIndex: -1, activeCommentPostId: '' });
     this.loadPosts(true);
   },
 
@@ -209,7 +242,7 @@ Page({
   onTypeTap: function (e) {
     var type = e.currentTarget.dataset.type;
     if (type === this.data.currentType) return;
-    this.setData({ currentType: type, page: 1, hasMore: true });
+    this.setData({ currentType: type, page: 1, hasMore: true, activeCommentIndex: -1, activeCommentPostId: '' });
     this.loadPosts(true);
   },
 
@@ -254,8 +287,7 @@ Page({
     }).then(function (res) {
       var favMap = res.result.favMap || {};
       var updatedPosts = that.data.posts.map(function (post) {
-        post.isFavorite = !!favMap[post._id];
-        return post;
+        return Object.assign({}, post, { isFavorite: !!favMap[post._id] });
       });
       that.setData({ posts: updatedPosts });
     });
@@ -271,7 +303,7 @@ Page({
     var isLiked = !post.isLiked;
 
     // 乐观更新 UI
-    var posts = this.data.posts;
+    var posts = this.data.posts.slice();
     posts[index].isLiked = isLiked;
     posts[index].likeCount = (posts[index].likeCount || 0) + (isLiked ? 1 : -1);
     if (posts[index].likeCount < 0) posts[index].likeCount = 0;
@@ -287,10 +319,11 @@ Page({
     }).catch(function (err) {
       console.error('[square] 点赞失败', err);
       // 回滚
-      posts[index].isLiked = !isLiked;
-      posts[index].likeCount = (posts[index].likeCount || 0) + (isLiked ? -1 : 1);
-      if (posts[index].likeCount < 0) posts[index].likeCount = 0;
-      that.setData({ posts: posts });
+      var rollbackPosts = that.data.posts.slice();
+      rollbackPosts[index].isLiked = !isLiked;
+      rollbackPosts[index].likeCount = (rollbackPosts[index].likeCount || 0) + (isLiked ? -1 : 1);
+      if (rollbackPosts[index].likeCount < 0) rollbackPosts[index].likeCount = 0;
+      that.setData({ posts: rollbackPosts });
     });
   },
 
@@ -304,7 +337,7 @@ Page({
     var isFavorite = !post.isFavorite;
 
     // 乐观更新 UI
-    var posts = this.data.posts;
+    var posts = this.data.posts.slice();
     posts[index].isFavorite = isFavorite;
     this.setData({ posts: posts });
 
@@ -324,8 +357,505 @@ Page({
     }).catch(function (err) {
       console.error('[square] 收藏失败', err);
       // 回滚
-      posts[index].isFavorite = !isFavorite;
-      that.setData({ posts: posts });
+      var rollbackPosts = that.data.posts.slice();
+      rollbackPosts[index].isFavorite = !isFavorite;
+      that.setData({ posts: rollbackPosts });
+    });
+  },
+
+  // 点击评论按钮，展开/收起当前卡片评论
+  onCommentTap: function (e) {
+    var index = e.currentTarget.dataset.index;
+    var post = this.data.posts[index];
+    if (!post) return;
+
+    // 如果点击的是当前已展开的评论，则收起
+    if (this.data.activeCommentIndex === index) {
+      this.hideCommentInput();
+      return;
+    }
+
+    this.setData({
+      activeCommentIndex: index,
+      activeCommentPostId: post._id,
+      showInput: true,
+      inputActive: false,
+      commentText: '',
+      showEmojiPanel: false,
+      commentImageUrl: '',
+      replyTo: null
+    });
+    this.loadCommentsPreview(index);
+  },
+
+  // 隐藏评论输入
+  hideCommentInput: function () {
+    this.setData({
+      showInput: false,
+      inputActive: false,
+      commentText: '',
+      activeCommentIndex: -1,
+      activeCommentPostId: '',
+      showEmojiPanel: false,
+      commentImageUrl: '',
+      replyTo: null
+    });
+  },
+
+  // 输入框获得焦点
+  onInputFocus: function () {
+    this.setData({ inputActive: true });
+  },
+
+  // 插入@提及
+  insertAtMention: function () {
+    var text = this.data.commentText + '@';
+    this.setData({ commentText: text });
+  },
+
+  // 评论输入
+  onCommentInput: function (e) {
+    this.setData({ commentText: e.detail.value });
+  },
+
+  // 提交评论
+  submitComment: function () {
+    var that = this;
+    var text = this.data.commentText.trim();
+    var imageUrl = this.data.commentImageUrl;
+    var replyTo = this.data.replyTo;
+    if (!text && !imageUrl) {
+      wx.showToast({ title: '请输入评论内容或上传图片', icon: 'none' });
+      return;
+    }
+    var index = this.data.activeCommentIndex;
+    var post = this.data.posts[index];
+    if (!post) return;
+
+    wx.showLoading({ title: '发送中...' });
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'squareCreateComment',
+        postId: post._id,
+        content: text,
+        imageUrl: imageUrl,
+        parentId: replyTo ? replyTo.id : null,
+        replyToNickName: replyTo ? replyTo.nickName : null
+      }
+    }).then(function (res) {
+      wx.hideLoading();
+      if (res.result.success) {
+        wx.showToast({ title: '评论成功', icon: 'success' });
+        that.setData({ commentText: '', commentImageUrl: '', showEmojiPanel: false, replyTo: null });
+        var posts = that.data.posts.slice();
+        posts[index].commentCount = (posts[index].commentCount || 0) + 1;
+        that.setData({ posts: posts });
+        that.loadCommentsPreview(index);
+      } else {
+        wx.showToast({ title: res.result.error || '评论失败', icon: 'none' });
+      }
+    }).catch(function (err) {
+      wx.hideLoading();
+      console.error('[square] 评论失败', err);
+      wx.showToast({ title: '评论失败', icon: 'none' });
+    });
+  },
+
+  // 切换表情包面板
+  toggleEmojiPanel: function () {
+    this.setData({ showEmojiPanel: !this.data.showEmojiPanel });
+  },
+
+  // 插入表情包
+  insertEmoji: function (e) {
+    var emoji = e.currentTarget.dataset.emoji;
+    var text = this.data.commentText + emoji;
+    this.setData({ commentText: text });
+  },
+
+  // 选择评论图片
+  chooseCommentImage: function () {
+    var that = this;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: function (res) {
+        var tempFile = res.tempFiles[0];
+        if (!tempFile) return;
+        that.uploadCommentImage(tempFile.tempFilePath);
+      }
+    });
+  },
+
+  // 上传评论图片到云存储
+  uploadCommentImage: function (filePath) {
+    var that = this;
+    wx.showLoading({ title: '上传中...' });
+    var cloudPath = 'square/comments/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.jpg';
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: filePath
+    }).then(function (res) {
+      wx.hideLoading();
+      that.setData({ commentImageUrl: res.fileID });
+    }).catch(function (err) {
+      wx.hideLoading();
+      console.error('[square] 评论图片上传失败', err);
+      wx.showToast({ title: '图片上传失败', icon: 'none' });
+    });
+  },
+
+  // 删除已选评论图片
+  removeCommentImage: function () {
+    this.setData({ commentImageUrl: '' });
+  },
+
+  // 预览评论图片
+  previewCommentImage: function (e) {
+    var url = e.currentTarget.dataset.url;
+    if (!url) return;
+
+    // cloud:// 协议需要先获取临时 URL
+    if (url.indexOf('cloud://') === 0) {
+      wx.showLoading({ title: '加载中...', mask: true });
+      wx.cloud.getTempFileURL({
+        fileList: [url]
+      }).then(function (res) {
+        wx.hideLoading();
+        var tempUrl = res.fileList[0] && res.fileList[0].tempFileURL;
+        if (tempUrl) {
+          wx.previewImage({
+            current: tempUrl,
+            urls: [tempUrl]
+          });
+        } else {
+          wx.showToast({ title: '图片加载失败', icon: 'none' });
+        }
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[square] 预览图片失败', err);
+        wx.showToast({ title: '图片加载失败', icon: 'none' });
+      });
+      return;
+    }
+
+    wx.previewImage({
+      current: url,
+      urls: [url]
+    });
+  },
+
+  // 转换帖子列表中 cloud:// 协议的头像 URL 为临时 URL（返回 Promise）
+  convertPostsCloudUrls: function (posts) {
+    var cloudFileIDs = [];
+    posts.forEach(function (post) {
+      if (post.avatarUrl && post.avatarUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(post.avatarUrl) === -1) {
+          cloudFileIDs.push(post.avatarUrl);
+        }
+      }
+      if (post.helperAvatarUrl && post.helperAvatarUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(post.helperAvatarUrl) === -1) {
+          cloudFileIDs.push(post.helperAvatarUrl);
+        }
+      }
+    });
+
+    if (cloudFileIDs.length === 0) return Promise.resolve(posts);
+
+    return wx.cloud.getTempFileURL({
+      fileList: cloudFileIDs
+    }).then(function (res) {
+      var urlMap = {};
+      res.fileList.forEach(function (item) {
+        if (item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
+      });
+      return posts.map(function (post) {
+        var copy = Object.assign({}, post);
+        if (copy.avatarUrl && urlMap[copy.avatarUrl]) {
+          copy.avatarUrl = urlMap[copy.avatarUrl];
+        }
+        if (copy.helperAvatarUrl && urlMap[copy.helperAvatarUrl]) {
+          copy.helperAvatarUrl = urlMap[copy.helperAvatarUrl];
+        }
+        return copy;
+      });
+    }).catch(function (err) {
+      console.error('[square] 转换帖子URL失败，使用原始数据', err);
+      return posts;
+    });
+  },
+
+  // 加载评论预览
+  loadCommentsPreview: function (index) {
+    var that = this;
+    var post = this.data.posts[index];
+    if (!post) return;
+
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'squareGetComments',
+        postId: post._id,
+        page: 1,
+        pageSize: 3
+      }
+    }).then(function (res) {
+      var result = res.result || {};
+      var comments = result.comments || [];
+      comments.forEach(function (c) {
+        c.displayTime = that.formatDisplayTime(c.createTime);
+      });
+
+      // 先转换 cloud:// URL，再渲染
+      return that.convertCommentCloudAvatars(comments);
+    }).then(function (convertedComments) {
+      var tree = that.buildCommentTree(convertedComments);
+      var posts = that.data.posts.slice();
+      if (posts[index]) {
+        posts[index].commentsPreview = tree;
+        that.setData({ posts: posts });
+      }
+    }).catch(function (err) {
+      console.error('[square] 加载评论预览失败', err);
+    });
+  },
+
+  // 将扁平评论列表构建为树形结构
+  buildCommentTree: function (flatComments) {
+    var replyMap = {};
+    flatComments.forEach(function (c) {
+      if (c.parentId) {
+        if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
+        var exists = replyMap[c.parentId].some(function (r) { return r._id === c._id; });
+        if (!exists) replyMap[c.parentId].push(c);
+      }
+    });
+
+    var tops = [];
+    flatComments.forEach(function (c) {
+      if (!c.parentId) {
+        var copy = Object.assign({}, c);
+        copy._replies = replyMap[c._id] || [];
+        copy._showReplies = false;
+        tops.push(copy);
+      }
+    });
+    return tops;
+  },
+
+  // 展开/收起评论回复（广场页）
+  toggleSquareReplies: function (e) {
+    var postIndex = e.currentTarget.dataset.postIndex;
+    var commentIndex = e.currentTarget.dataset.commentIndex;
+    var posts = this.data.posts.slice();
+    var comments = posts[postIndex] && posts[postIndex].commentsPreview;
+    if (comments && comments[commentIndex]) {
+      comments[commentIndex]._showReplies = !comments[commentIndex]._showReplies;
+      this.setData({ posts: posts });
+    }
+  },
+
+  // 评论点赞（广场预览区）
+  onSquareCommentLikeTap: function (e) {
+    var that = this;
+    var commentId = e.currentTarget.dataset.commentId;
+    var postIndex = this.data.activeCommentIndex;
+    var posts = this.data.posts.slice();
+    var post = posts[postIndex];
+    if (!post || !post.commentsPreview) return;
+
+    // 在树形结构中找到该评论
+    var found = null;
+    post.commentsPreview.forEach(function (parent) {
+      if (parent._id === commentId) {
+        found = parent;
+      } else if (parent._replies) {
+        parent._replies.forEach(function (reply) {
+          if (reply._id === commentId) {
+            found = reply;
+          }
+        });
+      }
+    });
+    if (!found) return;
+
+    var isLiked = !found.isLiked;
+    found.isLiked = isLiked;
+    found.likeCount = (found.likeCount || 0) + (isLiked ? 1 : -1);
+    if (found.likeCount < 0) found.likeCount = 0;
+
+    this.setData({ posts: posts });
+
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'squareToggleLike',
+        commentId: commentId,
+        isLiked: isLiked
+      }
+    }).catch(function (err) {
+      console.error('[square] 评论点赞失败', err);
+      var rollbackList = that.data.posts.slice();
+      var rollbackPost = rollbackList[postIndex];
+      if (rollbackPost && rollbackPost.commentsPreview) {
+        rollbackPost.commentsPreview.forEach(function (p) {
+          if (p._id === commentId) {
+            p.isLiked = !isLiked;
+            p.likeCount = (p.likeCount || 0) + (isLiked ? -1 : 1);
+            if (p.likeCount < 0) p.likeCount = 0;
+          } else if (p._replies) {
+            p._replies.forEach(function (r) {
+              if (r._id === commentId) {
+                r.isLiked = !isLiked;
+                r.likeCount = (r.likeCount || 0) + (isLiked ? -1 : 1);
+                if (r.likeCount < 0) r.likeCount = 0;
+              }
+            });
+          }
+        });
+      }
+      that.setData({ posts: rollbackList });
+    });
+  },
+
+  // 回复评论（广场预览区）
+  onSquareCommentReplyTap: function (e) {
+    var commentId = e.currentTarget.dataset.commentId;
+    var nickName = e.currentTarget.dataset.nickName;
+
+    this.setData({
+      replyTo: { id: commentId, nickName: nickName },
+      inputActive: true
+    });
+  },
+
+  // 取消回复
+  cancelReply: function () {
+    this.setData({
+      replyTo: null
+    });
+  },
+
+  // 应助 - 上传文献文件
+  onHelpRespond: function (e) {
+    var that = this;
+    var index = e.currentTarget.dataset.index;
+    var post = this.data.posts[index];
+
+    if (!post || post.helpStatus !== '求助中') {
+      wx.showToast({ title: '该求助无法应助', icon: 'none' });
+      return;
+    }
+    if (post._openid === that.data.currentOpenid) {
+      wx.showToast({ title: '不能应助自己的求助', icon: 'none' });
+      return;
+    }
+
+    wx.chooseMessageFile({
+      count: 1,
+      type: 'file',
+      success: function (res) {
+        var tempFilePath = res.tempFiles[0].path;
+        var fileName = res.tempFiles[0].name;
+        that.uploadHelpFile(tempFilePath, fileName, index);
+      }
+    });
+  },
+
+  // 上传应助文件到云存储
+  uploadHelpFile: function (tempFilePath, fileName, index) {
+    var that = this;
+    wx.showLoading({ title: '上传中...', mask: true });
+
+    var cloudPath = 'help_files/' + Date.now() + '_' + fileName;
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: tempFilePath
+    }).then(function (res) {
+      var fileID = res.fileID;
+      that.completeHelpRespond(fileID, fileName, index);
+    }).catch(function (err) {
+      wx.hideLoading();
+      console.error('[square] 文件上传失败', err);
+      wx.showToast({ title: '文件上传失败', icon: 'none' });
+    });
+  },
+
+  // 完成应助
+  completeHelpRespond: function (fileID, fileName, index) {
+    var that = this;
+    var post = this.data.posts[index];
+
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'squareHelpRespond',
+        postId: post._id,
+        fileID: fileID,
+        fileName: fileName
+      }
+    }).then(function (res) {
+      wx.hideLoading();
+      var result = res.result || {};
+
+      if (result.success) {
+        wx.showToast({ title: '应助成功', icon: 'success' });
+        // 刷新当前列表
+        that.loadPosts(true);
+      } else {
+        wx.showToast({ title: result.error || '应助失败', icon: 'none' });
+      }
+    }).catch(function (err) {
+      wx.hideLoading();
+      console.error('[square] 应助失败', err);
+      wx.showToast({ title: '应助失败', icon: 'none' });
+    });
+  },
+
+  // 转换评论中 cloud:// 协议的头像/图片 URL 为临时 URL（返回 Promise）
+  convertCommentCloudAvatars: function (comments) {
+    var cloudFileIDs = [];
+
+    comments.forEach(function (c) {
+      if (c.avatarUrl && c.avatarUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(c.avatarUrl) === -1) {
+          cloudFileIDs.push(c.avatarUrl);
+        }
+      }
+      // 也处理评论中的图片
+      if (c.imageUrl && c.imageUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(c.imageUrl) === -1) {
+          cloudFileIDs.push(c.imageUrl);
+        }
+      }
+    });
+
+    if (cloudFileIDs.length === 0) return Promise.resolve(comments);
+
+    return wx.cloud.getTempFileURL({
+      fileList: cloudFileIDs
+    }).then(function (res) {
+      var urlMap = {};
+      res.fileList.forEach(function (item) {
+        if (item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
+      });
+
+      return comments.map(function (c) {
+        var copy = Object.assign({}, c);
+        if (c.avatarUrl && urlMap[c.avatarUrl]) {
+          copy.avatarUrl = urlMap[c.avatarUrl];
+        }
+        if (c.imageUrl && urlMap[c.imageUrl]) {
+          copy.imageUrl = urlMap[c.imageUrl];
+        }
+        return copy;
+      });
+    }).catch(function (err) {
+      console.error('[square] 转换评论URL失败，使用原始数据', err);
+      return comments;
     });
   },
 
@@ -357,12 +887,12 @@ Page({
   getTypeColor: function (type) {
     var map = {
       'achievement': '#2563eb',
-      'discussion': '#7c3aed',
+      'discussion': '#7C3AED',
       'resource': '#059669',
-      'call_for_papers': '#ea580c',
-      'review': '#dc2626',
-      'journal': '#0891b2',
-      'literature_help': '#f59e0b'
+      'call_for_papers': '#F97316',
+      'review': '#10B981',
+      'journal': '#06B6D4',
+      'literature_help': '#F43F5E'
     };
     return map[type] || '#6B7280';
   },
@@ -402,11 +932,11 @@ Page({
   // 获取求助状态颜色
   getHelpStatusColor: function (status) {
     var map = {
-      '求助中': '#10b981',
+      '求助中': '#EF4444',
       '已解决': '#3b82f6',
       '已过期': '#9ca3af'
     };
-    return map[status] || '#10b981';
+    return map[status] || '#EF4444';
   },
 
   // 格式化剩余时间

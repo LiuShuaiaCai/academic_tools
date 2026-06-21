@@ -14,7 +14,8 @@ Page({
     typeColor: '',
 
     // 评论列表
-    comments: [],
+    comments: [],           // 扁平原始列表
+    displayComments: [],    // 树形结构（回复嵌套在父评论下）
     commentPage: 1,
     commentHasMore: true,
     commentLoading: false,
@@ -23,6 +24,11 @@ Page({
     commentText: '',
     replyTo: null,          // 正在回复的评论
     showInput: false,
+    inputActive: false,     // 输入框是否激活（聚焦状态）
+    commentImageUrl: '',    // 评论图片
+    showEmojiPanel: false,  // 表情包面板
+    emojiList: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😝','😜','🤪','🤔','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👍','👎','👏','🙌','👐','🤝','🤗','🤭','🤫','🌹','❤️','💔','💖','💙','💚','💛','💜','🖤','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','🗨️','🗯️','💭','💤'],
+
 
     // 用户信息
     currentOpenid: '',
@@ -46,11 +52,8 @@ Page({
       data: { action: 'getUserId' }
     }).then(function (res) {
       that.setData({ currentOpenid: res.result.openid });
-      var userInfo = app.globalData.userInfo || {};
-      that.setData({
-        avatarUrl: userInfo.avatarUrl || '',
-        nickName: userInfo.nickName || ''
-      });
+    }).catch(function (err) {
+      console.error('[detail] 获取用户 ID 失败', err);
     });
   },
 
@@ -90,10 +93,10 @@ Page({
         post.canDownload = post.helpStatus === '已解决' && post.docFileId;
       }
 
-      that.setData({
-        post: post
-      });
-
+      // 转换帖子中 cloud:// 协议的头像/图片 URL 为临时 URL 后再渲染
+      return that.convertPostCloudUrls(post);
+    }).then(function (convertedPost) {
+      that.setData({ post: convertedPost });
       // 加载点赞状态
       that.loadLikeStatus();
       // 加载收藏状态
@@ -102,6 +105,44 @@ Page({
       wx.hideLoading();
       console.error('[detail] 加载详情失败', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
+    });
+  },
+
+  // 转换帖子中 cloud:// 协议的头像/图片 URL 为临时 URL（返回 Promise）
+  convertPostCloudUrls: function (post) {
+    var cloudFileIDs = [];
+    // 作者头像
+    if (post.avatarUrl && post.avatarUrl.indexOf('cloud://') === 0) {
+      cloudFileIDs.push(post.avatarUrl);
+    }
+    // 应助者头像
+    if (post.helperAvatarUrl && post.helperAvatarUrl.indexOf('cloud://') === 0) {
+      if (cloudFileIDs.indexOf(post.helperAvatarUrl) === -1) {
+        cloudFileIDs.push(post.helperAvatarUrl);
+      }
+    }
+
+    if (cloudFileIDs.length === 0) return Promise.resolve(post);
+
+    return wx.cloud.getTempFileURL({
+      fileList: cloudFileIDs
+    }).then(function (res) {
+      var urlMap = {};
+      res.fileList.forEach(function (item) {
+        if (item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
+      });
+
+      var copy = Object.assign({}, post);
+      if (copy.avatarUrl && urlMap[copy.avatarUrl]) {
+        copy.avatarUrl = urlMap[copy.avatarUrl];
+      }
+      if (copy.helperAvatarUrl && urlMap[copy.helperAvatarUrl]) {
+        copy.helperAvatarUrl = urlMap[copy.helperAvatarUrl];
+      }
+      return copy;
+    }).catch(function (err) {
+      console.error('[detail] 转换帖子URL失败，使用原始数据', err);
+      return post;
     });
   },
 
@@ -118,7 +159,7 @@ Page({
       }
     }).then(function (res) {
       var likeMap = res.result.likeMap || {};
-      var post = that.data.post;
+      var post = Object.assign({}, that.data.post);
       post.isLiked = !!likeMap[post._id];
       that.setData({ post: post });
     });
@@ -137,7 +178,7 @@ Page({
       }
     }).then(function (res) {
       var favMap = res.result.favMap || {};
-      var post = that.data.post;
+      var post = Object.assign({}, that.data.post);
       post.isFavorite = !!favMap[post._id];
       that.setData({ post: post });
     });
@@ -167,25 +208,256 @@ Page({
 
       newComments.forEach(function (c) {
         c.displayTime = that.formatDisplayTime(c.createTime);
+        c.isLiked = false; // 初始化点赞状态
       });
 
-      var comments = reset ? newComments : that.data.comments.concat(newComments);
+      // 先转换为临时链接，再渲染
+      return that.convertCommentCloudUrls(newComments);
+    }).then(function (convertedComments) {
+      var flatList = reset ? convertedComments : that.data.comments.concat(convertedComments);
+      var displayList = that.buildCommentTree(flatList);
+
+      // 如果是追加加载，保持已有展开状态
+      if (!reset) {
+        var oldDisplay = that.data.displayComments;
+        displayList.forEach(function (item) {
+          var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
+          if (oldItem) {
+            item._showReplies = oldItem._showReplies;
+          }
+        });
+      }
+
       that.setData({
-        comments: comments,
+        comments: flatList,
+        displayComments: displayList,
         commentPage: page + 1,
-        commentHasMore: newComments.length >= 20,
+        commentHasMore: convertedComments.length >= 20,
         commentLoading: false
       });
+
+      // 加载评论点赞状态
+      that.loadCommentLikeStatus();
     }).catch(function (err) {
       console.error('[detail] 加载评论失败', err);
-      that.setData({ commentLoading: false });
+      if (!reset) {
+        that.setData({ commentPage: page, commentLoading: false });
+      } else {
+        that.setData({ commentLoading: false });
+      }
+    });
+  },
+
+  // 将扁平评论列表构建为树形结构（回复嵌套在父评论下）
+  buildCommentTree: function (flatComments) {
+    var replyMap = {};
+    flatComments.forEach(function (c) {
+      if (c.parentId) {
+        if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
+        // 去重
+        var exists = replyMap[c.parentId].some(function (r) { return r._id === c._id; });
+        if (!exists) replyMap[c.parentId].push(c);
+      }
+    });
+
+    var tops = [];
+    flatComments.forEach(function (c) {
+      if (!c.parentId) {
+        var copy = Object.assign({}, c);
+        copy._replies = replyMap[c._id] || [];
+        copy._showReplies = false;
+        tops.push(copy);
+      }
+    });
+    return tops;
+  },
+
+  // 展开/收起某条评论的回复
+  toggleReplies: function (e) {
+    var index = e.currentTarget.dataset.index;
+    var list = this.data.displayComments.slice();
+    if (list[index]) {
+      list[index]._showReplies = !list[index]._showReplies;
+      this.setData({ displayComments: list });
+    }
+  },
+
+  // 转换评论中 cloud:// 协议的头像/图片 URL 为临时 URL（返回 Promise）
+  convertCommentCloudUrls: function (comments) {
+    var cloudFileIDs = [];
+
+    comments.forEach(function (c) {
+      if (c.avatarUrl && c.avatarUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(c.avatarUrl) === -1) {
+          cloudFileIDs.push(c.avatarUrl);
+        }
+      }
+      if (c.imageUrl && c.imageUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(c.imageUrl) === -1) {
+          cloudFileIDs.push(c.imageUrl);
+        }
+      }
+    });
+
+    // 没有 cloud:// 路径，直接返回原数据
+    if (cloudFileIDs.length === 0) {
+      return Promise.resolve(comments);
+    }
+
+    return wx.cloud.getTempFileURL({
+      fileList: cloudFileIDs
+    }).then(function (res) {
+      var urlMap = {};
+      res.fileList.forEach(function (item) {
+        if (item.tempFileURL) {
+          urlMap[item.fileID] = item.tempFileURL;
+        }
+      });
+
+      return comments.map(function (c) {
+        var copy = Object.assign({}, c);
+        if (c.avatarUrl && urlMap[c.avatarUrl]) {
+          copy.avatarUrl = urlMap[c.avatarUrl];
+        }
+        if (c.imageUrl && urlMap[c.imageUrl]) {
+          copy.imageUrl = urlMap[c.imageUrl];
+        }
+        return copy;
+      });
+    }).catch(function (err) {
+      console.error('[detail] 转换评论 URL 失败，使用原始数据', err);
+      return comments; // 失败时回退到原始数据
+    });
+  },
+
+  // 加载评论点赞状态
+  loadCommentLikeStatus: function () {
+    var that = this;
+    var commentIds = this.data.comments.map(function(c) { return c._id; });
+    if (commentIds.length === 0) return;
+
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'squareGetLikeStatus',
+        commentIds: commentIds
+      }
+    }).then(function (res) {
+      var likeMap = res.result.likeMap || {};
+      var comments = that.data.comments.map(function(c) {
+        var copy = Object.assign({}, c);
+        copy.isLiked = !!likeMap[c._id];
+        return copy;
+      });
+      var displayList = that.buildCommentTree(comments);
+      var oldDisplay = that.data.displayComments;
+      displayList.forEach(function (item) {
+        var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
+        if (oldItem) item._showReplies = oldItem._showReplies;
+      });
+      that.setData({ comments: comments, displayComments: displayList });
+    });
+  },
+
+  // 评论点赞/取消点赞
+  onCommentLikeTap: function (e) {
+    var that = this;
+    var commentId = e.currentTarget.dataset.commentId;
+    var flatList = this.data.comments.slice();
+    var flatIndex = flatList.findIndex(function(c) { return c._id === commentId; });
+    if (flatIndex < 0) return;
+
+    var comment = flatList[flatIndex];
+    var isLiked = !comment.isLiked;
+    flatList[flatIndex].isLiked = isLiked;
+    flatList[flatIndex].likeCount = (flatList[flatIndex].likeCount || 0) + (isLiked ? 1 : -1);
+    if (flatList[flatIndex].likeCount < 0) flatList[flatIndex].likeCount = 0;
+
+    var displayList = that.buildCommentTree(flatList);
+    var oldDisplay = that.data.displayComments;
+    displayList.forEach(function (item) {
+      var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
+      if (oldItem) item._showReplies = oldItem._showReplies;
+    });
+
+    this.setData({ comments: flatList, displayComments: displayList });
+
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: {
+        action: 'squareToggleLike',
+        commentId: commentId,
+        isLiked: isLiked
+      }
+    }).catch(function (err) {
+      console.error('[detail] 点赞失败', err);
+      var rollbackList = that.data.comments.slice();
+      var rbIdx = rollbackList.findIndex(function(c) { return c._id === commentId; });
+      if (rbIdx >= 0) {
+        rollbackList[rbIdx].isLiked = !isLiked;
+        rollbackList[rbIdx].likeCount = (rollbackList[rbIdx].likeCount || 0) + (isLiked ? -1 : 1);
+        if (rollbackList[rbIdx].likeCount < 0) rollbackList[rbIdx].likeCount = 0;
+      }
+      that.setData({ comments: rollbackList });
+    });
+  },
+
+  // 删除评论
+  onCommentDeleteTap: function (e) {
+    var that = this;
+    var commentId = e.currentTarget.dataset.commentId;
+
+    wx.showModal({
+      title: '提示',
+      content: '确定要删除这条评论吗？',
+      success: function (res) {
+        if (res.confirm) {
+          wx.showLoading({ title: '删除中...' });
+          wx.cloud.callFunction({
+            name: 'academicAPI',
+            data: {
+              action: 'squareDeleteComment',
+              commentId: commentId
+            }
+          }).then(function (res) {
+            wx.hideLoading();
+            if (res.result.success) {
+              wx.showToast({ title: '删除成功', icon: 'success' });
+
+              // 从扁平列表中移除
+              var flatList = that.data.comments.slice();
+              var flatIdx = flatList.findIndex(function(c) { return c._id === commentId; });
+              if (flatIdx >= 0) flatList.splice(flatIdx, 1);
+
+              // 重建显示列表
+              var displayList = that.buildCommentTree(flatList);
+              var oldDisplay = that.data.displayComments;
+              displayList.forEach(function (item) {
+                var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
+                if (oldItem) item._showReplies = oldItem._showReplies;
+              });
+
+              var post = Object.assign({}, that.data.post);
+              post.commentCount = (post.commentCount || 0) - 1;
+              if (post.commentCount < 0) post.commentCount = 0;
+              that.setData({ comments: flatList, displayComments: displayList, post: post });
+            } else {
+              wx.showToast({ title: res.result.error || '删除失败', icon: 'none' });
+            }
+          }).catch(function (err) {
+            wx.hideLoading();
+            console.error('[detail] 删除评论失败', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          });
+        }
+      }
     });
   },
 
   // 点赞/取消点赞
   onLikeTap: function () {
     var that = this;
-    var post = this.data.post;
+    var post = Object.assign({}, this.data.post);
     if (!post) return;
 
     var isLiked = !post.isLiked;
@@ -202,17 +474,19 @@ Page({
         isLiked: isLiked
       }
     }).catch(function (err) {
-      post.isLiked = !isLiked;
-      post.likeCount = (post.likeCount || 0) + (isLiked ? -1 : 1);
-      if (post.likeCount < 0) post.likeCount = 0;
-      that.setData({ post: post });
+      console.error('[detail] 点赞失败', err);
+      var rollbackPost = Object.assign({}, that.data.post);
+      rollbackPost.isLiked = !isLiked;
+      rollbackPost.likeCount = (rollbackPost.likeCount || 0) + (isLiked ? -1 : 1);
+      if (rollbackPost.likeCount < 0) rollbackPost.likeCount = 0;
+      that.setData({ post: rollbackPost });
     });
   },
 
   // 收藏/取消收藏
   onFavoriteTap: function () {
     var that = this;
-    var post = this.data.post;
+    var post = Object.assign({}, this.data.post);
     if (!post) return;
 
     var isFavorite = !post.isFavorite;
@@ -233,8 +507,10 @@ Page({
         duration: 1500
       });
     }).catch(function (err) {
-      post.isFavorite = !isFavorite;
-      that.setData({ post: post });
+      console.error('[detail] 收藏失败', err);
+      var rollbackPost = Object.assign({}, that.data.post);
+      rollbackPost.isFavorite = !isFavorite;
+      that.setData({ post: rollbackPost });
     });
   },
 
@@ -245,6 +521,41 @@ Page({
     wx.previewImage({
       current: url,
       urls: urls || [url]
+    });
+  },
+
+  // 预览评论图片
+  previewCommentImage: function (e) {
+    var url = e.currentTarget.dataset.url;
+    if (!url) return;
+
+    // cloud:// 协议需要先获取临时 URL
+    if (url.indexOf('cloud://') === 0) {
+      wx.showLoading({ title: '加载中...', mask: true });
+      wx.cloud.getTempFileURL({
+        fileList: [url]
+      }).then(function (res) {
+        wx.hideLoading();
+        var tempUrl = res.fileList[0] && res.fileList[0].tempFileURL;
+        if (tempUrl) {
+          wx.previewImage({
+            current: tempUrl,
+            urls: [tempUrl]
+          });
+        } else {
+          wx.showToast({ title: '图片加载失败', icon: 'none' });
+        }
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[detail] 预览图片失败', err);
+        wx.showToast({ title: '图片加载失败', icon: 'none' });
+      });
+      return;
+    }
+
+    wx.previewImage({
+      current: url,
+      urls: [url]
     });
   },
 
@@ -270,20 +581,87 @@ Page({
         replyTo = { id: commentId, author: author };
       }
     }
-    this.setData({
-      showInput: true,
-      replyTo: replyTo,
-      commentText: replyTo ? '回复 @' + replyTo.author + '：' : ''
-    });
+  this.setData({
+    showInput: true,
+    inputActive: false,
+    replyTo: replyTo,
+    commentText: replyTo ? '回复 @' + replyTo.author + '：' : '',
+    commentImageUrl: '',
+    showEmojiPanel: false
+  });
   },
 
   // 隐藏评论输入
   hideCommentInput: function () {
     this.setData({
       showInput: false,
+      inputActive: false,
       replyTo: null,
-      commentText: ''
+      commentText: '',
+      commentImageUrl: '',
+      showEmojiPanel: false
     });
+  },
+
+  // 输入框获得焦点
+  onInputFocus: function () {
+    this.setData({ inputActive: true });
+  },
+
+  // 插入@提及
+  insertAtMention: function () {
+    var text = this.data.commentText + '@';
+    this.setData({ commentText: text });
+  },
+
+  // 切换表情包面板
+  toggleEmojiPanel: function () {
+    this.setData({ showEmojiPanel: !this.data.showEmojiPanel });
+  },
+
+  // 插入表情包
+  insertEmoji: function (e) {
+    var emoji = e.currentTarget.dataset.emoji;
+    var text = this.data.commentText + emoji;
+    this.setData({ commentText: text });
+  },
+
+  // 选择评论图片
+  chooseCommentImage: function () {
+    var that = this;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: function (res) {
+        var tempFile = res.tempFiles[0];
+        if (!tempFile) return;
+        that.uploadCommentImage(tempFile.tempFilePath);
+      }
+    });
+  },
+
+  // 上传评论图片到云存储
+  uploadCommentImage: function (filePath) {
+    var that = this;
+    wx.showLoading({ title: '上传中...' });
+    var cloudPath = 'square/comments/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.jpg';
+    wx.cloud.uploadFile({
+      cloudPath: cloudPath,
+      filePath: filePath
+    }).then(function (res) {
+      wx.hideLoading();
+      that.setData({ commentImageUrl: res.fileID });
+    }).catch(function (err) {
+      wx.hideLoading();
+      console.error('[detail] 评论图片上传失败', err);
+      wx.showToast({ title: '图片上传失败', icon: 'none' });
+    });
+  },
+
+  // 删除已选评论图片
+  removeCommentImage: function () {
+    this.setData({ commentImageUrl: '' });
   },
 
   // 评论输入
@@ -295,9 +673,10 @@ Page({
   submitComment: function () {
     var that = this;
     var text = this.data.commentText.trim();
+    var imageUrl = this.data.commentImageUrl;
 
-    if (!text) {
-      wx.showToast({ title: '请输入评论内容', icon: 'none' });
+    if (!text && !imageUrl) {
+      wx.showToast({ title: '请输入评论内容或上传图片', icon: 'none' });
       return;
     }
 
@@ -308,9 +687,8 @@ Page({
         action: 'squareCreateComment',
         postId: this.data.postId,
         content: text,
-        parentId: this.data.replyTo ? this.data.replyTo.id : null,
-        avatarUrl: this.data.avatarUrl,
-        nickName: this.data.nickName
+        imageUrl: imageUrl,
+        parentId: this.data.replyTo ? this.data.replyTo.id : null
       }
     }).then(function (res) {
       wx.hideLoading();
@@ -319,7 +697,7 @@ Page({
         that.hideCommentInput();
 
         // 更新评论计数
-        var post = that.data.post;
+        var post = Object.assign({}, that.data.post);
         post.commentCount = (post.commentCount || 0) + 1;
         that.setData({ post: post });
 
@@ -366,7 +744,7 @@ Page({
   },
 
   getTypeColor: function (type) {
-    var map = { 'achievement': '#2563eb', 'discussion': '#7c3aed', 'resource': '#059669', 'call_for_papers': '#ea580c', 'review': '#dc2626', 'journal': '#0891b2', 'literature_help': '#f59e0b' };
+    var map = { 'achievement': '#2563eb', 'discussion': '#7C3AED', 'resource': '#059669', 'call_for_papers': '#F97316', 'review': '#10B981', 'journal': '#06B6D4', 'literature_help': '#F43F5E' };
     return map[type] || '#6B7280';
   },
 
@@ -437,7 +815,7 @@ Page({
     }).then(function (res) {
       var fileID = res.fileID;
       // 调用云函数完成应助
-      that.completeHelpRespond(fileID);
+      that.completeHelpRespond(fileID, fileName);
     }).catch(function (err) {
       wx.hideLoading();
       console.error('[detail] 文件上传失败', err);
@@ -446,7 +824,7 @@ Page({
   },
 
   // 完成应助
-  completeHelpRespond: function (fileID) {
+  completeHelpRespond: function (fileID, fileName) {
     var that = this;
     var post = this.data.post;
 
@@ -455,7 +833,8 @@ Page({
       data: {
         action: 'squareHelpRespond',
         postId: post._id,
-        fileID: fileID
+        fileID: fileID,
+        fileName: fileName
       }
     }).then(function (res) {
       wx.hideLoading();
@@ -483,32 +862,41 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '获取下载链接...', mask: true });
-    wx.cloud.getTempFileURL({
-      fileList: [post.docFileId]
+    wx.showLoading({ title: '下载中...', mask: true });
+    wx.cloud.downloadFile({
+      fileID: post.docFileId
     }).then(function (res) {
       wx.hideLoading();
-      var fileURL = res.fileList[0].tempFileURL;
-      if (fileURL) {
+      if (res.tempFilePath) {
         wx.openDocument({
-          filePath: fileURL,
+          filePath: res.tempFilePath,
           showMenu: true,
-          fail: function () {
-            // 如果无法直接打开，提示用户
-            wx.showModal({
-              title: '提示',
-              content: '文件已准备好，请在浏览器中打开',
-              showCancel: false
+          fileType: 'auto',
+          fail: function (err) {
+            console.error('[detail] 打开文件失败', err);
+            // 降级：复制链接让用户手动打开
+            wx.cloud.getTempFileURL({
+              fileList: [post.docFileId]
+            }).then(function (urlRes) {
+              var url = urlRes.fileList[0] && urlRes.fileList[0].tempFileURL;
+              if (url) {
+                wx.setClipboardData({
+                  data: url,
+                  success: function () {
+                    wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' });
+                  }
+                });
+              }
             });
           }
         });
       } else {
-        wx.showToast({ title: '获取文件失败', icon: 'none' });
+        wx.showToast({ title: '下载文件失败', icon: 'none' });
       }
     }).catch(function (err) {
       wx.hideLoading();
-      console.error('[detail] 获取文件链接失败', err);
-      wx.showToast({ title: '获取文件失败', icon: 'none' });
+      console.error('[detail] 下载文件失败', err);
+      wx.showToast({ title: '下载文件失败', icon: 'none' });
     });
   },
 

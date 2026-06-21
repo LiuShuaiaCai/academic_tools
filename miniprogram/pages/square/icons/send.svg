@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
+  <defs>
+    <linearGradient id="sendBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#94A3B8"/>
+      <stop offset="100%" stop-color="#64748B"/>
+    </linearGradient>
+    <linearGradient id="sendBgActive" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="3.5" flood-color="#000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <!-- 底板 -->
+  <rect x="3" y="3" width="50" height="50" rx="15" fill="url(#sendBg)" filter="url(#shadow)"/>
+  <g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 纸飞机尾部 -->
+    <line x1="14" y1="28" x2="30" y2="18"/>
+    <!-- 纸飞机底部 -->
+    <line x1="14" y1="28" x2="30" y2="38"/>
+    <!-- 纸飞机机身 -->
+    <line x1="30" y1="18" x2="42" y2="28"/>
+    <line x1="30" y1="38" x2="42" y2="28"/>
+    <!-- 中心线 -->
+    <line x1="14" y1="28" x2="42" y2="28"/>
+  </g>
+</svg>

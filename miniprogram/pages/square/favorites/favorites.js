@@ -173,11 +173,11 @@ Page({
   getTypeColor: function (type) {
     var map = {
       'achievement': '#2563eb',
-      'discussion': '#7c3aed',
+      'discussion': '#7C3AED',
       'resource': '#059669',
-      'call_for_papers': '#ea580c',
-      'review': '#dc2626',
-      'journal': '#0891b2'
+      'call_for_papers': '#F97316',
+      'review': '#10B981',
+      'journal': '#06B6D4'
     };
     return map[type] || '#6B7280';
   }
