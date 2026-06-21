@@ -198,6 +198,8 @@
 }
 
 .menu-item:last-child { border-bottom: none; }
+.menu-icon { font-size: 32rpx; margin-right: 16rpx; }
+.menu-icon-svg { width: 40rpx; height: 40rpx; margin-right: 16rpx; flex-shrink: 0; }
 
 /* 图标色块 */
 .menu-icon-box {

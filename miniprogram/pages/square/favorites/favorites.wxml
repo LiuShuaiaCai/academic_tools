@@ -1,0 +1,108 @@
+<!-- pages/square/favorites/favorites.wxml - 我的收藏 -->
+<view class="favorites-page">
+
+  <!-- 收藏列表 -->
+  <view class="fav-list" wx:if="{{posts.length > 0}}">
+    <view
+      class="post-card"
+      wx:for="{{posts}}"
+      wx:key="_id"
+      data-id="{{item._id}}"
+    >
+      <!-- 卡片头部 -->
+      <view class="post-header" bindtap="navigateToDetail">
+        <view class="post-avatar">
+          <image class="post-avatar-img" wx:if="{{item.isUrlAvatar}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <text class="post-avatar-text" wx:elif="{{item.avatarUrl}}">{{item.avatarUrl}}</text>
+          <image class="post-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
+        </view>
+        <view class="post-meta">
+          <view class="post-author">{{item.nickName || '学者用户'}}</view>
+          <view class="post-time">{{item.displayTime}}</view>
+        </view>
+        <view class="post-type-badge" style="background: {{item.typeColor}}20; color: {{item.typeColor}};">
+          {{item.typeLabel}}
+        </view>
+      </view>
+
+      <!-- 卡片内容 -->
+      <view class="post-body" bindtap="navigateToDetail">
+        <view class="post-title" wx:if="{{item.title}}">{{item.title}}</view>
+        <view class="post-content">{{item.content}}</view>
+
+        <!-- 图片 -->
+        <view class="post-images" wx:if="{{item.images && item.images.length > 0}}">
+          <image
+            class="post-image"
+            wx:for="{{item.images}}"
+            wx:for-item="img"
+            wx:key="index"
+            src="{{img}}"
+            mode="aspectFill"
+            lazy-load="true"
+            data-url="{{img}}"
+            data-urls="{{item.images}}"
+            bindtap="previewImage"
+          />
+        </view>
+
+        <!-- 标签 -->
+        <view class="post-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+          <view class="post-tag" wx:for="{{item.tags}}" wx:key="index">#{{item}}</view>
+        </view>
+      </view>
+
+      <!-- 底部操作栏 -->
+      <view class="post-footer">
+        <view class="footer-action">
+          <image class="action-icon" src="/pages/square/icons/heart.svg" mode="aspectFit"></image>
+          <text class="action-text">点赞{{item.likeCount > 0 ? ' ' + item.likeCount : ''}}</text>
+        </view>
+        <view class="footer-action">
+          <image class="action-icon" src="/pages/square/icons/message-square.svg" mode="aspectFit"></image>
+          <text class="action-text">评论{{item.commentCount > 0 ? ' ' + item.commentCount : ''}}</text>
+        </view>
+        <view class="footer-action favorited" data-index="{{index}}" bindtap="onUnfavorite">
+          <image class="action-icon" src="/pages/square/icons/bookmark-filled.svg" mode="aspectFit"></image>
+          <text class="action-text">已收藏</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{loading}}">
+      <view class="loading-dot"></view>
+      <text>加载中...</text>
+    </view>
+    <view class="load-more no-more" wx:elif="{{!hasMore && posts.length > 0}}">
+      <text>— 没有更多了 —</text>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{posts.length === 0 && !loading}}">
+    <view class="empty-icon">📑</view>
+    <view class="empty-text">暂无收藏</view>
+    <view class="empty-sub">去学术动态发现好内容吧</view>
+    <view class="go-square-btn" bindtap="goToSquare">去看看</view>
+  </view>
+
+  <!-- 加载骨架屏 -->
+  <view class="skeleton-list" wx:if="{{loading && posts.length === 0}}">
+    <view class="skeleton-card" wx:for="{{[1,2,3]}}" wx:key="index">
+      <view class="sk-header">
+        <view class="sk-avatar skeleton-pulse"></view>
+        <view class="sk-meta">
+          <view class="sk-line short skeleton-pulse"></view>
+          <view class="sk-line mini skeleton-pulse"></view>
+        </view>
+      </view>
+      <view class="sk-body">
+        <view class="sk-line long skeleton-pulse"></view>
+        <view class="sk-line long skeleton-pulse"></view>
+        <view class="sk-line medium skeleton-pulse"></view>
+      </view>
+    </view>
+  </view>
+
+</view>

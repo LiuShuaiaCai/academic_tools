@@ -1,0 +1,238 @@
+<!-- pages/square/publish/publish.wxml - 发布动态 -->
+<view class="publish-page">
+
+  <!-- ========== 类型选择 ========== -->
+  <view class="type-section">
+    <view class="section-label">动态类型</view>
+    <view class="type-options">
+      <view
+        class="type-option {{postType === item.key ? 'active' : ''}}"
+        wx:for="{{typeOptions}}"
+        wx:key="key"
+        data-type="{{item.key}}"
+        bindtap="onTypeSelect"
+        style="{{postType === item.key ? 'border-color:' + item.color + '; background:' + item.color + '15;' : ''}}"
+      >
+        <image class="type-option-icon" src="{{item.icon}}" mode="aspectFit"></image>
+        <text class="type-option-label" style="{{postType === item.key ? 'color:' + item.color : ''}}">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 征集类型（仅征稿通知显示） ========== -->
+  <view class="form-section" wx:if="{{postType === 'call_for_papers'}}">
+    <view class="section-label">征集类型</view>
+    <view class="call-type-options">
+      <view
+        class="call-type-option {{callType === item.key ? 'active' : ''}}"
+        wx:for="{{callTypeOptions}}"
+        wx:key="key"
+        data-type="{{item.key}}"
+        bindtap="onCallTypeSelect"
+      >{{item.label}}</view>
+    </view>
+    <!-- 自定义征集类型 -->
+    <view class="call-type-custom" wx:if="{{callType === 'custom'}}">
+      <input
+        class="call-type-input"
+        placeholder="请输入自定义征集类型"
+        placeholder-class="input-placeholder"
+        value="{{customCallType}}"
+        maxlength="20"
+        bindinput="onCustomCallTypeInput"
+      />
+    </view>
+  </view>
+
+  <!-- ========== 标题输入（非文献互助） ========== -->
+  <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
+    <view class="section-label">标题（选填）</view>
+    <input
+      class="title-input"
+      placeholder="给动态起个标题..."
+      placeholder-class="input-placeholder"
+      value="{{title}}"
+      maxlength="100"
+      bindinput="onTitleInput"
+    />
+  </view>
+
+  <!-- ========== 内容输入（非文献互助） ========== -->
+  <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
+    <view class="section-label">内容</view>
+    <textarea
+      class="content-input"
+      placeholder="分享你的学术成果、研究心得或资源..."
+      placeholder-class="input-placeholder"
+      value="{{content}}"
+      maxlength="2000"
+      auto-height="true"
+      bindinput="onContentInput"
+    />
+    <view class="char-count {{content.length >= 1900 ? 'warn' : ''}}">
+      {{content.length}}/2000
+    </view>
+  </view>
+
+  <!-- ========== 图片上传（非文献互助） ========== -->
+  <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
+    <view class="section-label">图片（选填，最多{{maxImages}}张）</view>
+    <view class="image-upload-area">
+      <block wx:for="{{images}}" wx:key="index">
+        <view class="image-item">
+          <image class="image-preview" src="{{item}}" mode="aspectFill" />
+          <view class="image-delete" data-index="{{index}}" bindtap="deleteImage">×</view>
+        </view>
+      </block>
+      <view class="image-add" wx:if="{{images.length < maxImages}}" bindtap="chooseImage">
+        <text class="add-icon">+</text>
+        <text class="add-text">{{images.length}}/{{maxImages}}</text>
+      </view>
+    </view>
+    <view class="upload-tip" wx:if="{{uploading}}">图片上传中...</view>
+  </view>
+
+  <!-- ========== 标签输入（非文献互助） ========== -->
+  <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
+    <view class="section-label">标签（选填）</view>
+    <view class="tag-area">
+      <view class="tag-list" wx:if="{{tags.length > 0}}">
+        <view class="tag-item" wx:for="{{tags}}" wx:key="index">
+          #{{item}}
+          <text class="tag-close" data-index="{{index}}" bindtap="deleteTag">×</text>
+        </view>
+      </view>
+      <view class="tag-input-row">
+        <input
+          class="tag-input"
+          placeholder="输入标签后回车添加"
+          placeholder-class="input-placeholder"
+          value="{{tagInput}}"
+          maxlength="20"
+          bindinput="onTagInput"
+          bindconfirm="addTag"
+        />
+        <view class="tag-add-btn" bindtap="addTag">添加</view>
+      </view>
+      <view class="tag-suggest-section" wx:if="{{tags.length < 8}}">
+        <view class="tag-suggest-title">推荐标签</view>
+        <view class="tag-suggest-list">
+          <view
+            class="tag-suggest-item"
+            wx:for="{{suggestedTags}}"
+            wx:key="*this"
+            data-tag="{{item}}"
+            bindtap="selectSuggestedTag"
+          >{{item}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 文献互助表单（仅文献互助类型显示） ========== -->
+  <view class="help-section" wx:if="{{postType === 'literature_help'}}">
+    <!-- 标题 -->
+    <view class="form-section">
+      <view class="section-label">标题 <text class="required">*</text></view>
+      <input
+        class="title-input"
+        placeholder="请输入文献标题"
+        placeholder-class="input-placeholder"
+        value="{{title}}"
+        maxlength="100"
+        bindinput="onTitleInput"
+      />
+    </view>
+
+    <!-- 文献链接 -->
+    <view class="form-section">
+      <view class="section-label">文献链接（选填）</view>
+      <input
+        class="text-input"
+        placeholder="请输入文献链接"
+        placeholder-class="input-placeholder"
+        value="{{docUrl}}"
+        maxlength="500"
+        bindinput="onDocUrlInput"
+      />
+    </view>
+
+    <!-- 文献类型 -->
+    <view class="form-section">
+      <view class="section-label">文献类型 <text class="required">*</text></view>
+      <view class="doc-type-options">
+        <view
+          class="doc-type-option {{docType === item.key ? 'active' : ''}}"
+          wx:for="{{docTypeOptions}}"
+          wx:key="key"
+          data-type="{{item.key}}"
+          bindtap="onDocTypeSelect"
+        >{{item.label}}</view>
+      </view>
+    </view>
+
+    <!-- 悬赏积分 -->
+    <view class="form-section">
+      <view class="section-label">悬赏积分 <text class="required">*</text></view>
+      <view class="points-row">
+        <input
+          class="points-input"
+          type="number"
+          placeholder="输入积分"
+          placeholder-class="input-placeholder"
+          value="{{rewardPoints > 0 ? rewardPoints : ''}}"
+          maxlength="5"
+          bindinput="onRewardPointsInput"
+        />
+        <text class="points-balance">余额：{{currentPoints}} 积分</text>
+      </view>
+      <view class="quick-points">
+        <view class="quick-point {{rewardPoints === item ? 'active' : ''}}"
+          wx:for="{{quickPoints}}"
+          wx:key="*this"
+          data-points="{{item}}"
+          bindtap="onQuickPointsSelect"
+        >{{item}}</view>
+      </view>
+    </view>
+
+    <!-- 其他信息 -->
+    <view class="form-section">
+      <view class="section-label">其他信息（选填）</view>
+      <textarea
+        class="content-input"
+        placeholder="建议补充文献的其他信息，如作者、期刊、期刊号、页码等"
+        placeholder-class="input-placeholder"
+        value="{{content}}"
+        maxlength="2000"
+        auto-height="true"
+        bindinput="onContentInput"
+      />
+      <view class="char-count {{content.length >= 1900 ? 'warn' : ''}}">
+        {{content.length}}/2000
+      </view>
+    </view>
+
+    <!-- 关闭时间 -->
+    <view class="form-section">
+      <view class="section-label">关闭时间 <text class="required">*</text></view>
+      <picker wx:if="{{today && maxDate}}" mode="date" value="{{helpDeadline || today}}" start="{{today}}" end="{{maxDate}}" bindchange="onHelpDeadlineChange">
+        <view class="date-picker">
+          <text class="date-text">{{helpDeadline || '请选择关闭时间'}}</text>
+          <text class="date-arrow">▶</text>
+        </view>
+      </picker>
+      <view wx:else class="date-picker date-picker-loading">
+        <text class="date-text">日期加载中...</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 发布按钮 ========== -->
+  <view class="submit-section">
+    <button class="submit-btn" bindtap="submitPost" disabled="{{uploading}}">
+      发布动态
+    </button>
+  </view>
+
+</view>

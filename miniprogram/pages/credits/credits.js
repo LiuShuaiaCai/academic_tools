@@ -172,30 +172,47 @@ Page({
   loadStats: function() {
     var that = this;
     that.setData({ statsLoading: true });
-    creditsUtil.getCreditsStats().then(function(res) {
-      if (res.success) {
-        var trendData = res.trendData || [];
-        // 计算趋势图最大值
-        var maxValue = 10;
-        for (var i = 0; i < trendData.length; i++) {
-          var item = trendData[i];
-          var itemMax = Math.max(item.earn || 0, item.spend || 0);
-          if (itemMax > maxValue) maxValue = itemMax;
+    // 先静默修复可能缺失的积分转移记录（幂等安全）
+    that.repairHelpCredits(function() {
+      creditsUtil.getCreditsStats().then(function(res) {
+        if (res.success) {
+          var trendData = res.trendData || [];
+          var maxValue = 10;
+          for (var i = 0; i < trendData.length; i++) {
+            var item = trendData[i];
+            var itemMax = Math.max(item.earn || 0, item.spend || 0);
+            if (itemMax > maxValue) maxValue = itemMax;
+          }
+          that.setData({
+            monthEarn: res.monthEarn || 0,
+            monthSpend: res.monthSpend || 0,
+            monthNet: res.monthNet || 0,
+            trendData: trendData,
+            maxTrendValue: maxValue,
+            statsLoading: false
+          });
+        } else {
+          that.setData({ statsLoading: false });
         }
-        that.setData({
-          monthEarn: res.monthEarn || 0,
-          monthSpend: res.monthSpend || 0,
-          monthNet: res.monthNet || 0,
-          trendData: trendData,
-          maxTrendValue: maxValue,
-          statsLoading: false
-        });
-      } else {
+      }).catch(function(e) {
+        console.error('[积分] 获取统计失败', e);
         that.setData({ statsLoading: false });
-      }
+      });
+    });
+  },
+
+  // 静默修复文献互助积分（幂等安全，缺失补建）
+  repairHelpCredits: function(callback) {
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'repairAllHelpCredits' }
+    }).then(function(res) {
+      var result = res.result || {};
+      console.log('[积分] 积分修复结果:', result);
+      if (callback) callback();
     }).catch(function(e) {
-      console.error('[积分] 获取统计失败', e);
-      that.setData({ statsLoading: false });
+      console.error('[积分] 积分修复调用失败', e);
+      if (callback) callback();
     });
   },
 

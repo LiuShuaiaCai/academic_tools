@@ -24,7 +24,11 @@
     "pages/feedback/feedback",
     "pages/specialIssue/specialIssue",
     "pages/specialIssue/trend/trend",
-    "pages/specialIssue/detail/detail"
+    "pages/specialIssue/detail/detail",
+    "pages/square/square",
+    "pages/square/publish/publish",
+    "pages/square/detail/detail",
+    "pages/square/favorites/favorites"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",
@@ -46,10 +50,10 @@
         "selectedIconPath": "images/icons/home-active.png"
       },
       {
-        "pagePath": "pages/toolbox/toolbox",
-        "text": "工具箱",
-        "iconPath": "images/icons/business.png",
-        "selectedIconPath": "images/icons/business-active.png"
+        "pagePath": "pages/square/square",
+        "text": "学术动态",
+        "iconPath": "images/icons/goods.png",
+        "selectedIconPath": "images/icons/goods-active.png"
       },
       {
         "pagePath": "pages/calendar/calendar",
