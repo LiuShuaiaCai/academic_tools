@@ -10,7 +10,8 @@ page { background: #F6F6F6; }
 .home-header {
   position: relative;
   min-height: 340rpx;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 2;
 }
 
 /* 轮播容器 */
@@ -127,6 +128,8 @@ page { background: #F6F6F6; }
   padding: 24rpx;
   margin: -20rpx 24rpx 0;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
+  position: relative;
+  z-index: 10;
 }
 
 .stats-frame-title {
