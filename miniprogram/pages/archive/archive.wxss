@@ -67,9 +67,8 @@
 .file-info { flex: 1; min-width: 0; }
 .file-name { font-size: 26rpx; font-weight: 500; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-meta { font-size: 22rpx; color: #9CA3AF; margin-top: 4rpx; }
-.file-actions { display: flex; align-items: center; gap: 4rpx; flex-shrink: 0; }
-.file-share { font-size: 32rpx; padding: 8rpx; }
-.file-del { font-size: 32rpx; padding: 8rpx; }
+.file-actions { display: flex; align-items: center; gap: 2rpx; flex-shrink: 0; }
+.action-icon { width: 32rpx; height: 32rpx; padding: 10rpx; flex-shrink: 0; }
 
 /* 空状态 */
 .empty-box {

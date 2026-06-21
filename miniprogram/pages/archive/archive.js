@@ -278,6 +278,82 @@ Page({
     };
   },
 
+  /** 下载文件到本地 */
+  downloadFile: function(e) {
+    var id = e.currentTarget.dataset.id;
+    if (!id) return;
+    var file = null;
+    var list = this.data.allList;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i]._id === id) { file = list[i]; break; }
+    }
+    if (!file || !file.fileID) {
+      wx.showToast({ title: '文件信息异常', icon: 'none' });
+      return;
+    }
+    var ext = (file.ext || '').toLowerCase();
+    // 图片：下载后保存到相册
+    var imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'];
+    if (imageExts.indexOf(ext) !== -1) {
+      var that = this;
+      wx.showLoading({ title: '正在保存...' });
+      that._getFilePath(file, function(localPath) {
+        wx.hideLoading();
+        wx.saveImageToPhotosAlbum({
+          filePath: localPath,
+          success: function() {
+            wx.showToast({ title: '已保存到相册', icon: 'success' });
+          },
+          fail: function(err) {
+            if (err.errMsg && err.errMsg.indexOf('auth') !== -1) {
+              wx.showModal({
+                title: '需要授权',
+                content: '请允许小程序访问相册后重试',
+                success: function(res) {
+                  if (res.confirm) wx.openSetting();
+                }
+              });
+            } else {
+              wx.showToast({ title: '保存失败', icon: 'none' });
+            }
+          }
+        });
+      });
+      return;
+    }
+    // 文档类型：下载并打开（打开后可发送给朋友/其他应用）
+    var that = this;
+    wx.showLoading({ title: '正在下载...' });
+    that._getFilePath(file, function(localPath) {
+      wx.hideLoading();
+      var fileTypeMap = {
+        pdf: 'pdf', doc: 'doc', docx: 'doc',
+        xls: 'xls', xlsx: 'xls', csv: 'xls',
+        ppt: 'ppt', pptx: 'ppt', txt: 'txt',
+        docm: 'doc', dotx: 'doc', rtf: 'doc', wps: 'doc'
+      };
+      var ft = fileTypeMap[ext] || '';
+      if (ft) {
+        // 文档：打开后可「发送给朋友」「收藏」「保存到手机」
+        wx.openDocument({
+          filePath: localPath,
+          fileType: ft,
+          success: function() {
+            wx.showToast({ title: '可通过右上角菜单发送/收藏', icon: 'none' });
+          }
+        });
+      } else {
+        // 其他格式（HTML/MD等）
+        wx.showModal({
+          title: '下载完成',
+          content: '文件已保存到小程序缓存。可在文件列表中点击预览查看。',
+          showCancel: false,
+          confirmText: '知道了'
+        });
+      }
+    });
+  },
+
   /** 预览文件 */
   previewFile: function(e) {
     var id = e.currentTarget.dataset.id;

@@ -41,8 +41,9 @@
         <view class="file-meta">{{item.categoryName}} · {{item.extLabel}} · {{item.sizeLabel}} · {{item.createTime}}</view>
       </view>
       <view class="file-actions">
-        <view class="file-share" catchtap="shareFile" data-id="{{item._id}}">↗️</view>
-        <view class="file-del" catchtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}">🗑️</view>
+        <image class="action-icon" src="../../images/icons/download.svg" catchtap="downloadFile" data-id="{{item._id}}"></image>
+        <image class="action-icon" src="../../images/icons/trash.svg" catchtap="deleteItem" data-id="{{item._id}}" data-fileid="{{item.fileID}}"></image>
+        <image class="action-icon" src="../../images/icons/share.svg" catchtap="shareFile" data-id="{{item._id}}"></image>
       </view>
     </view>
   </view>
