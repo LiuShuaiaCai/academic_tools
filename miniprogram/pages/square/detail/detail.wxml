@@ -96,20 +96,51 @@
           </view>
         </view>
 
-        <!-- 应助者信息（解决后显示） -->
-        <view class="help-helper-card" wx:if="{{post.helpStatus === '已解决' && post.helperNickName}}">
-          <view class="help-detail-title">应助者信息</view>
-          <view class="helper-info">
-            <view class="helper-avatar">
-              <image class="helper-avatar-img" wx:if="{{post.helperIsUrlAvatar}}" src="{{post.helperAvatarUrl}}" mode="aspectFill" />
-              <text class="helper-avatar-text" wx:elif="{{post.helperAvatarUrl}}">{{post.helperAvatarUrl}}</text>
-              <image class="helper-avatar-img" wx:else src="/images/icons/usercenter.png" mode="aspectFill" />
-            </view>
-            <view class="helper-meta">
-              <text class="helper-name">{{post.helperNickName}}</text>
-              <text class="helper-time" wx:if="{{post.helpSolveTime}}">解决于 {{post.helpSolveTime}}</text>
-            </view>
+
+        <!-- 应助列表 -->
+        <!-- 规则：发布者看全部；其他人只看自己 + 总人数 -->
+        <view class="help-responses-section" wx:if="{{post.responses && post.responses.length > 0}}">
+          <view class="help-responses-header">
+            <text class="responses-count">{{post.responses.length}} 人应助</text>
           </view>
+          <!-- 发布者：看到所有应助 -->
+          <block wx:if="{{post._openid === currentOpenid}}">
+            <view class="response-item" wx:for="{{post.responses}}" wx:key="id" wx:for-item="resp">
+              <view class="response-user">
+                <view class="response-avatar">
+                  <image wx:if="{{resp.isUrlAvatar && resp.responderAvatarUrl}}" src="{{resp.responderAvatarUrl}}" mode="aspectFill"></image>
+                  <text wx:else class="response-avatar-text">{{resp.responderNickName ? resp.responderNickName.charAt(0) : '?'}}</text>
+                </view>
+                <text class="response-nickname">{{resp.responderNickName || '匿名用户'}}</text>
+                <view class="response-accepted-tag" wx:if="{{resp.accepted}}" style="color: #10B981;">✓ 已采纳</view>
+              </view>
+              <view class="response-content" wx:if="{{resp.content}}">{{resp.content}}</view>
+              <view class="response-file" wx:if="{{resp.fileName}}" data-url="{{resp.fileId}}" bindtap="onOpenResponseFile">
+                <image class="response-file-icon" src="/pages/square/icons/file.svg" mode="aspectFit"></image>
+                <text class="response-file-name">{{resp.fileName}}</text>
+              </view>
+              <!-- 采纳按钮 -->
+              <view class="response-accept-btn" wx:if="{{!resp.accepted && post.helpStatus === '求助中'}}" data-response-id="{{resp.id}}" catchtap="onHelpAccept">
+                采纳此应助
+              </view>
+            </view>
+          </block>
+          <!-- 非发布者：只看自己的应助 -->
+          <block wx:else>
+            <block wx:for="{{post.responses}}" wx:key="id" wx:for-item="resp">
+              <view class="response-item" wx:if="{{resp.responderOpenid === currentOpenid}}">
+                <view class="response-user">
+                  <text class="response-nickname" style="color: #2563EB;">我的应助</text>
+                  <view class="response-accepted-tag" wx:if="{{resp.accepted}}" style="color: #10B981;">✓ 已采纳</view>
+                </view>
+                <view class="response-content" wx:if="{{resp.content}}">{{resp.content}}</view>
+                <view class="response-file" wx:if="{{resp.fileName}}" data-url="{{resp.fileId}}" bindtap="onOpenResponseFile">
+                  <image class="response-file-icon" src="/pages/square/icons/file.svg" mode="aspectFit"></image>
+                  <text class="response-file-name">{{resp.fileName}}</text>
+                </view>
+              </view>
+            </block>
+          </block>
         </view>
       </view>
 
@@ -131,7 +162,7 @@
 
     <!-- 文献互助操作按钮（仅文献互助类型显示） -->
     <view class="help-actions" wx:if="{{post.type === 'literature_help'}}">
-      <button class="help-btn respond-btn" wx:if="{{post.canRespond}}" bindtap="onHelpRespond">
+      <button class="help-btn respond-btn" wx:if="{{post.canRespond}}" bindtap="onHelpRespondTap">
         📚 应助此求助
       </button>
       <button class="help-btn download-btn" wx:if="{{post.canDownload}}" bindtap="onDownloadFile">
@@ -338,6 +369,54 @@
         <view class="emoji-item" wx:for="{{emojiList}}" wx:for-item="emoji" wx:key="*this" bindtap="insertEmoji" data-emoji="{{emoji}}">{{emoji}}</view>
       </view>
     </view>
+  </view>
+</view>
+
+<!-- ========== 应助弹窗 ========== -->
+<view class="respond-modal-mask" wx:if="{{showRespondModal}}" bindtap="closeRespondModal"></view>
+<view class="respond-modal" wx:if="{{showRespondModal}}">
+  <view class="respond-modal-header">
+    <text class="respond-modal-title">应助文献</text>
+    <text class="respond-modal-close" bindtap="closeRespondModal">✕</text>
+  </view>
+  <view class="respond-modal-body">
+    <view class="respond-help-title">{{respondPostTitle}}</view>
+    <view class="respond-help-reward" wx:if="{{respondPostReward > 0}}">悬赏 {{respondPostReward}} 积分</view>
+    
+    <view class="respond-input-section">
+      <view class="respond-input-label">应助内容（选填）</view>
+      <textarea
+        class="respond-textarea"
+        placeholder="输入应助内容，如链接、说明等..."
+        placeholder-class="input-placeholder"
+        value="{{respondContent}}"
+        maxlength="1000"
+        auto-height="true"
+        bindinput="onRespondContentInput"
+      />
+      <view class="respond-char-count">{{respondContent.length}}/1000</view>
+    </view>
+
+    <view class="respond-file-section">
+      <view class="respond-file-label">上传文件（选填）</view>
+      <view class="respond-file-upload" wx:if="{{!respondFileName}}" bindtap="onRespondChooseFile">
+        <text class="respond-file-plus">+</text>
+        <text class="respond-file-hint">点击选择文件</text>
+      </view>
+      <view class="respond-file-selected" wx:else>
+        <image class="respond-file-icon" src="/pages/square/icons/file.svg" mode="aspectFit"></image>
+        <text class="respond-file-name">{{respondFileName}}</text>
+        <view class="respond-file-remove" bindtap="onRespondRemoveFile">✕</view>
+      </view>
+    </view>
+
+    <view class="respond-modal-hint" wx:if="{{!respondContent && !respondFileName}}">
+      请输入应助内容或上传文件（至少填一项）
+    </view>
+  </view>
+  <view class="respond-modal-footer">
+    <button class="respond-cancel-btn" bindtap="closeRespondModal">取消</button>
+    <button class="respond-submit-btn" bindtap="onRespondSubmit" disabled="{{!respondContent && !respondFileName}}">提交应助</button>
   </view>
 </view>
 

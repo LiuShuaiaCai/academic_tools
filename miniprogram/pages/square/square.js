@@ -59,7 +59,18 @@ Page({
     showEmojiPanel: false,
     emojiList: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😝','😜','🤪','🤔','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👍','👎','👏','🙌','👐','🤝','🤗','🤭','🤫','🌹','❤️','💔','💖','💙','💚','💛','💜','🖤','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','🗨️','🗯️','💭','💤'],
     // 评论图片
-    commentImageUrl: ''
+    commentImageUrl: '',
+    
+    // 应助弹窗
+    showRespondModal: false,
+    respondPostIndex: -1,
+    respondPostId: '',
+    respondPostTitle: '',
+    respondPostReward: 0,
+    respondContent: '',
+    respondFileName: '',
+    respondFileId: '',
+    respondFilePath: ''
 },
 
   onLoad: function () {
@@ -556,11 +567,15 @@ Page({
           cloudFileIDs.push(post.avatarUrl);
         }
       }
-      if (post.helperAvatarUrl && post.helperAvatarUrl.indexOf('cloud://') === 0) {
-        if (cloudFileIDs.indexOf(post.helperAvatarUrl) === -1) {
-          cloudFileIDs.push(post.helperAvatarUrl);
+      // 应助者头像
+      var responses = post.responses || [];
+      responses.forEach(function (resp) {
+        if (resp.responderAvatarUrl && resp.responderAvatarUrl.indexOf('cloud://') === 0) {
+          if (cloudFileIDs.indexOf(resp.responderAvatarUrl) === -1) {
+            cloudFileIDs.push(resp.responderAvatarUrl);
+          }
         }
-      }
+      });
     });
 
     if (cloudFileIDs.length === 0) return Promise.resolve(posts);
@@ -577,8 +592,15 @@ Page({
         if (copy.avatarUrl && urlMap[copy.avatarUrl]) {
           copy.avatarUrl = urlMap[copy.avatarUrl];
         }
-        if (copy.helperAvatarUrl && urlMap[copy.helperAvatarUrl]) {
-          copy.helperAvatarUrl = urlMap[copy.helperAvatarUrl];
+        // 转换应助者头像
+        if (copy.responses && copy.responses.length > 0) {
+          copy.responses = copy.responses.map(function (resp) {
+            var respCopy = Object.assign({}, resp);
+            if (respCopy.responderAvatarUrl && urlMap[respCopy.responderAvatarUrl]) {
+              respCopy.responderAvatarUrl = urlMap[respCopy.responderAvatarUrl];
+            }
+            return respCopy;
+          });
         }
         return copy;
       });
@@ -739,9 +761,8 @@ Page({
     });
   },
 
-  // 应助 - 上传文献文件
+  // 应助 - 打开应助弹窗
   onHelpRespond: function (e) {
-    var that = this;
     var index = e.currentTarget.dataset.index;
     var post = this.data.posts[index];
 
@@ -749,71 +770,131 @@ Page({
       wx.showToast({ title: '该求助无法应助', icon: 'none' });
       return;
     }
-    if (post._openid === that.data.currentOpenid) {
+    if (post._openid === this.data.currentOpenid) {
       wx.showToast({ title: '不能应助自己的求助', icon: 'none' });
       return;
     }
 
+    this.setData({
+      showRespondModal: true,
+      respondPostIndex: index,
+      respondPostId: post._id,
+      respondPostTitle: post.title || '',
+      respondPostReward: post.rewardPoints || 0,
+      respondContent: '',
+      respondFileName: '',
+      respondFileId: '',
+      respondFilePath: ''
+    });
+  },
+
+  // 关闭应助弹窗
+  closeRespondModal: function () {
+    this.setData({
+      showRespondModal: false,
+      respondPostIndex: -1,
+      respondPostId: '',
+      respondPostTitle: '',
+      respondPostReward: 0,
+      respondContent: '',
+      respondFileName: '',
+      respondFileId: '',
+      respondFilePath: ''
+    });
+  },
+
+  // 应助内容输入
+  onRespondContentInput: function (e) {
+    this.setData({ respondContent: e.detail.value });
+  },
+
+  // 应助选择文件
+  onRespondChooseFile: function () {
+    var that = this;
     wx.chooseMessageFile({
       count: 1,
       type: 'file',
       success: function (res) {
         var tempFilePath = res.tempFiles[0].path;
         var fileName = res.tempFiles[0].name;
-        that.uploadHelpFile(tempFilePath, fileName, index);
+        that.setData({
+          respondFileName: fileName,
+          respondFilePath: tempFilePath,
+          respondFileId: ''  // 稍后上传
+        });
       }
     });
   },
 
-  // 上传应助文件到云存储
-  uploadHelpFile: function (tempFilePath, fileName, index) {
+  // 移除应助文件
+  onRespondRemoveFile: function () {
+    this.setData({
+      respondFileName: '',
+      respondFileId: '',
+      respondFilePath: ''
+    });
+  },
+
+  // 提交应助
+  onRespondSubmit: function () {
     var that = this;
-    wx.showLoading({ title: '上传中...', mask: true });
+    var content = this.data.respondContent.trim();
+    var fileName = this.data.respondFileName;
 
-    var cloudPath = 'help_files/' + Date.now() + '_' + fileName;
-    wx.cloud.uploadFile({
-      cloudPath: cloudPath,
-      filePath: tempFilePath
-    }).then(function (res) {
-      var fileID = res.fileID;
-      that.completeHelpRespond(fileID, fileName, index);
-    }).catch(function (err) {
-      wx.hideLoading();
-      console.error('[square] 文件上传失败', err);
-      wx.showToast({ title: '文件上传失败', icon: 'none' });
-    });
+    if (!content && !fileName) {
+      wx.showToast({ title: '请输入内容或上传文件', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '提交中...', mask: true });
+
+    // 如果有文件需要上传
+    var submitRequest = function (fileID) {
+      wx.cloud.callFunction({
+        name: 'academicAPI',
+        data: {
+          action: 'squareHelpRespond',
+          postId: that.data.respondPostId,
+          content: content,
+          fileID: fileID || '',
+          fileName: fileName || ''
+        }
+      }).then(function (res) {
+        wx.hideLoading();
+        var result = res.result || {};
+        if (result.success) {
+          wx.showToast({ title: '应助成功', icon: 'success' });
+          that.closeRespondModal();
+          // 刷新列表
+          that.loadPosts(true);
+        } else {
+          wx.showToast({ title: result.error || '应助失败', icon: 'none' });
+        }
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[square] 应助失败', err);
+        wx.showToast({ title: '应助失败', icon: 'none' });
+      });
+    };
+
+    if (this.data.respondFilePath) {
+      // 先上传文件
+      var cloudPath = 'help_files/' + Date.now() + '_' + fileName;
+      wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: this.data.respondFilePath
+      }).then(function (uploadRes) {
+        submitRequest(uploadRes.fileID);
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[square] 文件上传失败', err);
+        wx.showToast({ title: '文件上传失败，请重试', icon: 'none' });
+      });
+    } else {
+      submitRequest('');
+    }
   },
 
-  // 完成应助
-  completeHelpRespond: function (fileID, fileName, index) {
-    var that = this;
-    var post = this.data.posts[index];
-
-    wx.cloud.callFunction({
-      name: 'academicAPI',
-      data: {
-        action: 'squareHelpRespond',
-        postId: post._id,
-        fileID: fileID,
-        fileName: fileName
-      }
-    }).then(function (res) {
-      wx.hideLoading();
-      var result = res.result || {};
-
-      if (result.success) {
-        wx.showToast({ title: '应助成功', icon: 'success' });
-        // 刷新当前列表
-        that.loadPosts(true);
-      } else {
-        wx.showToast({ title: result.error || '应助失败', icon: 'none' });
-      }
-    }).catch(function (err) {
-      wx.hideLoading();
-      console.error('[square] 应助失败', err);
-      wx.showToast({ title: '应助失败', icon: 'none' });
-    });
-  },
 
   // 转换评论中 cloud:// 协议的头像/图片 URL 为临时 URL（返回 Promise）
   convertCommentCloudAvatars: function (comments) {

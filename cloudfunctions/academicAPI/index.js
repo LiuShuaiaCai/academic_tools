@@ -906,9 +906,13 @@ async function fillPostAuthorInfo(posts) {
     if (post._openid && openids.indexOf(post._openid) === -1) {
       openids.push(post._openid);
     }
-    if (post.helperOpenid && openids.indexOf(post.helperOpenid) === -1) {
-      openids.push(post.helperOpenid);
-    }
+    // 从 responses 数组中收集应助者 openid
+    var responses = post.responses || [];
+    responses.forEach(function (resp) {
+      if (resp.responderOpenid && openids.indexOf(resp.responderOpenid) === -1) {
+        openids.push(resp.responderOpenid);
+      }
+    });
   });
 
   var profileMap = await getUserProfiles(openids);
@@ -919,12 +923,15 @@ async function fillPostAuthorInfo(posts) {
     post.avatarUrl = profile.avatar || '';
     post.isUrlAvatar = profile.isUrlAvatar || false;
 
-    if (post.helperOpenid) {
-      var helperProfile = profileMap[post.helperOpenid] || {};
-      post.helperNickName = helperProfile.nickname || '';
-      post.helperAvatarUrl = helperProfile.avatar || '';
-      post.helperIsUrlAvatar = helperProfile.isUrlAvatar || false;
-    }
+    // 填充应助者的昵称和头像
+    var responses = post.responses || [];
+    responses.forEach(function (resp) {
+      var respProfile = profileMap[resp.responderOpenid] || {};
+      resp.responderNickName = resp.responderNickName || respProfile.nickname || '';
+      resp.responderAvatarUrl = resp.responderAvatarUrl || respProfile.avatar || '';
+      resp.isUrlAvatar = respProfile.isUrlAvatar || false;
+    });
+    post.responses = responses;
   });
 
   return posts;
@@ -1030,7 +1037,7 @@ async function squareCreatePost(event) {
     deleteTime: null
   };
 
-  // 文献互助类型：添加相关字段并冻结积分
+  // 文献互助类型：直接扣除积分（不冻结）
   if (type === 'literature_help') {
     var rewardPoints = event.rewardPoints || 0;
     if (rewardPoints <= 0) {
@@ -1048,19 +1055,19 @@ async function squareCreatePost(event) {
       return { success: false, error: '积分余额不足' };
     }
 
-    // 冻结积分
-    var freezeRes = await cloud.callFunction({
+    // 直接扣除积分
+    var spendRes = await cloud.callFunction({
       name: 'creditsAPI',
       data: {
-        action: 'freezeCredits',
+        action: 'spendCredits',
+        actionType: 'literature_help',
         _openid: openid,
         points: rewardPoints,
-        relatedId: '',  // 暂时为空，创建动态后再更新
-        description: '文献互助悬赏冻结'
+        description: '发布文献互助悬赏 -' + rewardPoints
       }
     });
-    if (!freezeRes.result || !freezeRes.result.success) {
-      return { success: false, error: freezeRes.result && freezeRes.result.error ? freezeRes.result.error : '积分冻结失败' };
+    if (!spendRes.result || !spendRes.result.success) {
+      return { success: false, error: spendRes.result && spendRes.result.error ? spendRes.result.error : '积分扣除失败' };
     }
 
     data.docType = event.docType || '';
@@ -1070,24 +1077,12 @@ async function squareCreatePost(event) {
     data.rewardPoints = rewardPoints;
     data.helpDeadline = event.helpDeadline || '';
     data.helpStatus = event.helpStatus || '求助中';
-    data.helperOpenid = '';
-    data.helpSolveTime = '';
-    data.docFileId = '';
+    data.responses = [];      // 应助列表
+    data.respondCount = 0;    // 应助数量
   }
 
   var addRes = await db.collection('square_posts').add({ data: data });
   console.log('[square] 创建动态成功', addRes._id);
-
-  // 更新冻结记录的 relatedId
-  if (type === 'literature_help') {
-    await db.collection('credits').where({
-      _openid: openid,
-      type: 'frozen',
-      relatedId: ''
-    }).update({
-      data: { relatedId: addRes._id }
-    });
-  }
 
   return { success: true, postId: addRes._id };
 }
@@ -1575,16 +1570,20 @@ async function squareGetMyPosts(event) {
 
 // ==================== 文献互助相关函数 ====================
 
-// 应助文献求助
+// 应助文献求助（支持多人应助，可上传内容或文件）
 async function squareHelpRespond(event) {
   var wxContext = cloud.getWXContext();
   var helperOpenid = wxContext.OPENID;
   var postId = event.postId;
-  var fileID = event.fileID;
+  var content = (event.content || '').trim();
+  var fileID = event.fileID || '';
   var fileName = event.fileName || '';
 
-  if (!postId || !fileID) {
+  if (!postId) {
     return { success: false, error: '参数不完整' };
+  }
+  if (!content && !fileID) {
+    return { success: false, error: '请输入应助内容或上传文件' };
   }
 
   // 获取动态详情
@@ -1607,55 +1606,55 @@ async function squareHelpRespond(event) {
     return { success: false, error: '不能应助自己的求助' };
   }
 
-  var now = formatTime();
+  // 检查是否已应助过
+  var responses = post.responses || [];
+  for (var i = 0; i < responses.length; i++) {
+    if (responses[i].responderOpenid === helperOpenid) {
+      return { success: false, error: '你已应助过该求助' };
+    }
+  }
 
-  // 更新动态状态
+  // 获取应助者信息
+  var helperConfig = await findRecord('user_config', { _openid: helperOpenid });
+  var helperNickName = (helperConfig && helperConfig.profile && helperConfig.profile.nickname) || '';
+  var helperAvatarUrl = (helperConfig && helperConfig.profile && helperConfig.profile.avatar) || '';
+
+  var now = formatTime();
+  var newResponse = {
+    id: responses.length + 1,
+    responderOpenid: helperOpenid,
+    responderNickName: helperNickName,
+    responderAvatarUrl: helperAvatarUrl,
+    content: content,
+    fileId: fileID,
+    fileName: fileName,
+    createTime: now,
+    accepted: false
+  };
+
+  // 更新帖子：追加应助
   await db.collection('square_posts').doc(postId).update({
     data: {
-      helpStatus: '已解决',
-      helperOpenid: helperOpenid,
-      helpSolveTime: now,
-      docFileId: fileID,
-      docFileName: fileName,
+      responses: db.command.push([newResponse]),
+      respondCount: db.command.inc(1),
       updateTime: now
     }
   });
 
-  // 转移积分给应助者
-  var transferResult = null;
-  try {
-    transferResult = await cloud.callFunction({
-      name: 'creditsAPI',
-      data: {
-        action: 'transferCredits',
-        fromOpenid: post._openid,
-        toOpenid: helperOpenid,
-        points: post.rewardPoints,
-        relatedId: postId,
-        description: '文献互助应助奖励'
-      }
-    });
-    console.log('[squareHelpRespond] 积分转移结果:', JSON.stringify(transferResult.result));
-    if (!transferResult.result || !transferResult.result.success) {
-      console.error('[squareHelpRespond] 积分转移返回失败:', transferResult.result);
-    }
-  } catch (err) {
-    console.error('[squareHelpRespond] 积分转移调用异常:', err.message || err, 'postId:', postId);
-    // 积分转移失败，记录日志，但不影响应助完成
-  }
-
-  return { success: true, transferResult: transferResult && transferResult.result };
+  return { success: true, responseIndex: responses.length };
 }
 
-// 修复已完成的文献互助积分转移（幂等安全，可重复调用）
-async function fixCreditTransfer(event) {
+// 采纳应助（仅发布者可操作，采纳后转移积分给应助者）
+async function squareHelpAccept(event) {
+  var wxContext = cloud.getWXContext();
+  var publisherOpenid = wxContext.OPENID;
   var postId = event.postId;
+  var responseId = parseInt(event.responseId);
 
-  if (!postId) {
-    return { success: false, error: '缺少 postId' };
+  if (!postId || isNaN(responseId)) {
+    return { success: false, error: '参数不完整' };
   }
 
-  // 获取动态详情
   var postRes = await db.collection('square_posts').doc(postId).get();
   var post = postRes.data;
 
@@ -1667,101 +1666,65 @@ async function fixCreditTransfer(event) {
     return { success: false, error: '该动态不是文献互助类型' };
   }
 
-  if (post.helpStatus !== '已解决') {
-    return { success: false, error: '该求助尚未解决，无法修复积分转移' };
+  if (post._openid !== publisherOpenid) {
+    return { success: false, error: '只有求助者本人才能采纳应助' };
   }
 
-  if (!post.helperOpenid) {
-    return { success: false, error: '未找到应助者信息' };
+  if (post.helpStatus !== '求助中') {
+    return { success: false, error: '该求助已关闭' };
   }
 
-  // 调用 transferCredits（已有幂等保护：不会重复扣减或重复奖励）
-  var transferRes = await cloud.callFunction({
-    name: 'creditsAPI',
-    data: {
-      action: 'transferCredits',
-      fromOpenid: post._openid,
-      toOpenid: post.helperOpenid,
-      points: post.rewardPoints,
-      relatedId: postId,
-      description: '文献互助应助奖励'
+  var responses = post.responses || [];
+  var targetResponse = null;
+  var targetIndex = -1;
+  for (var i = 0; i < responses.length; i++) {
+    if (responses[i].id === responseId) {
+      targetResponse = responses[i];
+      targetIndex = i;
+      break;
     }
-  });
+  }
 
-  return {
-    success: true,
-    transferResult: transferRes.result,
-    message: '积分转移修复完成'
-  };
+  if (!targetResponse) {
+    return { success: false, error: '未找到该应助' };
+  }
+
+  if (targetResponse.accepted) {
+    return { success: false, error: '该应助已被采纳' };
+  }
+
+  var now = formatTime();
+
+  // 更新该应助为已采纳，帖子为已解决
+  var updateKey = 'responses.' + targetIndex + '.accepted';
+  var updateData = {};
+  updateData[updateKey] = true;
+  updateData.helpStatus = '已解决';
+  updateData.updateTime = now;
+  await db.collection('square_posts').doc(postId).update({ data: updateData });
+
+  // 给应助者发放积分
+  try {
+    await cloud.callFunction({
+      name: 'creditsAPI',
+      data: {
+        action: 'transferCredits',
+        fromOpenid: publisherOpenid,
+        toOpenid: targetResponse.responderOpenid,
+        points: post.rewardPoints,
+        relatedId: postId + '_' + responseId,
+        description: '文献互助应助采纳奖励 +' + post.rewardPoints
+      }
+    });
+  } catch (err) {
+    console.error('[squareHelpAccept] 积分发放异常:', err.message || err, 'postId:', postId);
+  }
+
+  return { success: true, responderOpenid: targetResponse.responderOpenid };
 }
 
-// 批量修复所有已解决但缺少 spend 记录的文献互助积分
-async function repairAllHelpCredits() {
-  var wxContext = cloud.getWXContext();
-  var openid = wxContext.OPENID;
-
-  // 查找该用户所有 type=literature_help 且 helpStatus=已解决 的帖子
-  var postRes = await db.collection('square_posts')
-    .where({
-      _openid: openid,
-      type: 'literature_help',
-      helpStatus: '已解决',
-      deleteTime: null
-    })
-    .field({ _id: true, helperOpenid: true, rewardPoints: true })
-    .get();
-
-  var posts = postRes.data || [];
-  var fixed = 0;
-  var skipped = 0;
-
-  for (var i = 0; i < posts.length; i++) {
-    var post = posts[i];
-    if (!post.helperOpenid) continue;
-
-    // 检查是否已有 spend 记录
-    var spendRes = await db.collection('credits')
-      .where({
-        _openid: openid,
-        type: 'spend',
-        action: 'help_reward',
-        relatedId: post._id
-      })
-      .limit(1)
-      .get();
-
-    if (spendRes.data && spendRes.data.length > 0) {
-      skipped++;
-      continue;
-    }
-
-    // 没有 spend 记录，调用 transferCredits 修复
-    try {
-      await cloud.callFunction({
-        name: 'creditsAPI',
-        data: {
-          action: 'transferCredits',
-          fromOpenid: openid,
-          toOpenid: post.helperOpenid,
-          points: post.rewardPoints,
-          relatedId: post._id,
-          description: '文献互助应助奖励'
-        }
-      });
-      fixed++;
-    } catch (err) {
-      console.error('[repairAllHelpCredits] 修复失败', post._id, err);
-    }
-  }
-
-  return {
-    success: true,
-    fixed: fixed,
-    skipped: skipped,
-    total: posts.length,
-    message: '修复完成：' + fixed + '条，跳过' + skipped + '条'
-  };
-}
+// 注意：repairAllHelpCredits 和 fixCreditTransfer 已移除，不再适用新的多人应助模式
+// 新的积分流程：发布时直接扣除 → 采纳时转移给应助者
 
 // 延长求助时限
 async function squareExtendDeadline(event) {
@@ -1835,27 +1798,17 @@ async function squareCheckHelpExpiry() {
     }
   }
 
-  // 批量更新过期状态并退还积分
+  // 批量更新过期状态（积分已扣除，过期不退还）
   var updated = 0;
   for (var j = 0; j < expiredPosts.length; j++) {
     var expiredPost = expiredPosts[j];
 
     try {
-      // 更新状态为已过期
+      // 更新状态为已过期（积分已在发布时扣除，过期不退还）
       await db.collection('square_posts').doc(expiredPost._id).update({
         data: {
           helpStatus: '已过期',
           updateTime: formatTime()
-        }
-      });
-
-      // 退还冻结积分
-      await cloud.callFunction({
-        name: 'creditsAPI',
-        data: {
-          action: 'refundFrozenCredits',
-          relatedId: expiredPost._id,
-          description: '文献互助过期退还'
         }
       });
 
@@ -1922,10 +1875,9 @@ exports.main = async (event) => {
       case 'squareGetMyPosts':          return await squareGetMyPosts(event);
       // 文献互助
       case 'squareHelpRespond':         return await squareHelpRespond(event);
+      case 'squareHelpAccept':          return await squareHelpAccept(event);
       case 'squareExtendDeadline':     return await squareExtendDeadline(event);
       case 'squareCheckHelpExpiry':    return await squareCheckHelpExpiry();
-      case 'fixCreditTransfer':         return await fixCreditTransfer(event);
-      case 'repairAllHelpCredits':      return await repairAllHelpCredits();
       default:                return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

@@ -51,7 +51,8 @@ var CREDITS_RULES = {
   new_review: 0,
   new_conference: 0,
   complete_profile: 50,
-  special_issue: 30
+  special_issue: 30,
+  literature_help: 0  // 动态积分，由前端传入
 };
 
 // 学术相关emoji头像
@@ -82,7 +83,8 @@ var ACTION_LABELS = {
   new_conference: '新增会议',
   complete_profile: '完善资料',
   special_issue: '特刊策划',
-  help_reward: '文献互助'
+  help_reward: '文献互助',
+  literature_help: '文献互助悬赏'
 };
 
 // 获取今日日期字符串 YYYY-MM-DD（北京时间）

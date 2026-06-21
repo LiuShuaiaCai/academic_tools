@@ -33,7 +33,17 @@ Page({
     // 用户信息
     currentOpenid: '',
     avatarUrl: '',
-    nickName: ''
+    nickName: '',
+
+    // 应助弹窗
+    showRespondModal: false,
+    respondPostId: '',
+    respondPostTitle: '',
+    respondPostReward: 0,
+    respondContent: '',
+    respondFileName: '',
+    respondFileId: '',
+    respondFilePath: ''
   },
 
   onLoad: function (options) {
@@ -116,11 +126,14 @@ Page({
       cloudFileIDs.push(post.avatarUrl);
     }
     // 应助者头像
-    if (post.helperAvatarUrl && post.helperAvatarUrl.indexOf('cloud://') === 0) {
-      if (cloudFileIDs.indexOf(post.helperAvatarUrl) === -1) {
-        cloudFileIDs.push(post.helperAvatarUrl);
+    var responses = post.responses || [];
+    responses.forEach(function (resp) {
+      if (resp.responderAvatarUrl && resp.responderAvatarUrl.indexOf('cloud://') === 0) {
+        if (cloudFileIDs.indexOf(resp.responderAvatarUrl) === -1) {
+          cloudFileIDs.push(resp.responderAvatarUrl);
+        }
       }
-    }
+    });
 
     if (cloudFileIDs.length === 0) return Promise.resolve(post);
 
@@ -136,8 +149,15 @@ Page({
       if (copy.avatarUrl && urlMap[copy.avatarUrl]) {
         copy.avatarUrl = urlMap[copy.avatarUrl];
       }
-      if (copy.helperAvatarUrl && urlMap[copy.helperAvatarUrl]) {
-        copy.helperAvatarUrl = urlMap[copy.helperAvatarUrl];
+      // 转换应助者头像
+      if (copy.responses && copy.responses.length > 0) {
+        copy.responses = copy.responses.map(function (resp) {
+          var respCopy = Object.assign({}, resp);
+          if (respCopy.responderAvatarUrl && urlMap[respCopy.responderAvatarUrl]) {
+            respCopy.responderAvatarUrl = urlMap[respCopy.responderAvatarUrl];
+          }
+          return respCopy;
+        });
       }
       return copy;
     }).catch(function (err) {
@@ -778,79 +798,169 @@ Page({
     return minutes + '分钟后截止';
   },
 
-  // 应助 - 上传文献文件
-  onHelpRespond: function () {
-    var that = this;
+  // 应助 - 打开应助弹窗
+  onHelpRespondTap: function () {
     var post = this.data.post;
-
     if (!post || post.helpStatus !== '求助中') {
       wx.showToast({ title: '该求助无法应助', icon: 'none' });
       return;
     }
+    this.setData({
+      showRespondModal: true,
+      respondPostId: post._id,
+      respondPostTitle: post.title || '',
+      respondPostReward: post.rewardPoints || 0,
+      respondContent: '',
+      respondFileName: '',
+      respondFileId: '',
+      respondFilePath: ''
+    });
+  },
 
+  closeRespondModal: function () {
+    this.setData({
+      showRespondModal: false,
+      respondPostId: '',
+      respondPostTitle: '',
+      respondPostReward: 0,
+      respondContent: '',
+      respondFileName: '',
+      respondFileId: '',
+      respondFilePath: ''
+    });
+  },
+
+  onRespondContentInput: function (e) {
+    this.setData({ respondContent: e.detail.value });
+  },
+
+  onRespondChooseFile: function () {
+    var that = this;
     wx.chooseMessageFile({
       count: 1,
       type: 'file',
       success: function (res) {
-        var tempFilePath = res.tempFiles[0].path;
-        var fileName = res.tempFiles[0].name;
-
-        that.uploadHelpFile(tempFilePath, fileName);
-      },
-      fail: function () {
-        // 用户取消选择
+        that.setData({
+          respondFileName: res.tempFiles[0].name,
+          respondFilePath: res.tempFiles[0].path,
+          respondFileId: ''
+        });
       }
     });
   },
 
-  // 上传应助文件到云存储
-  uploadHelpFile: function (tempFilePath, fileName) {
-    var that = this;
-    wx.showLoading({ title: '上传中...', mask: true });
+  onRespondRemoveFile: function () {
+    this.setData({ respondFileName: '', respondFileId: '', respondFilePath: '' });
+  },
 
-    var cloudPath = 'help_files/' + Date.now() + '_' + fileName;
-    wx.cloud.uploadFile({
-      cloudPath: cloudPath,
-      filePath: tempFilePath
-    }).then(function (res) {
-      var fileID = res.fileID;
-      // 调用云函数完成应助
-      that.completeHelpRespond(fileID, fileName);
-    }).catch(function (err) {
-      wx.hideLoading();
-      console.error('[detail] 文件上传失败', err);
-      wx.showToast({ title: '文件上传失败', icon: 'none' });
+  onRespondSubmit: function () {
+    var that = this;
+    var content = this.data.respondContent.trim();
+    var fileName = this.data.respondFileName;
+
+    if (!content && !fileName) {
+      wx.showToast({ title: '请输入内容或上传文件', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '提交中...', mask: true });
+
+    var submitRequest = function (fileID) {
+      wx.cloud.callFunction({
+        name: 'academicAPI',
+        data: {
+          action: 'squareHelpRespond',
+          postId: that.data.respondPostId,
+          content: content,
+          fileID: fileID || '',
+          fileName: fileName || ''
+        }
+      }).then(function (res) {
+        wx.hideLoading();
+        var result = res.result || {};
+        if (result.success) {
+          wx.showToast({ title: '应助成功', icon: 'success' });
+          that.closeRespondModal();
+          that.loadPostDetail();
+        } else {
+          wx.showToast({ title: result.error || '应助失败', icon: 'none' });
+        }
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[detail] 应助失败', err);
+        wx.showToast({ title: '应助失败', icon: 'none' });
+      });
+    };
+
+    if (this.data.respondFilePath) {
+      var cloudPath = 'help_files/' + Date.now() + '_' + fileName;
+      wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: this.data.respondFilePath
+      }).then(function (uploadRes) {
+        submitRequest(uploadRes.fileID);
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[detail] 文件上传失败', err);
+        wx.showToast({ title: '文件上传失败，请重试', icon: 'none' });
+      });
+    } else {
+      submitRequest('');
+    }
+  },
+
+  // 采纳应助（仅发布者可操作）
+  onHelpAccept: function (e) {
+    var that = this;
+    var responseId = e.currentTarget.dataset.responseId;
+
+    wx.showModal({
+      title: '确认采纳',
+      content: '采纳后悬赏积分将转给该应助者，确定采纳？',
+      success: function (modalRes) {
+        if (!modalRes.confirm) return;
+        wx.showLoading({ title: '处理中...', mask: true });
+        wx.cloud.callFunction({
+          name: 'academicAPI',
+          data: {
+            action: 'squareHelpAccept',
+            postId: that.data.post._id,
+            responseId: responseId
+          }
+        }).then(function (res) {
+          wx.hideLoading();
+          var result = res.result || {};
+          if (result.success) {
+            wx.showToast({ title: '采纳成功', icon: 'success' });
+            that.loadPostDetail();
+          } else {
+            wx.showToast({ title: result.error || '采纳失败', icon: 'none' });
+          }
+        }).catch(function (err) {
+          wx.hideLoading();
+          console.error('[detail] 采纳失败', err);
+          wx.showToast({ title: '采纳失败', icon: 'none' });
+        });
+      }
     });
   },
 
-  // 完成应助
-  completeHelpRespond: function (fileID, fileName) {
-    var that = this;
-    var post = this.data.post;
-
-    wx.cloud.callFunction({
-      name: 'academicAPI',
-      data: {
-        action: 'squareHelpRespond',
-        postId: post._id,
-        fileID: fileID,
-        fileName: fileName
-      }
+  // 打开应助文件
+  onOpenResponseFile: function (e) {
+    var fileId = e.currentTarget.dataset.url;
+    if (!fileId) return;
+    wx.cloud.getTempFileURL({
+      fileList: [fileId]
     }).then(function (res) {
-      wx.hideLoading();
-      var result = res.result || {};
-
-      if (result.success) {
-        wx.showToast({ title: '应助成功', icon: 'success' });
-        // 刷新详情
-        that.loadPostDetail();
-      } else {
-        wx.showToast({ title: result.error || '应助失败', icon: 'none' });
+      var tempUrl = res.fileList[0] && res.fileList[0].tempFileURL;
+      if (tempUrl) {
+        wx.openDocument({
+          filePath: tempUrl,
+          showMenu: true
+        });
       }
-    }).catch(function (err) {
-      wx.hideLoading();
-      console.error('[detail] 应助失败', err);
-      wx.showToast({ title: '应助失败', icon: 'none' });
+    }).catch(function () {
+      wx.showToast({ title: '文件打开失败', icon: 'none' });
     });
   },
 

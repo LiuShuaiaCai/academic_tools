@@ -200,8 +200,7 @@ page { background: #F3F4F6; }
 }
 
 .help-detail-card,
-.help-reward-card,
-.help-helper-card {
+.help-reward-card {
   background: #fff;
   border-radius: 12rpx;
   padding: 20rpx 24rpx;
@@ -250,52 +249,324 @@ page { background: #F3F4F6; }
   font-size: 28rpx;
 }
 
-.helper-info {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
+/* ========= 应助列表 ========= */
+.help-responses-section {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 1rpx 4rpx rgba(0,0,0,0.04);
 }
 
-.helper-avatar {
-  width: 64rpx;
-  height: 64rpx;
+.help-responses-header {
+  margin-bottom: 16rpx;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.responses-count {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #2563EB;
+}
+
+.response-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  padding: 16rpx 18rpx;
+  background: #F9FAFB;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.response-user {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.response-avatar {
+  width: 44rpx;
+  height: 44rpx;
   border-radius: 50%;
-  background: #E5E7EB;
-  flex-shrink: 0;
   overflow: hidden;
+  background: #E5E7EB;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.helper-avatar-img {
+.response-avatar image {
   width: 100%;
   height: 100%;
 }
 
-.helper-avatar-text {
-  font-size: 40rpx;
-  line-height: 1;
+.response-avatar-text {
+  font-size: 24rpx;
+  color: #6B7280;
+  font-weight: 600;
 }
 
-
-.helper-meta {
+.response-nickname {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 500;
   flex: 1;
 }
 
-.helper-name {
+.response-accepted-tag {
+  font-size: 22rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.response-content {
+  font-size: 26rpx;
+  color: #4B5563;
+  line-height: 1.6;
+  padding-left: 54rpx;
+}
+
+.response-file {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 16rpx;
+  background: #EFF6FF;
+  border-radius: 8rpx;
+  margin-left: 54rpx;
+  width: fit-content;
+}
+
+.response-file-icon {
+  width: 30rpx;
+  height: 30rpx;
+}
+
+.response-file-name {
+  font-size: 24rpx;
+  color: #2563EB;
+  max-width: 350rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.response-accept-btn {
+  align-self: flex-end;
+  margin-top: 4rpx;
+  padding: 10rpx 28rpx;
+  background: #2563EB;
+  color: #fff;
+  font-size: 24rpx;
+  border-radius: 8rpx;
+  font-weight: 500;
+}
+
+.response-accept-btn:active {
+  background: #1D4ED8;
+  transform: scale(0.95);
+}
+
+/* ========= 应助弹窗 ========= */
+.respond-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+.respond-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 650rpx;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 24rpx;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.respond-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 20rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.respond-modal-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.respond-modal-close {
+  font-size: 36rpx;
+  color: #9CA3AF;
+  padding: 8rpx;
+}
+
+.respond-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24rpx 32rpx;
+}
+
+.respond-help-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 6rpx;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.respond-help-reward {
+  font-size: 24rpx;
+  color: #F43F5E;
+  margin-bottom: 20rpx;
+}
+
+.respond-input-section {
+  margin-bottom: 24rpx;
+}
+
+.respond-input-label,
+.respond-file-label {
   font-size: 26rpx;
   font-weight: 500;
   color: #374151;
+  margin-bottom: 12rpx;
 }
 
-.helper-time {
+.respond-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  padding: 16rpx;
+  background: #F9FAFB;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #1F2937;
+  box-sizing: border-box;
+}
+
+.respond-char-count {
+  text-align: right;
   font-size: 22rpx;
   color: #9CA3AF;
-  margin-top: 4rpx;
+  margin-top: 6rpx;
 }
 
-/* 操作按钮 */
+.respond-file-section {
+  margin-bottom: 20rpx;
+}
+
+.respond-file-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 32rpx;
+  background: #F9FAFB;
+  border: 2rpx dashed #D1D5DB;
+  border-radius: 12rpx;
+}
+
+.respond-file-plus {
+  font-size: 44rpx;
+  color: #9CA3AF;
+  font-weight: 300;
+}
+
+.respond-file-hint {
+  font-size: 24rpx;
+  color: #9CA3AF;
+}
+
+.respond-file-selected {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  background: #EFF6FF;
+  border-radius: 12rpx;
+}
+
+.respond-file-selected .respond-file-icon {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.respond-file-selected .respond-file-name {
+  flex: 1;
+  font-size: 24rpx;
+  color: #2563EB;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.respond-file-remove {
+  font-size: 28rpx;
+  color: #EF4444;
+  padding: 8rpx;
+  font-weight: 600;
+}
+
+.respond-modal-hint {
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 24rpx;
+  color: #EF4444;
+}
+
+.respond-modal-footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx 32rpx 28rpx;
+  border-top: 1rpx solid #F3F4F6;
+}
+
+.respond-cancel-btn {
+  flex: 1;
+  padding: 20rpx 0;
+  background: #F3F4F6;
+  color: #6B7280;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  border: none;
+  text-align: center;
+}
+
+.respond-submit-btn {
+  flex: 2;
+  padding: 20rpx 0;
+  background: #2563EB;
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  border: none;
+  text-align: center;
+}
+
+.respond-submit-btn[disabled] {
+  background: #93C5FD;
+}
+
+/* ========= 操作按钮 ========= */
 .help-actions {
   padding: 24rpx 32rpx;
   display: flex;

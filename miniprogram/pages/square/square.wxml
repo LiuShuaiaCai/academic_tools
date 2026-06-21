@@ -78,8 +78,8 @@
         <view class="post-call-type" wx:if="{{item.type === 'call_for_papers' && item.callType}}" style="background: #F59E0B20; color: #F59E0B; margin-left: 8rpx;">
           {{item.callType}}
         </view>
-        <!-- 应助按钮（文献互助且求助中） -->
-        <view class="post-respond-btn" wx:if="{{item.type === 'literature_help' && item.helpStatus === '求助中'}}" data-index="{{index}}" catchtap="onHelpRespond">
+        <!-- 应助按钮（文献互助且求助中，非本人） -->
+        <view class="post-respond-btn" wx:if="{{item.type === 'literature_help' && item.helpStatus === '求助中' && item._openid !== currentOpenid}}" data-index="{{index}}" catchtap="onHelpRespond">
           我要应助
         </view>
       </view>
@@ -125,6 +125,11 @@
             <view class="post-help-status" style="background: {{item.helpStatusColor}}20; color: {{item.helpStatusColor}};">
               {{item.helpStatusLabel}}
             </view>
+          </view>
+          <!-- 应助人数（点击进入详情查看具体内容） -->
+          <view class="help-responses" wx:if="{{item.responses && item.responses.length > 0}}" data-id="{{item._id}}" catchtap="navigateToDetail">
+            <text class="responses-count">{{item.responses.length}} 人应助</text>
+            <text class="responses-hint">点击查看详情</text>
           </view>
         </view>
       </view>
@@ -323,9 +328,63 @@
 
 
 
+
   <!-- 发布按钮 -->
   <view class="publish-fab" bindtap="navigateToPublish">
     <text class="fab-icon">+</text>
+  </view>
+
+  <!-- ========== 应助弹窗 ========== -->
+  <view class="respond-modal-mask" wx:if="{{showRespondModal}}" bindtap="closeRespondModal"></view>
+  <view class="respond-modal" wx:if="{{showRespondModal}}">
+    <view class="respond-modal-header">
+      <text class="respond-modal-title">应助文献</text>
+      <text class="respond-modal-close" bindtap="closeRespondModal">✕</text>
+    </view>
+    <view class="respond-modal-body">
+      <!-- 求助标题 -->
+      <view class="respond-help-title">{{respondPostTitle}}</view>
+      <view class="respond-help-reward" wx:if="{{respondPostReward > 0}}">悬赏 {{respondPostReward}} 积分</view>
+      
+      <!-- 应助内容输入 -->
+      <view class="respond-input-section">
+        <view class="respond-input-label">应助内容（选填）</view>
+        <textarea
+          class="respond-textarea"
+          placeholder="输入应助内容，如链接、说明等..."
+          placeholder-class="input-placeholder"
+          value="{{respondContent}}"
+          maxlength="1000"
+          auto-height="true"
+          bindinput="onRespondContentInput"
+        />
+        <view class="respond-char-count">{{respondContent.length}}/1000</view>
+      </view>
+
+      <!-- 上传文件 -->
+      <view class="respond-file-section">
+        <view class="respond-file-label">上传文件（选填）</view>
+        <!-- 未选文件 -->
+        <view class="respond-file-upload" wx:if="{{!respondFileName}}" bindtap="onRespondChooseFile">
+          <text class="respond-file-plus">+</text>
+          <text class="respond-file-hint">点击选择文件</text>
+        </view>
+        <!-- 已选文件 -->
+        <view class="respond-file-selected" wx:else>
+          <image class="respond-file-icon" src="/pages/square/icons/file.svg" mode="aspectFit"></image>
+          <text class="respond-file-name">{{respondFileName}}</text>
+          <view class="respond-file-remove" bindtap="onRespondRemoveFile">✕</view>
+        </view>
+      </view>
+
+      <view class="respond-modal-hint" wx:if="{{!respondContent && !respondFileName}}">
+        请输入应助内容或上传文件（至少填一项）
+      </view>
+    </view>
+    <view class="respond-modal-footer">
+      <button class="respond-cancel-btn" bindtap="closeRespondModal">取消</button>
+      <button class="respond-submit-btn" bindtap="onRespondSubmit" disabled="{{!respondContent && !respondFileName}}">提交应助</button>
+    </view>
   </view>
 
 </view>
