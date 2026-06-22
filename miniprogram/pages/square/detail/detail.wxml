@@ -64,7 +64,7 @@
 
         <!-- 文献信息 -->
         <view class="help-detail-card">
-          <view class="help-detail-title">文献信息</view>
+          <view class="help-detail-title">📖 文献信息</view>
           <view class="help-detail-row" wx:if="{{post.docType}}">
             <text class="detail-label">文献类型：</text>
             <text class="detail-value">{{post.docType === 'journal' ? '期刊论文' : post.docType === 'conference' ? '会议论文' : post.docType === 'thesis' ? '博士论文' : '其他'}}</text>
@@ -85,7 +85,7 @@
 
         <!-- 悬赏信息 -->
         <view class="help-reward-card">
-          <view class="help-detail-title">悬赏信息</view>
+          <view class="help-detail-title">💰 悬赏信息</view>
           <view class="help-detail-row">
             <text class="detail-label">悬赏积分：</text>
             <text class="detail-value reward">{{post.rewardPoints || 0}} 积分</text>
@@ -101,7 +101,7 @@
         <!-- 规则：发布者看全部；其他人只看自己 + 总人数 -->
         <view class="help-responses-section" wx:if="{{post.responses && post.responses.length > 0}}">
           <view class="help-responses-header">
-            <text class="responses-count">{{post.responses.length}} 人应助</text>
+            <text class="responses-count">共 {{post.responses.length}} 人应助</text>
           </view>
           <!-- 发布者：看到所有应助 -->
           <block wx:if="{{post._openid === currentOpenid}}">
@@ -112,10 +112,10 @@
                   <text wx:else class="response-avatar-text">{{resp.responderNickName ? resp.responderNickName.charAt(0) : '?'}}</text>
                 </view>
                 <text class="response-nickname">{{resp.responderNickName || '匿名用户'}}</text>
-                <view class="response-accepted-tag" wx:if="{{resp.accepted}}" style="color: #10B981;">✓ 已采纳</view>
+                <view class="response-accepted-tag" wx:if="{{resp.accepted}}">✓ 已采纳</view>
               </view>
               <view class="response-content" wx:if="{{resp.content}}">{{resp.content}}</view>
-              <view class="response-file" wx:if="{{resp.fileName}}" data-url="{{resp.fileId}}" bindtap="onOpenResponseFile">
+              <view class="response-file" wx:if="{{resp.fileName}}" data-url="{{resp.fileId}}" data-filename="{{resp.fileName}}" bindtap="onOpenResponseFile">
                 <image class="response-file-icon" src="/pages/square/icons/file.svg" mode="aspectFit"></image>
                 <text class="response-file-name">{{resp.fileName}}</text>
               </view>
@@ -128,19 +128,28 @@
           <!-- 非发布者：只看自己的应助 -->
           <block wx:else>
             <block wx:for="{{post.responses}}" wx:key="id" wx:for-item="resp">
-              <view class="response-item" wx:if="{{resp.responderOpenid === currentOpenid}}">
+              <view class="response-item own-response" wx:if="{{resp.responderOpenid === currentOpenid}}">
                 <view class="response-user">
-                  <text class="response-nickname" style="color: #2563EB;">我的应助</text>
-                  <view class="response-accepted-tag" wx:if="{{resp.accepted}}" style="color: #10B981;">✓ 已采纳</view>
+                  <view class="response-avatar">
+                    <image wx:if="{{resp.isUrlAvatar && resp.responderAvatarUrl}}" src="{{resp.responderAvatarUrl}}" mode="aspectFill"></image>
+                    <text wx:else class="response-avatar-text">{{resp.responderNickName ? resp.responderNickName.charAt(0) : '?'}}</text>
+                  </view>
+                  <text class="response-nickname">{{resp.responderNickName || '我的应助'}}</text>
+                  <view class="response-tag own-resp-badge">我的应助</view>
+                  <view class="response-accepted-tag" wx:if="{{resp.accepted}}">✓ 已采纳</view>
                 </view>
                 <view class="response-content" wx:if="{{resp.content}}">{{resp.content}}</view>
-                <view class="response-file" wx:if="{{resp.fileName}}" data-url="{{resp.fileId}}" bindtap="onOpenResponseFile">
+                <view class="response-file" wx:if="{{resp.fileName}}" data-url="{{resp.fileId}}" data-filename="{{resp.fileName}}" bindtap="onOpenResponseFile">
                   <image class="response-file-icon" src="/pages/square/icons/file.svg" mode="aspectFit"></image>
                   <text class="response-file-name">{{resp.fileName}}</text>
                 </view>
               </view>
             </block>
           </block>
+        </view>
+        <!-- 非发布者且无人应助的空状态 -->
+        <view class="help-responses-empty" wx:if="{{!post.responses || post.responses.length === 0}}">
+          <text class="empty-hint">暂无应助，来做第一个应助者吧</text>
         </view>
       </view>
 

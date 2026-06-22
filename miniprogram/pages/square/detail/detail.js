@@ -98,7 +98,11 @@ Page({
         post.helpStatusLabel = that.getHelpStatusLabel(post.helpStatus);
         post.helpStatusColor = that.getHelpStatusColor(post.helpStatus);
         post.remainingTime = that.formatRemainingTime(post.helpDeadline);
-        post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid;
+        // 标记当前用户是否已经应助过
+        post.hasResponded = (post.responses || []).some(function(r) {
+          return r.responderOpenid === that.data.currentOpenid;
+        });
+        post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid && !post.hasResponded;
         post.canExtend = post.helpStatus === '已过期' && post._openid === that.data.currentOpenid;
         post.canDownload = post.helpStatus === '已解决' && post.docFileId;
       }
@@ -948,19 +952,36 @@ Page({
   // 打开应助文件
   onOpenResponseFile: function (e) {
     var fileId = e.currentTarget.dataset.url;
+    var fileName = e.currentTarget.dataset.filename || '';
     if (!fileId) return;
-    wx.cloud.getTempFileURL({
-      fileList: [fileId]
+    
+    // 根据扩展名推断文件类型（wx.openDocument 对 xlsx/pptx 等需要显式指定）
+    var ext = fileName.split('.').pop().toLowerCase();
+    var supportedTypes = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf'];
+    var fileType = supportedTypes.indexOf(ext) !== -1 ? ext : 'pdf';
+    
+    wx.showLoading({ title: '下载中...', mask: true });
+    wx.cloud.downloadFile({
+      fileID: fileId
     }).then(function (res) {
-      var tempUrl = res.fileList[0] && res.fileList[0].tempFileURL;
-      if (tempUrl) {
+      wx.hideLoading();
+      if (res.tempFilePath) {
         wx.openDocument({
-          filePath: tempUrl,
-          showMenu: true
+          filePath: res.tempFilePath,
+          showMenu: true,
+          fileType: fileType,
+          fail: function (err) {
+            console.error('[detail] 打开应助文件失败', err);
+            wx.showToast({ title: '文件格式不支持', icon: 'none' });
+          }
         });
+      } else {
+        wx.showToast({ title: '文件下载失败', icon: 'none' });
       }
-    }).catch(function () {
-      wx.showToast({ title: '文件打开失败', icon: 'none' });
+    }).catch(function (err) {
+      wx.hideLoading();
+      console.error('[detail] 下载应助文件失败', err);
+      wx.showToast({ title: '文件下载失败', icon: 'none' });
     });
   },
 
@@ -973,6 +994,13 @@ Page({
     }
 
     wx.showLoading({ title: '下载中...', mask: true });
+    
+    // 根据扩展名推断文件类型
+    var fileName = post.docFileName || '';
+    var ext = fileName.split('.').pop().toLowerCase();
+    var supportedTypes = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf'];
+    var fileType = supportedTypes.indexOf(ext) !== -1 ? ext : 'pdf';
+    
     wx.cloud.downloadFile({
       fileID: post.docFileId
     }).then(function (res) {
@@ -981,7 +1009,7 @@ Page({
         wx.openDocument({
           filePath: res.tempFilePath,
           showMenu: true,
-          fileType: 'auto',
+          fileType: fileType,
           fail: function (err) {
             console.error('[detail] 打开文件失败', err);
             // 降级：复制链接让用户手动打开

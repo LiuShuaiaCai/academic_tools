@@ -79,7 +79,7 @@
           {{item.callType}}
         </view>
         <!-- 应助按钮（文献互助且求助中，非本人） -->
-        <view class="post-respond-btn" wx:if="{{item.type === 'literature_help' && item.helpStatus === '求助中' && item._openid !== currentOpenid}}" data-index="{{index}}" catchtap="onHelpRespond">
+        <view class="post-respond-btn" wx:if="{{item.canRespond}}" data-index="{{index}}" catchtap="onHelpRespond">
           我要应助
         </view>
       </view>

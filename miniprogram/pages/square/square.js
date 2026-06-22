@@ -154,7 +154,11 @@ Page({
           post.helpStatusLabel = that.getHelpStatusLabel(post.helpStatus);
           post.helpStatusColor = that.getHelpStatusColor(post.helpStatus);
           post.remainingTime = that.formatRemainingTime(post.helpDeadline);
-          post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid;
+          // 标记是否已应助
+          post.hasResponded = (post.responses || []).some(function(r) {
+            return r.responderOpenid === that.data.currentOpenid;
+          });
+          post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid && !post.hasResponded;
         }
 
         // 「我的」子选项卡自动标记状态（我喜欢/我收藏可直接确定；我的发布需单独查询）
