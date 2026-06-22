@@ -1,6 +1,7 @@
 // pages/square/square.js
 // 学术动态 - 科研同行公共交流社区
 var app = getApp();
+var sqHelper = require('../../utils/square-helper.js');
 
 Page({
   data: {
@@ -57,7 +58,7 @@ Page({
     replyTo: null,          // { id, nickName }
     // 表情包
     showEmojiPanel: false,
-    emojiList: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😝','😜','🤪','🤔','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👍','👎','👏','🙌','👐','🤝','🤗','🤭','🤫','🌹','❤️','💔','💖','💙','💚','💛','💜','🖤','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','🗨️','🗯️','💭','💤'],
+    emojiList: sqHelper.EMOJI_LIST,
     // 评论图片
     commentImageUrl: '',
     
@@ -79,8 +80,9 @@ Page({
   },
 
   onShow: function () {
-    // 返回页面时刷新列表
-    if (this.data.posts.length > 0) {
+    // 返回页面时刷新列表（仅在发布成功后才刷新，避免重复请求）
+    if (this._needRefresh) {
+      this._needRefresh = false;
       this.loadPosts(true);
     }
   },
@@ -145,23 +147,9 @@ Page({
 
       // 格式化时间显示
       newPosts.forEach(function (post) {
-        post.displayTime = that.formatDisplayTime(post.createTime);
-        post.typeLabel = that.getTypeLabel(post.type);
-        post.typeColor = that.getTypeColor(post.type);
+        sqHelper.formatPostDisplay(post, that.data.currentOpenid);
 
-        // 文献互助类型：添加求助状态相关字段
-        if (post.type === 'literature_help') {
-          post.helpStatusLabel = that.getHelpStatusLabel(post.helpStatus);
-          post.helpStatusColor = that.getHelpStatusColor(post.helpStatus);
-          post.remainingTime = that.formatRemainingTime(post.helpDeadline);
-          // 标记是否已应助
-          post.hasResponded = (post.responses || []).some(function(r) {
-            return r.responderOpenid === that.data.currentOpenid;
-          });
-          post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid && !post.hasResponded;
-        }
-
-        // 「我的」子选项卡自动标记状态（我喜欢/我收藏可直接确定；我的发布需单独查询）
+        // 「我的」子选项卡自动标记状态
         if (isMine && that.data.mySubTab === 'liked') {
           post.isLiked = true;
         }
@@ -172,8 +160,8 @@ Page({
 
       var posts = reset ? newPosts : that.data.posts.concat(newPosts);
 
-      // 转换帖子列表中的 cloud:// 头像 URL 为临时 URL，再渲染
       return that.convertPostsCloudUrls(posts).then(function (convertedPosts) {
+        // 保持滚动位置（刷新时不重置）
         that.setData({
           posts: convertedPosts,
           page: page + 1,
@@ -190,22 +178,20 @@ Page({
               newActiveIndex = i;
               break;
             }
+          }
+          if (newActiveIndex >= 0) {
+            that.setData({ activeCommentIndex: newActiveIndex });
+            that.loadCommentsPreview(newActiveIndex);
+          } else {
+            that.setData({ activeCommentIndex: -1, activeCommentPostId: '' });
+          }
         }
-        if (newActiveIndex >= 0) {
-          that.setData({ activeCommentIndex: newActiveIndex });
-          that.loadCommentsPreview(newActiveIndex);
-        } else {
-          // 帖子已不在当前列表中，收起评论区
-          that.setData({ activeCommentIndex: -1, activeCommentPostId: '' });
-        }
-      }
 
-      // 获取点赞状态和收藏状态（非「我的」或「我的发布」才需要补充加载）
-      if (posts.length > 0 && (!isMine || that.data.mySubTab === 'published')) {
-        that.loadLikeStatus(posts);
-        that.loadFavoriteStatus(posts);
-      }
-      });  // 关闭 convertPostsCloudUrls 内部 .then
+        // 并行获取点赞状态和收藏状态
+        if (convertedPosts.length > 0 && (!isMine || that.data.mySubTab === 'published')) {
+          that.loadLikeAndFavoriteStatus(convertedPosts);
+        }
+      });
     }).catch(function (err) {
       console.error('[square] 加载动态失败', err);
       that.setData({ loading: false, refreshing: false });
@@ -213,21 +199,33 @@ Page({
     });
   },
 
-  // 批量获取点赞状态
-  loadLikeStatus: function (posts) {
+  // 并行获取点赞状态 + 收藏状态（合并为一次 Promise.all）
+  loadLikeAndFavoriteStatus: function (posts) {
     var that = this;
     var postIds = posts.map(function (p) { return p._id; });
 
-    wx.cloud.callFunction({
+    var likePromise = wx.cloud.callFunction({
       name: 'academicAPI',
-      data: {
-        action: 'squareGetLikeStatus',
-        postIds: postIds
-      }
+      data: { action: 'squareGetLikeStatus', postIds: postIds }
     }).then(function (res) {
-      var likeMap = res.result.likeMap || {};
+      return res.result.likeMap || {};
+    }).catch(function () { return {}; });
+
+    var favPromise = wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'squareGetFavoriteStatus', postIds: postIds }
+    }).then(function (res) {
+      return res.result.favMap || {};
+    }).catch(function () { return {}; });
+
+    Promise.all([likePromise, favPromise]).then(function (results) {
+      var likeMap = results[0];
+      var favMap = results[1];
       var updatedPosts = that.data.posts.map(function (post) {
-        return Object.assign({}, post, { isLiked: !!likeMap[post._id] });
+        return Object.assign({}, post, {
+          isLiked: !!likeMap[post._id],
+          isFavorite: !!favMap[post._id]
+        });
       });
       that.setData({ posts: updatedPosts });
     });
@@ -275,8 +273,14 @@ Page({
 
   // 跳转发布页
   navigateToPublish: function () {
+    var that = this;
     wx.navigateTo({
-      url: '/pages/square/publish/publish'
+      url: '/pages/square/publish/publish',
+      events: {
+        publishSuccess: function () {
+          that._needRefresh = true;
+        }
+      }
     });
   },
 
@@ -285,26 +289,6 @@ Page({
     var postId = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: '/pages/square/detail/detail?id=' + postId
-    });
-  },
-
-  // 批量获取收藏状态
-  loadFavoriteStatus: function (posts) {
-    var that = this;
-    var postIds = posts.map(function (p) { return p._id; });
-
-    wx.cloud.callFunction({
-      name: 'academicAPI',
-      data: {
-        action: 'squareGetFavoriteStatus',
-        postIds: postIds
-      }
-    }).then(function (res) {
-      var favMap = res.result.favMap || {};
-      var updatedPosts = that.data.posts.map(function (post) {
-        return Object.assign({}, post, { isFavorite: !!favMap[post._id] });
-      });
-      that.setData({ posts: updatedPosts });
     });
   },
 
@@ -632,13 +616,13 @@ Page({
       var result = res.result || {};
       var comments = result.comments || [];
       comments.forEach(function (c) {
-        c.displayTime = that.formatDisplayTime(c.createTime);
+        c.displayTime = sqHelper.formatDisplayTime(c.createTime);
       });
 
-      // 先转换 cloud:// URL，再渲染
-      return that.convertCommentCloudAvatars(comments);
+      // 转换 cloud:// URL，再渲染
+      return sqHelper.convertCloudUrls(comments, ['avatarUrl', 'imageUrl']);
     }).then(function (convertedComments) {
-      var tree = that.buildCommentTree(convertedComments);
+      var tree = sqHelper.buildCommentTree(convertedComments);
       var posts = that.data.posts.slice();
       if (posts[index]) {
         posts[index].commentsPreview = tree;
@@ -647,29 +631,6 @@ Page({
     }).catch(function (err) {
       console.error('[square] 加载评论预览失败', err);
     });
-  },
-
-  // 将扁平评论列表构建为树形结构
-  buildCommentTree: function (flatComments) {
-    var replyMap = {};
-    flatComments.forEach(function (c) {
-      if (c.parentId) {
-        if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
-        var exists = replyMap[c.parentId].some(function (r) { return r._id === c._id; });
-        if (!exists) replyMap[c.parentId].push(c);
-      }
-    });
-
-    var tops = [];
-    flatComments.forEach(function (c) {
-      if (!c.parentId) {
-        var copy = Object.assign({}, c);
-        copy._replies = replyMap[c._id] || [];
-        copy._showReplies = false;
-        tops.push(copy);
-      }
-    });
-    return tops;
   },
 
   // 展开/收起评论回复（广场页）
@@ -900,50 +861,6 @@ Page({
   },
 
 
-  // 转换评论中 cloud:// 协议的头像/图片 URL 为临时 URL（返回 Promise）
-  convertCommentCloudAvatars: function (comments) {
-    var cloudFileIDs = [];
-
-    comments.forEach(function (c) {
-      if (c.avatarUrl && c.avatarUrl.indexOf('cloud://') === 0) {
-        if (cloudFileIDs.indexOf(c.avatarUrl) === -1) {
-          cloudFileIDs.push(c.avatarUrl);
-        }
-      }
-      // 也处理评论中的图片
-      if (c.imageUrl && c.imageUrl.indexOf('cloud://') === 0) {
-        if (cloudFileIDs.indexOf(c.imageUrl) === -1) {
-          cloudFileIDs.push(c.imageUrl);
-        }
-      }
-    });
-
-    if (cloudFileIDs.length === 0) return Promise.resolve(comments);
-
-    return wx.cloud.getTempFileURL({
-      fileList: cloudFileIDs
-    }).then(function (res) {
-      var urlMap = {};
-      res.fileList.forEach(function (item) {
-        if (item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
-      });
-
-      return comments.map(function (c) {
-        var copy = Object.assign({}, c);
-        if (c.avatarUrl && urlMap[c.avatarUrl]) {
-          copy.avatarUrl = urlMap[c.avatarUrl];
-        }
-        if (c.imageUrl && urlMap[c.imageUrl]) {
-          copy.imageUrl = urlMap[c.imageUrl];
-        }
-        return copy;
-      });
-    }).catch(function (err) {
-      console.error('[square] 转换评论URL失败，使用原始数据', err);
-      return comments;
-    });
-  },
-
   // 预览图片
   previewImage: function (e) {
     var url = e.currentTarget.dataset.url;
@@ -952,93 +869,5 @@ Page({
       current: url,
       urls: urls || [url]
     });
-  },
-
-  // 获取类型显示文本
-  getTypeLabel: function (type) {
-    var map = {
-      'achievement': '成果分享',
-      'discussion': '学术讨论',
-      'resource': '资源分享',
-      'call_for_papers': '征稿通知',
-      'review': '学术审稿',
-      'journal': '学术会议',
-      'literature_help': '文献互助'
-    };
-    return map[type] || '动态';
-  },
-
-  // 获取类型颜色
-  getTypeColor: function (type) {
-    var map = {
-      'achievement': '#2563eb',
-      'discussion': '#7C3AED',
-      'resource': '#059669',
-      'call_for_papers': '#F97316',
-      'review': '#10B981',
-      'journal': '#06B6D4',
-      'literature_help': '#F43F5E'
-    };
-    return map[type] || '#6B7280';
-  },
-
-  // 格式化显示时间
-  formatDisplayTime: function (timeStr) {
-    if (!timeStr) return '';
-    var now = new Date();
-    var postTime = new Date(timeStr.replace(/-/g, '/'));
-    var diff = now.getTime() - postTime.getTime();
-    var minutes = Math.floor(diff / 60000);
-    var hours = Math.floor(diff / 3600000);
-    var days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return minutes + '分钟前';
-    if (hours < 24) return hours + '小时前';
-    if (days < 7) return days + '天前';
-    if (days < 365) {
-      var month = postTime.getMonth() + 1;
-      var day = postTime.getDate();
-      return month + '月' + day + '日';
-    }
-    return postTime.getFullYear() + '年';
-  },
-
-  // 获取求助状态显示文本
-  getHelpStatusLabel: function (status) {
-    var map = {
-      '求助中': '求助中',
-      '已解决': '已解决',
-      '已过期': '已过期'
-    };
-    return map[status] || '求助中';
-  },
-
-  // 获取求助状态颜色
-  getHelpStatusColor: function (status) {
-    var map = {
-      '求助中': '#EF4444',
-      '已解决': '#3b82f6',
-      '已过期': '#9ca3af'
-    };
-    return map[status] || '#EF4444';
-  },
-
-  // 格式化剩余时间
-  formatRemainingTime: function (deadline) {
-    if (!deadline) return '';
-    var now = new Date();
-    var deadlineTime = new Date(deadline.replace(/-/g, '/'));
-    var diff = deadlineTime.getTime() - now.getTime();
-
-    if (diff <= 0) return '已过期';
-
-    var days = Math.floor(diff / 86400000);
-    var hours = Math.floor((diff % 86400000) / 3600000);
-    var minutes = Math.floor((diff % 3600000) / 60000);
-
-    if (days > 0) return days + '天' + hours + '小时后截止';
-    if (hours > 0) return hours + '小时' + minutes + '分钟后截止';
-    return minutes + '分钟后截止';
   }
 });

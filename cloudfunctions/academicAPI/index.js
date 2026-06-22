@@ -950,14 +950,15 @@ async function squareGetPosts(event) {
   var orderField = 'createTime';
   var orderDir = 'desc';
 
+  // recommend: 综合排序（时间衰减 + 互动权重）
+  // 先按 hotScore 降序，hotScore 不存在时退化为按时间
   if (sortBy === 'hot') {
-    orderField = 'likeCount';
+    orderField = 'hotScore';
     orderDir = 'desc';
-  } else if (sortBy === 'latest') {
-    orderField = 'createTime';
+  } else if (sortBy === 'recommend') {
+    orderField = 'hotScore';
     orderDir = 'desc';
   } else {
-    // recommend: 按最新发布时间排序
     orderField = 'createTime';
     orderDir = 'desc';
   }
@@ -1007,6 +1008,15 @@ async function squareCreatePost(event) {
     return { success: false, error: '内容不能为空' };
   }
 
+  // 内容安全检测
+  var textToCheck = (title + ' ' + content).trim();
+  if (textToCheck) {
+    var isSafe = await checkContent(textToCheck);
+    if (!isSafe) {
+      return { success: false, error: '内容包含违规信息，请修改后重试' };
+    }
+  }
+
   // 频率限制：检查用户最近1分钟内发布数量
   var oneMinuteAgo = new Date(Date.now() - 60 * 1000);
   var recentCount = await db.collection('square_posts')
@@ -1022,6 +1032,7 @@ async function squareCreatePost(event) {
   }
 
   var now = formatTime();
+  var hotScore = Math.floor(Date.now() / 1000); // 初始热度分 = 当前时间戳(秒)，点赞/评论时递增
   var data = {
     _openid: openid,
     type: type,
@@ -1032,6 +1043,7 @@ async function squareCreatePost(event) {
     callType: callType,  // 征集类型
     likeCount: 0,
     commentCount: 0,
+    hotScore: hotScore,
     createTime: now,
     updateTime: now,
     deleteTime: null
@@ -1128,6 +1140,7 @@ async function squareDeletePost(event) {
   await db.collection('square_posts').doc(postId).update({
     data: { deleteTime: formatTime() }
   });
+
   return { success: true };
 }
 
@@ -1163,20 +1176,20 @@ async function squareGetComments(event) {
 
   // 查询父评论，获取父评论作者 openid
   var parentCommentMap = {};
+  // 批量查询父评论（替代逐条查询）
   if (parentIds.length > 0) {
-    for (var i = 0; i < parentIds.length; i++) {
-      try {
-        var parentRes = await db.collection('square_comments').doc(parentIds[i]).get();
-        if (parentRes.data) {
-          parentCommentMap[parentIds[i]] = parentRes.data;
-          var parentOpenid = parentRes.data._openid;
-          if (parentOpenid && openids.indexOf(parentOpenid) === -1) {
-            openids.push(parentOpenid);
-          }
+    try {
+      var parentBatchRes = await db.collection('square_comments')
+        .where({ _id: db.command.in(parentIds) })
+        .get();
+      (parentBatchRes.data || []).forEach(function (p) {
+        parentCommentMap[p._id] = p;
+        if (p._openid && openids.indexOf(p._openid) === -1) {
+          openids.push(p._openid);
         }
-      } catch (e) {
-        // 父评论可能已被删除
-      }
+      });
+    } catch (e) {
+      // 父评论可能已被删除
     }
   }
 
@@ -1216,6 +1229,14 @@ async function squareCreateComment(event) {
   if (!content && !imageUrl) return { success: false, error: '评论内容不能为空' };
   if (content.length > 500) return { success: false, error: '评论内容不能超过500字' };
 
+  // 内容安全检测
+  if (content) {
+    var isSafe = await checkContent(content);
+    if (!isSafe) {
+      return { success: false, error: '评论包含违规信息，请修改后重试' };
+    }
+  };
+
   var now = formatTime();
   var data = {
     _openid: openid,
@@ -1230,10 +1251,11 @@ async function squareCreateComment(event) {
 
   var addRes = await db.collection('square_comments').add({ data: data });
 
-  // 更新动态的评论计数
+  // 更新动态的评论计数 + 热度分
   await db.collection('square_posts').doc(postId).update({
     data: {
       commentCount: db.command.inc(1),
+      hotScore: db.command.inc(5),
       updateTime: now
     }
   });
@@ -1260,11 +1282,26 @@ async function squareDeleteComment(event) {
     data: { deleteTime: formatTime() }
   });
 
-  // 更新动态的评论计数
+  // 更新动态的评论计数 + 热度分
   if (comment.data && comment.data.postId) {
     await db.collection('square_posts').doc(comment.data.postId).update({
-      data: { commentCount: db.command.inc(-1) }
+      data: {
+        commentCount: db.command.inc(-1),
+        hotScore: db.command.inc(-5)
+      }
     });
+  }
+
+  // 清理该评论的点赞记录
+  try {
+    var likeRecords = await db.collection('square_likes')
+      .where({ commentId: commentId })
+      .get();
+    for (var i = 0; i < (likeRecords.data || []).length; i++) {
+      await db.collection('square_likes').doc(likeRecords.data[i]._id).remove();
+    }
+  } catch (e) {
+    console.error('[squareDeleteComment] 清理点赞记录失败', e);
   }
 
   return { success: true };
@@ -1303,10 +1340,16 @@ async function squareToggleLike(event) {
         }
       });
 
-      // 更新计数
+      // 更新计数 + 热度分
       await db.collection(targetTable).doc(targetId).update({
         data: { likeCount: db.command.inc(1) }
       });
+      // 帖子点赞时增加 hotScore
+      if (targetTable === 'square_posts') {
+        await db.collection('square_posts').doc(targetId).update({
+          data: { hotScore: db.command.inc(10) }
+        }).catch(function() {});
+      }
     }
   } else {
     // 取消点赞
@@ -1321,6 +1364,12 @@ async function squareToggleLike(event) {
       await db.collection(targetTable).doc(targetId).update({
         data: { likeCount: db.command.inc(-1) }
       });
+      // 帖子取消点赞时减少 hotScore
+      if (targetTable === 'square_posts') {
+        await db.collection('square_posts').doc(targetId).update({
+          data: { hotScore: db.command.inc(-10) }
+        }).catch(function() {});
+      }
     }
   }
 
@@ -1452,19 +1501,17 @@ async function squareGetFavorites(event) {
   var favorites = favRes.data || [];
   var postIds = favorites.map(function(f) { return f.postId; });
 
-  // 查询对应的动态
+  // 批量查询对应的动态（替代逐条查询）
   var posts = [];
   if (postIds.length > 0) {
-    for (var i = 0; i < postIds.length; i++) {
-      try {
-        var postRes = await db.collection('square_posts').doc(postIds[i]).get();
-        if (postRes.data && !postRes.data.deleteTime) {
-          posts.push(postRes.data);
-        }
-      } catch (e) {
-        // 动态可能已被删除
-      }
-    }
+    var batchRes = await db.collection('square_posts')
+      .where({ _id: db.command.in(postIds), deleteTime: null })
+      .get();
+    posts = batchRes.data || [];
+    // 保持原收藏顺序
+    var postMap = {};
+    posts.forEach(function(p) { postMap[p._id] = p; });
+    posts = postIds.map(function(id) { return postMap[id]; }).filter(Boolean);
   }
 
   posts = await fillPostAuthorInfo(posts);
@@ -1489,16 +1536,16 @@ async function squareGetMyLiked(event) {
   var likes = likeRes.data || [];
   var postIds = likes.map(function(l) { return l.postId; });
 
+  // 批量查询帖子（替代逐条查询）
   var posts = [];
   if (postIds.length > 0) {
-    for (var i = 0; i < postIds.length; i++) {
-      try {
-        var postRes = await db.collection('square_posts').doc(postIds[i]).get();
-        if (postRes.data && !postRes.data.deleteTime) {
-          posts.push(postRes.data);
-        }
-      } catch (e) {}
-    }
+    var batchRes = await db.collection('square_posts')
+      .where({ _id: db.command.in(postIds), deleteTime: null })
+      .get();
+    posts = batchRes.data || [];
+    var postMap = {};
+    posts.forEach(function(p) { postMap[p._id] = p; });
+    posts = postIds.map(function(id) { return postMap[id]; }).filter(Boolean);
   }
 
   posts = await fillPostAuthorInfo(posts);
@@ -1514,7 +1561,7 @@ async function squareGetMyCommented(event) {
 
   var skip = (page - 1) * pageSize;
   var commentRes = await db.collection('square_comments')
-    .where({ _openid: openid })
+    .where({ _openid: openid, deleteTime: null })
     .orderBy('createTime', 'desc')
     .skip(skip)
     .limit(pageSize)
@@ -1533,16 +1580,16 @@ async function squareGetMyCommented(event) {
     }
   }
 
+  // 批量查询帖子（替代逐条查询）
   var posts = [];
   if (dedupedPostIds.length > 0) {
-    for (var i = 0; i < dedupedPostIds.length; i++) {
-      try {
-        var postRes = await db.collection('square_posts').doc(dedupedPostIds[i]).get();
-        if (postRes.data && !postRes.data.deleteTime) {
-          posts.push(postRes.data);
-        }
-      } catch (e) {}
-    }
+    var batchRes = await db.collection('square_posts')
+      .where({ _id: db.command.in(dedupedPostIds), deleteTime: null })
+      .get();
+    posts = batchRes.data || [];
+    var postMap = {};
+    posts.forEach(function(p) { postMap[p._id] = p; });
+    posts = dedupedPostIds.map(function(id) { return postMap[id]; }).filter(Boolean);
   }
 
   posts = await fillPostAuthorInfo(posts);
@@ -1779,24 +1826,17 @@ async function squareCheckHelpExpiry() {
   var now = formatTime();
   var nowDate = now.split(' ')[0];  // 当前日期 YYYY-MM-DD
 
-  // 查询所有求助中且截止日期小于今天的动态
+  // 直接通过 DB 条件过滤已过期的求助（替代全表扫描）
   var postRes = await db.collection('square_posts')
     .where({
       type: 'literature_help',
       helpStatus: '求助中',
-      deleteTime: null
+      deleteTime: null,
+      helpDeadline: db.command.lt(nowDate)
     })
     .get();
 
-  var expiredPosts = [];
-  for (var i = 0; i < postRes.data.length; i++) {
-    var post = postRes.data[i];
-    var deadline = (post.helpDeadline || '').split(' ')[0];
-
-    if (deadline && deadline < nowDate) {
-      expiredPosts.push(post);
-    }
-  }
+  var expiredPosts = postRes.data || [];
 
   // 批量更新过期状态（积分已扣除，过期不退还）
   var updated = 0;
@@ -1819,6 +1859,20 @@ async function squareCheckHelpExpiry() {
   }
 
   return { success: true, checked: expiredPosts.length, updated: updated };
+}
+
+// ==================== 内容安全检测 ====================
+async function checkContent(text) {
+  if (!text) return true;
+  try {
+    await cloud.openapi.security.msgSecCheck({ content: text });
+    return true;
+  } catch (e) {
+    if (e.errCode === 87014) return false;
+    // 接口异常时放行，不阻断正常业务
+    console.error('[checkContent] msgSecCheck 异常', e);
+    return true;
+  }
 }
 
 // ==================== 工具函数 ====================

@@ -1,6 +1,7 @@
 // pages/square/detail/detail.js
 // 学术动态 - 动态详情页
 var app = getApp();
+var sqHelper = require('../../../utils/square-helper.js');
 
 Page({
   data: {
@@ -27,7 +28,7 @@ Page({
     inputActive: false,     // 输入框是否激活（聚焦状态）
     commentImageUrl: '',    // 评论图片
     showEmojiPanel: false,  // 表情包面板
-    emojiList: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😝','😜','🤪','🤔','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👍','👎','👏','🙌','👐','🤝','🤗','🤭','🤫','🌹','❤️','💔','💖','💙','💚','💛','💜','🖤','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','🗨️','🗯️','💭','💤'],
+    emojiList: sqHelper.EMOJI_LIST,
 
 
     // 用户信息
@@ -89,15 +90,15 @@ Page({
         return;
       }
 
-      post.displayTime = that.formatDisplayTime(post.createTime);
-      post.typeLabel = that.getTypeLabel(post.type);
-      post.typeColor = that.getTypeColor(post.type);
+      post.displayTime = sqHelper.formatDisplayTime(post.createTime);
+      post.typeLabel = sqHelper.getTypeLabel(post.type);
+      post.typeColor = sqHelper.getTypeColor(post.type);
 
       // 文献互助类型：添加求助状态相关字段
       if (post.type === 'literature_help') {
-        post.helpStatusLabel = that.getHelpStatusLabel(post.helpStatus);
-        post.helpStatusColor = that.getHelpStatusColor(post.helpStatus);
-        post.remainingTime = that.formatRemainingTime(post.helpDeadline);
+        post.helpStatusLabel = sqHelper.getHelpStatusLabel(post.helpStatus);
+        post.helpStatusColor = sqHelper.getHelpStatusColor(post.helpStatus);
+        post.remainingTime = sqHelper.formatRemainingTime(post.helpDeadline);
         // 标记当前用户是否已经应助过
         post.hasResponded = (post.responses || []).some(function(r) {
           return r.responderOpenid === that.data.currentOpenid;
@@ -231,15 +232,15 @@ Page({
       var newComments = result.comments || [];
 
       newComments.forEach(function (c) {
-        c.displayTime = that.formatDisplayTime(c.createTime);
+        c.displayTime = sqHelper.formatDisplayTime(c.createTime);
         c.isLiked = false; // 初始化点赞状态
       });
 
       // 先转换为临时链接，再渲染
-      return that.convertCommentCloudUrls(newComments);
+      return sqHelper.convertCloudUrls(newComments, ['avatarUrl', 'imageUrl']);
     }).then(function (convertedComments) {
       var flatList = reset ? convertedComments : that.data.comments.concat(convertedComments);
-      var displayList = that.buildCommentTree(flatList);
+      var displayList = sqHelper.buildCommentTree(flatList);
 
       // 如果是追加加载，保持已有展开状态
       if (!reset) {
@@ -272,30 +273,6 @@ Page({
     });
   },
 
-  // 将扁平评论列表构建为树形结构（回复嵌套在父评论下）
-  buildCommentTree: function (flatComments) {
-    var replyMap = {};
-    flatComments.forEach(function (c) {
-      if (c.parentId) {
-        if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
-        // 去重
-        var exists = replyMap[c.parentId].some(function (r) { return r._id === c._id; });
-        if (!exists) replyMap[c.parentId].push(c);
-      }
-    });
-
-    var tops = [];
-    flatComments.forEach(function (c) {
-      if (!c.parentId) {
-        var copy = Object.assign({}, c);
-        copy._replies = replyMap[c._id] || [];
-        copy._showReplies = false;
-        tops.push(copy);
-      }
-    });
-    return tops;
-  },
-
   // 展开/收起某条评论的回复
   toggleReplies: function (e) {
     var index = e.currentTarget.dataset.index;
@@ -304,54 +281,6 @@ Page({
       list[index]._showReplies = !list[index]._showReplies;
       this.setData({ displayComments: list });
     }
-  },
-
-  // 转换评论中 cloud:// 协议的头像/图片 URL 为临时 URL（返回 Promise）
-  convertCommentCloudUrls: function (comments) {
-    var cloudFileIDs = [];
-
-    comments.forEach(function (c) {
-      if (c.avatarUrl && c.avatarUrl.indexOf('cloud://') === 0) {
-        if (cloudFileIDs.indexOf(c.avatarUrl) === -1) {
-          cloudFileIDs.push(c.avatarUrl);
-        }
-      }
-      if (c.imageUrl && c.imageUrl.indexOf('cloud://') === 0) {
-        if (cloudFileIDs.indexOf(c.imageUrl) === -1) {
-          cloudFileIDs.push(c.imageUrl);
-        }
-      }
-    });
-
-    // 没有 cloud:// 路径，直接返回原数据
-    if (cloudFileIDs.length === 0) {
-      return Promise.resolve(comments);
-    }
-
-    return wx.cloud.getTempFileURL({
-      fileList: cloudFileIDs
-    }).then(function (res) {
-      var urlMap = {};
-      res.fileList.forEach(function (item) {
-        if (item.tempFileURL) {
-          urlMap[item.fileID] = item.tempFileURL;
-        }
-      });
-
-      return comments.map(function (c) {
-        var copy = Object.assign({}, c);
-        if (c.avatarUrl && urlMap[c.avatarUrl]) {
-          copy.avatarUrl = urlMap[c.avatarUrl];
-        }
-        if (c.imageUrl && urlMap[c.imageUrl]) {
-          copy.imageUrl = urlMap[c.imageUrl];
-        }
-        return copy;
-      });
-    }).catch(function (err) {
-      console.error('[detail] 转换评论 URL 失败，使用原始数据', err);
-      return comments; // 失败时回退到原始数据
-    });
   },
 
   // 加载评论点赞状态
@@ -373,7 +302,7 @@ Page({
         copy.isLiked = !!likeMap[c._id];
         return copy;
       });
-      var displayList = that.buildCommentTree(comments);
+      var displayList = sqHelper.buildCommentTree(comments);
       var oldDisplay = that.data.displayComments;
       displayList.forEach(function (item) {
         var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
@@ -397,7 +326,7 @@ Page({
     flatList[flatIndex].likeCount = (flatList[flatIndex].likeCount || 0) + (isLiked ? 1 : -1);
     if (flatList[flatIndex].likeCount < 0) flatList[flatIndex].likeCount = 0;
 
-    var displayList = that.buildCommentTree(flatList);
+    var displayList = sqHelper.buildCommentTree(flatList);
     var oldDisplay = that.data.displayComments;
     displayList.forEach(function (item) {
       var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
@@ -454,7 +383,7 @@ Page({
               if (flatIdx >= 0) flatList.splice(flatIdx, 1);
 
               // 重建显示列表
-              var displayList = that.buildCommentTree(flatList);
+              var displayList = sqHelper.buildCommentTree(flatList);
               var oldDisplay = that.data.displayComments;
               displayList.forEach(function (item) {
                 var oldItem = oldDisplay.find(function (o) { return o._id === item._id; });
@@ -740,66 +669,6 @@ Page({
   // 上拉加载更多评论
   onReachBottom: function () {
     this.loadComments(false);
-  },
-
-  // 格式化时间
-  formatDisplayTime: function (timeStr) {
-    if (!timeStr) return '';
-    var now = new Date();
-    var postTime = new Date(timeStr.replace(/-/g, '/'));
-    var diff = now.getTime() - postTime.getTime();
-    var minutes = Math.floor(diff / 60000);
-    var hours = Math.floor(diff / 3600000);
-    var days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return minutes + '分钟前';
-    if (hours < 24) return hours + '小时前';
-    if (days < 7) return days + '天前';
-    if (days < 365) {
-      return (postTime.getMonth() + 1) + '月' + postTime.getDate() + '日';
-    }
-    return postTime.getFullYear() + '年';
-  },
-
-  getTypeLabel: function (type) {
-    var map = { 'achievement': '成果分享', 'discussion': '学术讨论', 'resource': '资源分享', 'call_for_papers': '征稿通知', 'review': '学术审稿', 'journal': '学术会议', 'literature_help': '文献互助' };
-    return map[type] || '动态';
-  },
-
-  getTypeColor: function (type) {
-    var map = { 'achievement': '#2563eb', 'discussion': '#7C3AED', 'resource': '#059669', 'call_for_papers': '#F97316', 'review': '#10B981', 'journal': '#06B6D4', 'literature_help': '#F43F5E' };
-    return map[type] || '#6B7280';
-  },
-
-  // 获取求助状态显示文本
-  getHelpStatusLabel: function (status) {
-    var map = { '求助中': '求助中', '已解决': '已解决', '已过期': '已过期' };
-    return map[status] || '求助中';
-  },
-
-  // 获取求助状态颜色
-  getHelpStatusColor: function (status) {
-    var map = { '求助中': '#10b981', '已解决': '#3b82f6', '已过期': '#9ca3af' };
-    return map[status] || '#10b981';
-  },
-
-  // 格式化剩余时间
-  formatRemainingTime: function (deadline) {
-    if (!deadline) return '';
-    var now = new Date();
-    var deadlineTime = new Date(deadline.replace(/-/g, '/'));
-    var diff = deadlineTime.getTime() - now.getTime();
-
-    if (diff <= 0) return '已过期';
-
-    var days = Math.floor(diff / 86400000);
-    var hours = Math.floor((diff % 86400000) / 3600000);
-    var minutes = Math.floor((diff % 3600000) / 60000);
-
-    if (days > 0) return days + '天' + hours + '小时后截止';
-    if (hours > 0) return hours + '小时' + minutes + '分钟后截止';
-    return minutes + '分钟后截止';
   },
 
   // 应助 - 打开应助弹窗

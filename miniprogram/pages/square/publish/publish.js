@@ -206,7 +206,16 @@ Page({
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: function (res) {
-        var tempFiles = res.tempFiles.map(function (f) { return f.tempFilePath; });
+        // 检查图片大小，超过5MB的跳过
+        var validFiles = res.tempFiles.filter(function (f) {
+          if (f.size > 5 * 1024 * 1024) {
+            wx.showToast({ title: '图片超过5MB限制，已跳过', icon: 'none' });
+            return false;
+          }
+          return true;
+        });
+        if (validFiles.length === 0) return;
+        var tempFiles = validFiles.map(function (f) { return f.tempFilePath; });
         that.uploadImages(tempFiles);
       }
     });
@@ -298,6 +307,10 @@ Page({
 
     // 通用表单验证
     if (this.data.postType !== 'literature_help') {
+      if (!this.data.title.trim()) {
+        wx.showToast({ title: '请输入标题', icon: 'none' });
+        return;
+      }
       if (!this.data.content.trim()) {
         wx.showToast({ title: '请输入内容', icon: 'none' });
         return;
@@ -383,6 +396,11 @@ Page({
 
       if (result.success) {
         wx.showToast({ title: '发布成功', icon: 'success' });
+        // 通知广场页刷新列表
+        var eventChannel = that.getOpenerEventChannel && that.getOpenerEventChannel();
+        if (eventChannel) {
+          eventChannel.emit('publishSuccess');
+        }
         setTimeout(function () {
           wx.navigateBack();
         }, 1200);
