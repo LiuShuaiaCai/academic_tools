@@ -39,7 +39,31 @@ Page({
   },
 
   onLoad: function() {
-    this.loadToolDefs();
+    // 只以 hasOnboarded 为唯一判断标志（设置时已确保用户存在且 role 不为空）
+    var hasOnboarded = wx.getStorageSync('hasOnboarded');
+    if (hasOnboarded) {
+      wx.switchTab({ url: '/pages/home/home' });
+      return;
+    }
+    // 本地标记丢失时，查询云端兜底
+    var that = this;
+    wx.cloud.callFunction({
+      name: 'academicAPI',
+      data: { action: 'getUserConfig' }
+    }).then(function(res) {
+      var config = res.result;
+      if (config && config.role) {
+        // 云端已有角色，补全本地标记并跳转
+        wx.setStorageSync('hasOnboarded', true);
+        wx.switchTab({ url: '/pages/home/home' });
+      } else {
+        // 新用户，正常走引导流程
+        that.loadToolDefs();
+      }
+    }).catch(function() {
+      // 云函数失败，展示引导页让用户重新选择
+      that.loadToolDefs();
+    });
   },
 
   // 从缓存加载工具定义（首次查云函数，后续走本地缓存）
@@ -170,10 +194,8 @@ Page({
     }).catch(function(e) {
       wx.hideLoading();
       console.error('[onboarding] 保存失败:', e);
-      // 即使云函数失败，也允许进入首页
-      wx.setStorageSync('hasOnboarded', true);
-      wx.setStorageSync('userRole', role);
-      wx.switchTab({ url: '/pages/home/home' });
+      // 云函数失败不设置 hasOnboarded，下次进入仍需完成引导
+      wx.showToast({ title: '保存失败，请重试', icon: 'none' });
     });
   }
 });

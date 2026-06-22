@@ -1350,6 +1350,99 @@ async function refundFrozenCredits(event) {
   return { success: true, refunded: refunded };
 }
 
+// ==================== 邀请好友奖励 ====================
+
+// 邀请者获得积分奖励
+// 调用时机：新用户（被邀请者）首次打开小程序时调用
+// 判断条件：客户端传入 isNewUser=true（即 initCredits 返回 initialized=true）
+async function claimInviteReward(event) {
+  var wxContext = cloud.getWXContext();
+  var inviteeOpenid = wxContext.OPENID;   // 当前用户 = 被邀请者
+  var inviterOpenid = event.inviterOpenid;
+  var isNewUser = event.isNewUser;
+
+  if (!inviterOpenid || inviterOpenid === inviteeOpenid) {
+    return { success: false, reason: 'invalid_inviter' };
+  }
+
+  // 核心判断：客户端传入的 isNewUser 必须为 true
+  // initCredits 返回 initialized=true 才是真正的注册用户
+  if (!isNewUser) {
+    return { success: false, reason: 'not_new_user' };
+  }
+
+  var now = formatTime();
+
+  // 1. 检查被邀请者（当前用户）记录是否存在
+  var inviteeConfig = await findRecord('user_config', { _openid: inviteeOpenid });
+  if (!inviteeConfig) {
+    return { success: false, reason: 'invitee_not_found' };
+  }
+  // 幂等保护：已有邀请者记录，不重复处理
+  if (inviteeConfig.invitedBy) {
+    return { success: false, reason: 'already_has_inviter' };
+  }
+
+  // 2. 幂等保护：检查邀请者是否已经因这个被邀请者获得过奖励
+  var existingReward = await findRecord('credits', {
+    _openid: inviterOpenid,
+    action: 'invite_reward',
+    relatedId: inviteeOpenid
+  });
+  if (existingReward) {
+    return { success: false, reason: 'already_rewarded' };
+  }
+
+  // 3. 获取邀请者配置
+  var inviterConfig = await findRecord('user_config', { _openid: inviterOpenid });
+  if (!inviterConfig) {
+    return { success: false, reason: 'inviter_not_found' };
+  }
+
+  // 4. 给邀请者加 20 积分
+  var rewardPoints = CREDITS_RULES.invite_reward;
+  var expireTime = getExpireTime();
+  var currentValidCredits = await calculateValidCredits(inviterOpenid);
+  var newBalance = currentValidCredits + rewardPoints;
+
+  await db.collection('user_config').doc(inviterConfig._id).update({
+    data: {
+      credits: newBalance,
+      inviteCount: (inviterConfig.inviteCount || 0) + 1,
+      updateTime: now
+    }
+  });
+
+  await db.collection('credits').add({
+    data: {
+      _openid: inviterOpenid,
+      type: 'earn',
+      action: 'invite_reward',
+      points: rewardPoints,
+      remainPoints: rewardPoints,
+      balance: newBalance,
+      description: '邀请好友 +' + rewardPoints + '（有效期至' + expireTime.split(' ')[0] + '）',
+      relatedId: inviteeOpenid,
+      createTime: now,
+      updateTime: now,
+      expireTime: expireTime,
+      deleteTime: null
+    }
+  });
+
+  // 5. 标记被邀请者已有邀请者，防止重复触发
+  await db.collection('user_config').doc(inviteeConfig._id).update({
+    data: { invitedBy: inviterOpenid }
+  });
+
+  return {
+    success: true,
+    rewarded: true,
+    points: rewardPoints,
+    inviterNewBalance: newBalance
+  };
+}
+
 // ==================== 入口 ====================
 
 exports.main = async (event, context) => {
@@ -1388,6 +1481,8 @@ exports.main = async (event, context) => {
       case 'freezeCredits':     return await freezeCredits(event);
       case 'transferCredits':   return await transferCredits(event);
       case 'refundFrozenCredits': return await refundFrozenCredits(event);
+      // 邀请好友
+      case 'claimInviteReward': return await claimInviteReward(event);
       default: return { error: '未知操作: ' + (event.action || 'empty') };
     }
   } catch (e) {

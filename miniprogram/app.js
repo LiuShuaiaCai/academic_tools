@@ -27,20 +27,21 @@ App({
       console.error('[app.js] 数据库初始化失败', err);
     });
 
-    // 初始化积分（新用户赠送100）
+    // 初始化积分（新用户赠送100），完成后才检查邀请奖励（确保用户记录已存在）
+    var that = this;
     wx.cloud.callFunction({
       name: 'creditsAPI',
       data: { action: 'initCredits' }
     }).then(function(res) {
-      if (res.result && res.result.initialized) {
+      var isNewUser = res.result && res.result.initialized === true;
+      if (isNewUser) {
         console.log('[app.js] 新用户积分初始化完成');
       }
+      // 将真正的新用户标识传递给邀请奖励检查
+      that._checkInviteReward(options, isNewUser);
     }).catch(function(err) {
       console.error('[app.js] 积分初始化失败', err);
     });
-
-    // 检查邀请参数，给分享者加积分
-    this._checkInviteReward(options);
 
     // 检查是否已完成引导
     var hasOnboarded = wx.getStorageSync('hasOnboarded');
@@ -57,25 +58,40 @@ App({
     } catch (e) { /* ignore */ }
   },
 
-  // 检查邀请奖励
-  _checkInviteReward: function(options) {
-    var that = this;
+  // 检查邀请奖励（仅真正的新用户触发奖励发放）
+  // isNewUser：initCredits 返回 initialized=true 才是新用户
+  _checkInviteReward: function(options, isNewUser) {
     var query = options.query || options.referrerInfo || {};
     // 兼容场景值1044（群分享卡片）和其他场景
     var inviterOpenid = query.inviter || query.inviterOpenid || '';
     if (!inviterOpenid) return;
 
-    // 标记已处理，避免重复奖励
+    // 本地已处理过则跳过（双重保险，云端也有幂等保护）
     var inviteKey = 'invited_by_' + inviterOpenid;
     var processed = wx.getStorageSync(inviteKey);
     if (processed) return;
 
-    // 给分享者加50积分
-    // 注意：云函数端需要 openid，这里通过调用云函数处理
-    // 由于邀请者 openid 无法在当前用户上下文中直接写入，
-    // 简化处理：当前用户首次打开时记录 inviter，由分享者下次打开时检查
-    wx.setStorageSync(inviteKey, true);
-    console.log('[app.js] 邀请来源已记录:', inviterOpenid);
+    // 调用云函数，isNewUser 为 true 才给邀请者发积分
+    wx.cloud.callFunction({
+      name: 'creditsAPI',
+      data: {
+        action: 'claimInviteReward',
+        inviterOpenid: inviterOpenid,
+        isNewUser: isNewUser
+      }
+    }).then(function(res) {
+      var result = res.result || {};
+      if (result.success && result.rewarded) {
+        console.log('[app.js] 邀请奖励发放成功，邀请者获得', result.points, '积分');
+      } else {
+        console.log('[app.js] 邀请奖励未发放，原因:', result.reason);
+      }
+      // 无论是否发放成功，都记录本地标记避免重复调用
+      wx.setStorageSync(inviteKey, true);
+    }).catch(function(err) {
+      console.error('[app.js] 邀请奖励检查失败:', err);
+      // 云函数失败不记录本地标记，下次启动会重试
+    });
   },
 
   // 全局分享配置（邀请好友）
