@@ -28,6 +28,7 @@ var ICON_EMOJI_MAP = {
 
 Page({
   data: {
+    checking: true,  // 初始为检查中，避免老用户看到引导页闪烁
     step: 1,
     selectedRole: '',
     roleOptions: [
@@ -68,6 +69,8 @@ Page({
 
   // 从缓存加载工具定义（首次查云函数，后续走本地缓存）
   loadToolDefs: function() {
+    // 确认需要展示引导页，解除检查状态
+    this.setData({ checking: false });
     var that = this;
     var toolCache = require('../../utils/toolCache.js');
     toolCache.getAllTools().then(function(toolDefs) {

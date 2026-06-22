@@ -1,5 +1,13 @@
 <!--pages/onboarding/onboarding.wxml-->
-<view class="onboarding-container">
+
+<!-- 检查中：展示 Loading -->
+<view class="loading-screen" wx:if="{{checking}}">
+  <view class="loading-spinner"></view>
+  <view class="loading-text">加载中...</view>
+</view>
+
+<!-- 检查完成：展示引导页 -->
+<view class="onboarding-container" wx:if="{{!checking}}">
   <!-- 步骤1：角色选择 -->
   <view class="step-panel" wx:if="{{step === 1}}">
     <view class="onboarding-header">
