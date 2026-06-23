@@ -9,7 +9,8 @@ Page({
     hasMoreTools: false,
     totalCount: 0,
     upcomingItems: [],
-    loading: true,
+    toolsLoading: true,      // 工作台加载状态
+    itemsLoading: true,       // 近期任务加载状态
     signedToday: false,
     continuousDays: 0,
     showSigninModal: false,
@@ -28,13 +29,17 @@ Page({
       data: { action: 'getUserId' }
     }).then(function(res) {
       that.setData({ currentOpenid: res.result.openid });
+      // 并行加载工作台和近期任务
       that.loadEnabledTools();
+      that.loadUpcomingItems();
     }).catch(function() {
       that.loadEnabledTools();
+      that.loadUpcomingItems();
     });
   },
   onShow: function() { 
     this.loadEnabledTools(); 
+    this.loadUpcomingItems();  // 每次显示都刷新近期任务
     this.setData({ creditsInfoLoaded: false });
     this.loadCreditsInfo();
   },
@@ -123,7 +128,7 @@ Page({
 
   loadEnabledTools: function() {
     var that = this;
-    that.setData({ loading: true });
+    that.setData({ toolsLoading: true });
 
     // 通过云函数获取用户已启用的工具配置
     wx.cloud.callFunction({
@@ -165,8 +170,8 @@ Page({
       that.loadHomeData();
     }).catch(function(e) {
       console.error('[home] 获取工具配置失败:', e);
-      that.setData({ enabledTools: [], loading: false });
-      that.loadUpcomingItems();
+      that.setData({ enabledTools: [], toolsLoading: false });
+      // 工作台失败不影响近期任务（已在 onLoad 中独立启动）
     });
   },
 
@@ -295,7 +300,7 @@ Page({
     }
 
     Promise.all(promises).then(function(updatedTools) {
-      that.setData({ enabledTools: updatedTools });
+      that.setData({ enabledTools: updatedTools, toolsLoading: false });
 
       var displayTools = updatedTools.length > 4 ? updatedTools.slice(0, 4) : updatedTools;
       var hasMoreTools = updatedTools.length > 4;
@@ -308,12 +313,17 @@ Page({
       }
 
       that.setData({ displayTools: displayTools, hasMoreTools: hasMoreTools, totalCount: totalCount, totalUrgent: totalUrgent });
-      that.loadUpcomingItems();
-    }).catch(function(e) { console.error('[home] 加载数据失败', e); });
+      // 工作台加载完成，不再重复调用 loadUpcomingItems（已在 onLoad 中启动）
+    }).catch(function(e) { 
+      console.error('[home] 加载数据失败', e); 
+      that.setData({ toolsLoading: false });
+      // 工作台失败也不影响近期任务（已在 onLoad 中独立启动）
+    });
   },
 
   loadUpcomingItems: function() {
     var that = this;
+    that.setData({ itemsLoading: true });  // 开始加载时显示骨架屏
     var db = wx.cloud.database();
     var _ = db.command;
     var now = new Date();
@@ -412,8 +422,11 @@ Page({
         });
       }
 
-      that.setData({ upcomingItems: formattedItems, loading: false });
-    }).catch(function(e) { console.error('[home] 加载即将到期事项失败', e); });
+      that.setData({ upcomingItems: formattedItems, itemsLoading: false });
+    }).catch(function(e) { 
+      console.error('[home] 加载即将到期事项失败', e); 
+      that.setData({ itemsLoading: false });
+    });
   },
 
   goToTool: function(e) {

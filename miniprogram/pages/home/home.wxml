@@ -57,14 +57,14 @@
     <view class="stats-frame-title">
       <text>📊</text>
       <text>工作台</text>
-      <view class="more-link" wx:if="{{enabledTools.length > 4 && !loading}}" bindtap="goToToolbox">
+      <view class="more-link" wx:if="{{enabledTools.length > 4 && !toolsLoading}}" bindtap="goToToolbox">
         <text>更多工具</text>
         <text class="arrow">›</text>
       </view>
     </view>
 
     <!-- 加载骨架屏 -->
-    <view wx:if="{{loading}}" class="skeleton-grid">
+    <view wx:if="{{toolsLoading}}" class="skeleton-grid">
       <view class="skeleton-card" wx:for="{{4}}" wx:key="*this">
         <view class="skeleton-icon skeleton-pulse"></view>
         <view class="skeleton-line skeleton-pulse" style="width:60%"></view>
@@ -115,14 +115,14 @@
   <view class="upcoming-frame">
     <view class="section-title">
       <text>近期截止</text>
-      <view class="more-link" wx:if="{{!loading}}" bindtap="goToCalendar">
+      <view class="more-link" wx:if="{{!itemsLoading}}" bindtap="goToCalendar">
         <text>查看日历</text>
         <text class="arrow">›</text>
       </view>
     </view>
 
     <!-- 加载骨架屏 -->
-    <view wx:if="{{loading}}" class="skeleton-list">
+    <view wx:if="{{itemsLoading}}" class="skeleton-list">
       <view class="skeleton-item" wx:for="{{3}}" wx:key="*this">
         <view class="skeleton-circle skeleton-pulse"></view>
         <view class="skeleton-content">
