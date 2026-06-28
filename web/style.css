@@ -1107,7 +1107,7 @@ img { max-width: 100%; display: block; }
 /* ---------- Workflow ---------- */
 .workflow {
   padding: 100px 0;
-  background: var(--bg);
+  background: var(--bg-secondary);
 }
 
 .workflow-steps {
@@ -1249,7 +1249,7 @@ img { max-width: 100%; display: block; }
 /* ---------- Who We Are ---------- */
 .who-we-are {
   padding: 100px 0;
-  background: var(--bg-secondary);
+  background: var(--bg);
 }
 
 .identity-grid {
@@ -1316,7 +1316,7 @@ img { max-width: 100%; display: block; }
 /* ---------- What We Do: Dimensions ---------- */
 .what-we-do {
   padding: 100px 0;
-  background: var(--bg);
+  background: var(--bg-secondary);
 }
 
 .dimension-grid {
@@ -1327,7 +1327,7 @@ img { max-width: 100%; display: block; }
 
 .dimension-card {
   padding: 48px 36px;
-  background: var(--bg-secondary);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   position: relative;
@@ -1497,7 +1497,7 @@ img { max-width: 100%; display: block; }
 /* ---------- Brand Tone ---------- */
 .brand-tone {
   padding: 100px 0;
-  background: var(--bg-secondary);
+  background: var(--bg);
 }
 
 .tone-grid {
