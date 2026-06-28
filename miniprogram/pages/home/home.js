@@ -514,5 +514,24 @@ Page({
     if (!d) return '';
     var date = new Date(String(d).replace(' ', 'T'));
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  },
+
+  // 小程序分享
+  onShareAppMessage: function() {
+    var banners = this.data.banners || [];
+    var shareTitle = '学术管理工具 - 高效管理学术事务';
+    var shareImage = '';
+    // 优先使用第一个 Banner 图片作为分享图
+    if (banners.length > 0 && banners[0].image) {
+      shareImage = banners[0].image;
+      if (banners[0].title) {
+        shareTitle = banners[0].title;
+      }
+    }
+    return {
+      title: shareTitle,
+      path: '/pages/home/home',
+      imageUrl: shareImage
+    };
   }
 });

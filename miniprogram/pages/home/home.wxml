@@ -6,7 +6,14 @@
     <view class="header-swiper-container" wx:if="{{banners.length > 0}}">
       <swiper class="header-swiper" indicator-dots="{{banners.length > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#fff" autoplay="{{banners.length > 1}}" circular="{{banners.length > 1}}" interval="4000" duration="500">
         <swiper-item wx:for="{{banners}}" wx:key="_id">
-          <image class="header-banner-img" src="{{item.image}}" mode="aspectFill" bindtap="onBannerTap" data-item="{{item}}"></image>
+          <image class="header-banner-img" src="{{item.image}}" mode="aspectFill"></image>
+          <!-- 分享按钮覆盖整个 Banner -->
+          <button class="header-share-overlay" open-type="share" hover-class="share-hover"></button>
+          <!-- 右上角分享徽章 -->
+          <view class="header-share-badge">
+            <text class="share-icon">↗</text>
+            <text class="share-label">分享给朋友</text>
+          </view>
           <view class="header-banner-text" wx:if="{{item.title || item.subTitle}}">
             <view class="header-banner-title" wx:if="{{item.title}}">{{item.title}}</view>
             <view class="header-banner-subtitle" wx:if="{{item.subTitle}}">{{item.subTitle}}</view>
