@@ -19,12 +19,12 @@
     <view class="form-title">基本信息</view>
     
     <view class="form-item">
-      <view class="form-label">昵称</view>
+      <view class="form-label"><text class="required">*</text>昵称</view>
       <input class="form-input" type="nickname" value="{{profile.nickname}}" placeholder="点击获取微信昵称" bindinput="onInput" data-field="nickname"/>
     </view>
 
     <view class="form-item">
-      <view class="form-label">邮箱</view>
+      <view class="form-label"><text class="required">*</text>邮箱</view>
       <input class="form-input" type="text" value="{{profile.email}}" placeholder="your@email.com" bindinput="onInput" data-field="email"/>
     </view>
 
@@ -53,7 +53,7 @@
     <view class="form-title">学术信息</view>
     
     <view class="form-item">
-      <view class="form-label">职称</view>
+      <view class="form-label"><text class="required">*</text>职称</view>
       <picker mode="selector" range="{{titleOptions}}" bindchange="onPickerChange" data-field="title">
         <view class="form-picker">
           <text>{{profile.title || '请选择职称'}}</text>
@@ -63,7 +63,7 @@
     </view>
 
     <view class="form-item">
-      <view class="form-label">研究领域</view>
+      <view class="form-label"><text class="required">*</text>研究领域</view>
       <input class="form-input" value="{{profile.researchField}}" placeholder="如：计算机科学、人工智能" bindinput="onInput" data-field="researchField"/>
     </view>
   </view>
@@ -72,12 +72,12 @@
     <view class="form-title">机构信息</view>
     
     <view class="form-item">
-      <view class="form-label">机构名称</view>
+      <view class="form-label"><text class="required">*</text>机构名称</view>
       <input class="form-input" value="{{profile.institution}}" placeholder="请输入您的机构名称" bindinput="onInput" data-field="institution"/>
     </view>
 
     <view class="form-item">
-      <view class="form-label">所在地</view>
+      <view class="form-label"><text class="required">*</text>所在地</view>
       <picker mode="region" bindchange="onRegionChange" value="{{region}}">
         <view class="form-picker">
           <text>{{regionText || '请选择省/市/区'}}</text>

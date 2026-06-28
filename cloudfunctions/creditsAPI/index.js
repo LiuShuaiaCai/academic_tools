@@ -102,7 +102,7 @@ async function initCredits(event) {
   // 检查是否已初始化
   var config = await findRecord('user_config', { _openid: openid });
   if (config && config.credits !== undefined) {
-    return { success: true, initialized: false, credits: config.credits, profile: config.profile || null };
+    return { success: true, initialized: false, credits: config.credits, activated: config.activated || false, profile: config.profile || null };
   }
 
   var points = CREDITS_RULES.register_bonus;
@@ -119,6 +119,7 @@ async function initCredits(event) {
     continuousDays: 0,
     lastSigninDate: '',
     inviteCount: 0,
+    activated: false,
     profile: {
       avatar: defaultAvatar,
       nickname: defaultNickname,
@@ -429,6 +430,7 @@ async function completeProfile(event) {
       data: {
         profile: newProfile,
         credits: newBalance,
+        activated: true,
         updateTime: now
       }
     });
@@ -458,6 +460,7 @@ async function completeProfile(event) {
     await db.collection('user_config').doc(config._id).update({
       data: {
         profile: newProfile,
+        activated: true,
         updateTime: now
       }
     });
@@ -481,7 +484,8 @@ async function getUserProfile() {
   return {
     success: true,
     profile: config.profile || null,
-    credits: config.credits || 0
+    credits: config.credits || 0,
+    activated: config.activated || false
   };
 }
 

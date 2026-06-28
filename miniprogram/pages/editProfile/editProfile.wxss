@@ -109,6 +109,12 @@
   margin-bottom: 12rpx;
 }
 
+.required {
+  color: #EF4444;
+  margin-right: 4rpx;
+  font-weight: 500;
+}
+
 .form-input {
   background: #F9FAFB;
   border: 1rpx solid #E5E7EB;

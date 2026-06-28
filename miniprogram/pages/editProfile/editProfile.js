@@ -153,10 +153,36 @@ Page({
     });
   },
 
+  // 校验所有必填字段
+  validateForm: function() {
+    var p = this.data.profile;
+    var requiredFields = [
+      { field: 'nickname', label: '昵称' },
+      { field: 'email', label: '邮箱' },
+      { field: 'title', label: '职称' },
+      { field: 'researchField', label: '研究领域' },
+      { field: 'institution', label: '机构名称' },
+      { field: 'province', label: '所在地' }
+    ];
+    
+    for (var i = 0; i < requiredFields.length; i++) {
+      var item = requiredFields[i];
+      var value = p[item.field];
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        wx.showToast({ title: '请填写' + item.label, icon: 'none', duration: 2000 });
+        return false;
+      }
+    }
+    return true;
+  },
+
   // 保存资料
   saveProfile: function() {
     var self = this;
     if (this.data.saving) return;
+
+    // 必填校验
+    if (!this.validateForm()) return;
 
     this.setData({ saving: true });
 

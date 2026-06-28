@@ -2,6 +2,7 @@
 // 学术动态 - 科研同行公共交流社区
 var app = getApp();
 var sqHelper = require('../../utils/square-helper.js');
+var creditsUtil = require('../../utils/credits.js');
 
 Page({
   data: {
@@ -76,15 +77,68 @@ Page({
 
   onLoad: function () {
     this.getUserId();
-    this.loadPosts(true);
+    this.checkProfileComplete(function() {
+      this.loadPosts(true);
+    }.bind(this));
   },
 
   onShow: function () {
-    // 返回页面时刷新列表（仅在发布成功后才刷新，避免重复请求）
-    if (this._needRefresh) {
-      this._needRefresh = false;
-      this.loadPosts(true);
+    // 每次进入页面都检查资料是否完善（弹窗提醒）
+    var isReturnFromEdit = this._backFromEditProfile;
+    this._backFromEditProfile = false;
+    
+    // 需要刷新列表的场景：从编辑资料返回、发布成功后返回
+    var needRefresh = isReturnFromEdit || this._needRefresh;
+    this._needRefresh = false;
+    
+    if (needRefresh) {
+      // 从编辑资料返回时，等待数据库写入生效后再检查
+      var delay = isReturnFromEdit ? 800 : 0;
+      setTimeout(function() {
+        this.checkProfileComplete(function() {
+          this.loadPosts(true);
+        }.bind(this));
+      }.bind(this), delay);
+    } else {
+      this.checkProfileComplete();
     }
+  },
+
+  // 检查用户资料是否完善
+  checkProfileComplete: function (onComplete) {
+    var that = this;
+    creditsUtil.getUserProfile().then(function (result) {
+      // activated 字段在 completeProfile 云函数中设置，只有真正保存了资料才会变为 true
+      console.log('[square] getUserProfile activated:', result.activated, 'success:', result.success);
+      var isActivated = result.success && result.activated;
+      
+      // 无论是否激活，列表都正常加载
+      if (onComplete) onComplete();
+      
+      // 未激活时，弹窗引导（不阻塞列表）
+      // 使用 setTimeout 避免页面切换时序导致弹窗不显示
+      if (result.success && !isActivated) {
+        setTimeout(function () {
+          wx.showModal({
+            title: '完善学术资料',
+            content: '进入学术动态前，请先完善您的学术资料（职称、研究领域、机构等），完善即送50积分！',
+            confirmText: '去完善',
+            cancelText: '返回首页',
+            success: function (res) {
+              if (res.confirm) {
+                that._backFromEditProfile = true;
+                wx.navigateTo({ url: '/pages/editProfile/editProfile' });
+              } else {
+                wx.switchTab({ url: '/pages/home/home' });
+              }
+            }
+          });
+        }, 300);
+      }
+    }).catch(function () {
+      // 获取失败时放行，避免网络问题阻塞入口
+      if (onComplete) onComplete();
+    });
   },
 
   // 获取当前用户 OpenID
