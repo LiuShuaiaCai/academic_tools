@@ -12,7 +12,7 @@ var TYPE_LABEL_MAP = {
   'call_for_papers': '征稿通知',
   'review': '学术审稿',
   'journal': '学术会议',
-  'literature_help': '文献互助'
+  'literature_help': '学术互助'
 };
 
 var TYPE_COLOR_MAP = {

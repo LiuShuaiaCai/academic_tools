@@ -78,7 +78,7 @@
         <view class="post-call-type" wx:if="{{item.type === 'call_for_papers' && item.callType}}" style="background: #F59E0B20; color: #F59E0B; margin-left: 8rpx;">
           {{item.callType}}
         </view>
-        <!-- 应助按钮（文献互助且求助中，非本人） -->
+        <!-- 应助按钮（学术互助且求助中，非本人） -->
         <view class="post-respond-btn" wx:if="{{item.canRespond}}" data-index="{{index}}" catchtap="onHelpRespond">
           我要应助
         </view>
@@ -110,7 +110,7 @@
           <view class="post-tag" wx:for="{{item.tags}}" wx:key="index">#{{item}}</view>
         </view>
 
-        <!-- 文献互助信息（仅文献互助类型显示） -->
+        <!-- 学术互助信息（仅学术互助类型显示） -->
         <view class="post-help-info" wx:if="{{item.type === 'literature_help'}}">
           <view class="help-reward" wx:if="{{item.rewardPoints > 0}}">
             <text class="reward-icon">🎁</text>

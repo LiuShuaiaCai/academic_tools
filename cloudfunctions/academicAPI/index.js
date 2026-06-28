@@ -1049,7 +1049,7 @@ async function squareCreatePost(event) {
     deleteTime: null
   };
 
-  // 文献互助类型：直接扣除积分（不冻结）
+  // 学术互助类型：直接扣除积分（不冻结）
   if (type === 'literature_help') {
     var rewardPoints = event.rewardPoints || 0;
     if (rewardPoints <= 0) {
@@ -1075,7 +1075,7 @@ async function squareCreatePost(event) {
         actionType: 'literature_help',
         _openid: openid,
         points: rewardPoints,
-        description: '发布文献互助悬赏 -' + rewardPoints
+        description: '发布学术互助悬赏 -' + rewardPoints
       }
     });
     if (!spendRes.result || !spendRes.result.success) {
@@ -1086,6 +1086,7 @@ async function squareCreatePost(event) {
     data.docUrl = event.docUrl || '';
     data.docDoi = event.docDoi || '';
     data.docNotes = event.docNotes || '';
+    data.attachments = event.attachments || [];  // 附件列表
     data.rewardPoints = rewardPoints;
     data.helpDeadline = event.helpDeadline || '';
     data.helpStatus = event.helpStatus || '求助中';
@@ -1615,7 +1616,7 @@ async function squareGetMyPosts(event) {
   return { success: true, posts: posts, page: page };
 }
 
-// ==================== 文献互助相关函数 ====================
+// ==================== 学术互助相关函数 ====================
 
 // 应助文献求助（支持多人应助，可上传内容或文件）
 async function squareHelpRespond(event) {
@@ -1642,7 +1643,7 @@ async function squareHelpRespond(event) {
   }
 
   if (post.type !== 'literature_help') {
-    return { success: false, error: '该动态不是文献互助类型' };
+    return { success: false, error: '该动态不是学术互助类型' };
   }
 
   if (post.helpStatus !== '求助中') {
@@ -1710,7 +1711,7 @@ async function squareHelpAccept(event) {
   }
 
   if (post.type !== 'literature_help') {
-    return { success: false, error: '该动态不是文献互助类型' };
+    return { success: false, error: '该动态不是学术互助类型' };
   }
 
   if (post._openid !== publisherOpenid) {
@@ -1760,7 +1761,7 @@ async function squareHelpAccept(event) {
         toOpenid: targetResponse.responderOpenid,
         points: post.rewardPoints,
         relatedId: postId + '_' + responseId,
-        description: '文献互助应助采纳奖励 +' + post.rewardPoints
+        description: '学术互助应助采纳奖励 +' + post.rewardPoints
       }
     });
   } catch (err) {
@@ -1797,7 +1798,7 @@ async function squareExtendDeadline(event) {
   }
 
   if (post.type !== 'literature_help') {
-    return { success: false, error: '该动态不是文献互助类型' };
+    return { success: false, error: '该动态不是学术互助类型' };
   }
 
   if (post.helpStatus !== '已过期') {
@@ -1927,7 +1928,7 @@ exports.main = async (event) => {
       case 'squareGetMyLiked':          return await squareGetMyLiked(event);
       case 'squareGetMyCommented':      return await squareGetMyCommented(event);
       case 'squareGetMyPosts':          return await squareGetMyPosts(event);
-      // 文献互助
+      // 学术互助
       case 'squareHelpRespond':         return await squareHelpRespond(event);
       case 'squareHelpAccept':          return await squareHelpAccept(event);
       case 'squareExtendDeadline':     return await squareExtendDeadline(event);

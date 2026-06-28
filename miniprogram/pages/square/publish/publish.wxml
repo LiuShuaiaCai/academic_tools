@@ -44,7 +44,7 @@
     </view>
   </view>
 
-  <!-- ========== 标题输入（非文献互助） ========== -->
+  <!-- ========== 标题输入（非学术互助） ========== -->
   <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
     <view class="section-label">标题（选填）</view>
     <input
@@ -57,7 +57,7 @@
     />
   </view>
 
-  <!-- ========== 内容输入（非文献互助） ========== -->
+  <!-- ========== 内容输入（非学术互助） ========== -->
   <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
     <view class="section-label">内容</view>
     <textarea
@@ -74,7 +74,7 @@
     </view>
   </view>
 
-  <!-- ========== 图片上传（非文献互助） ========== -->
+  <!-- ========== 图片上传（非学术互助） ========== -->
   <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
     <view class="section-label">图片（选填，最多{{maxImages}}张）</view>
     <view class="image-upload-area">
@@ -92,7 +92,7 @@
     <view class="upload-tip" wx:if="{{uploading}}">图片上传中...</view>
   </view>
 
-  <!-- ========== 标签输入（非文献互助） ========== -->
+  <!-- ========== 标签输入（非学术互助） ========== -->
   <view class="form-section" wx:if="{{postType !== 'literature_help'}}">
     <view class="section-label">标签（选填）</view>
     <view class="tag-area">
@@ -129,14 +129,14 @@
     </view>
   </view>
 
-  <!-- ========== 文献互助表单（仅文献互助类型显示） ========== -->
+  <!-- ========== 学术互助表单（仅学术互助类型显示） ========== -->
   <view class="help-section" wx:if="{{postType === 'literature_help'}}">
     <!-- 标题 -->
     <view class="form-section">
       <view class="section-label">标题 <text class="required">*</text></view>
       <input
         class="title-input"
-        placeholder="请输入文献标题"
+        placeholder="请输入求助标题"
         placeholder-class="input-placeholder"
         value="{{title}}"
         maxlength="100"
@@ -144,22 +144,9 @@
       />
     </view>
 
-    <!-- 文献链接 -->
+    <!-- 学术类型 -->
     <view class="form-section">
-      <view class="section-label">文献链接（选填）</view>
-      <input
-        class="text-input"
-        placeholder="请输入文献链接"
-        placeholder-class="input-placeholder"
-        value="{{docUrl}}"
-        maxlength="500"
-        bindinput="onDocUrlInput"
-      />
-    </view>
-
-    <!-- 文献类型 -->
-    <view class="form-section">
-      <view class="section-label">文献类型 <text class="required">*</text></view>
+      <view class="section-label">学术类型 <text class="required">*</text></view>
       <view class="doc-type-options">
         <view
           class="doc-type-option {{docType === item.key ? 'active' : ''}}"
@@ -198,10 +185,10 @@
 
     <!-- 其他信息 -->
     <view class="form-section">
-      <view class="section-label">其他信息（选填）</view>
+      <view class="section-label">期望交付物（每行一条）</view>
       <textarea
         class="content-input"
-        placeholder="建议补充文献的其他信息，如作者、期刊、期刊号、页码等"
+        placeholder="请补充需求描述，如类型要求、具体说明、截止时间等"
         placeholder-class="input-placeholder"
         value="{{content}}"
         maxlength="2000"
@@ -225,6 +212,40 @@
       <view wx:else class="date-picker date-picker-loading">
         <text class="date-text">日期加载中...</text>
       </view>
+    </view>
+
+    <!-- 附件上传 -->
+    <view class="form-section">
+      <view class="section-label">附件（选填，最多{{maxAttachments}}个）</view>
+      <!-- 附件列表 -->
+      <view class="attachment-list" wx:if="{{attachments.length > 0}}">
+        <view class="attachment-item" wx:for="{{attachments}}" wx:key="index">
+          <view class="attachment-icon">
+            <text wx:if="{{item.type === 'image'}}">🖼️</text>
+            <text wx:else>📎</text>
+          </view>
+          <view class="attachment-info">
+            <view class="attachment-name">{{item.name}}</view>
+            <view class="attachment-meta">
+              <text wx:if="{{item.type === 'image'}}">图片</text>
+              <text wx:else>文件</text>
+              <text class="attachment-sep">·</text>
+              <text>{{item.sizeText}}</text>
+            </view>
+          </view>
+          <view class="attachment-delete" data-index="{{index}}" bindtap="deleteAttachment">
+            <text>×</text>
+          </view>
+        </view>
+      </view>
+      <!-- 上传按钮 -->
+      <view class="attachment-btns" wx:if="{{attachments.length < maxAttachments}}">
+        <view class="attachment-btn attachment-btn-main" bindtap="chooseAttachment">
+          <text class="attachment-btn-icon">➕</text>
+          <text class="attachment-btn-text">添加附件</text>
+        </view>
+      </view>
+      <view class="upload-tip" wx:if="{{uploading}}">上传中...</view>
     </view>
   </view>
 

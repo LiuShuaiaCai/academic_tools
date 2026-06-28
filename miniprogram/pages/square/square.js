@@ -87,8 +87,13 @@ Page({
     var isReturnFromEdit = this._backFromEditProfile;
     this._backFromEditProfile = false;
     
+    // 检查是否有全局刷新标记（发布成功、编辑资料等）
+    var app = getApp();
+    var needGlobalRefresh = app.globalData._squareNeedRefresh;
+    app.globalData._squareNeedRefresh = false;
+    
     // 需要刷新列表的场景：从编辑资料返回、发布成功后返回
-    var needRefresh = isReturnFromEdit || this._needRefresh;
+    var needRefresh = isReturnFromEdit || this._needRefresh || needGlobalRefresh;
     this._needRefresh = false;
     
     if (needRefresh) {

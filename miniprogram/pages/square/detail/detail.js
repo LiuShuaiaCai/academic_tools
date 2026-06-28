@@ -94,7 +94,7 @@ Page({
       post.typeLabel = sqHelper.getTypeLabel(post.type);
       post.typeColor = sqHelper.getTypeColor(post.type);
 
-      // 文献互助类型：添加求助状态相关字段
+      // 学术互助类型：添加求助状态相关字段
       if (post.type === 'literature_help') {
         post.helpStatusLabel = sqHelper.getHelpStatusLabel(post.helpStatus);
         post.helpStatusColor = sqHelper.getHelpStatusColor(post.helpStatus);
@@ -106,6 +106,14 @@ Page({
         post.canRespond = post.helpStatus === '求助中' && post._openid !== that.data.currentOpenid && !post.hasResponded;
         post.canExtend = post.helpStatus === '已过期' && post._openid === that.data.currentOpenid;
         post.canDownload = post.helpStatus === '已解决' && post.docFileId;
+        // 为每个附件标记是否为图片
+        var imgExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+        if (post.attachments && post.attachments.length > 0) {
+          post.attachments.forEach(function (a) {
+            var ext = a.name ? a.name.split('.').pop().toLowerCase() : '';
+            a._isImage = a.type === 'image' || imgExts.indexOf(ext) >= 0;
+          });
+        }
       }
 
       // 转换帖子中 cloud:// 协议的头像/图片 URL 为临时 URL 后再渲染
@@ -522,6 +530,56 @@ Page({
         wx.showToast({ title: '已复制', icon: 'success', duration: 1000 });
       }
     });
+  },
+
+  // 预览附件
+  previewAttachment: function (e) {
+    var index = e.currentTarget.dataset.index;
+    var that = this;
+    var post = this.data.post;
+    if (!post || !post.attachments || !post.attachments[index]) return;
+    var att = post.attachments[index];
+    
+    if (!att.fileID) {
+      wx.showToast({ title: '附件链接无效', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '加载中...' });
+
+    if (att._isImage) {
+      // 图片：获取临时 HTTPS 链接 → previewImage
+      wx.cloud.getTempFileURL({
+        fileList: [{ fileID: att.fileID, maxAge: 86400 }]
+      }).then(function (res) {
+        wx.hideLoading();
+        var tempUrl = res.fileList[0].tempFileURL;
+        if (!tempUrl) {
+          wx.showToast({ title: '获取图片链接失败', icon: 'none' });
+          return;
+        }
+        wx.previewImage({ urls: [tempUrl] });
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[detail] 图片预览失败', err);
+        wx.showToast({ title: '预览失败，请重试', icon: 'none' });
+      });
+    } else {
+      // 非图片：下载到本地 → openDocument
+      wx.cloud.downloadFile({
+        fileID: att.fileID
+      }).then(function (dlRes) {
+        wx.hideLoading();
+        return wx.openDocument({
+          filePath: dlRes.tempFilePath,
+          showMenu: true
+        });
+      }).catch(function (err) {
+        wx.hideLoading();
+        console.error('[detail] 文件打开失败', err);
+        wx.showToast({ title: '文件打开失败', icon: 'none' });
+      });
+    }
   },
 
   // 评论输入框显示

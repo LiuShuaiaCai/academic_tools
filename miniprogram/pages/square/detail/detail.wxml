@@ -50,7 +50,7 @@
         </view>
       </view>
 
-      <!-- 文献互助信息（仅文献互助类型显示） -->
+      <!-- 学术互助信息（仅学术互助类型显示） -->
       <view class="help-info-section" wx:if="{{post.type === 'literature_help'}}">
         <!-- 求助状态 -->
         <view class="help-status-area">
@@ -66,8 +66,8 @@
         <view class="help-detail-card">
           <view class="help-detail-title">📖 文献信息</view>
           <view class="help-detail-row" wx:if="{{post.docType}}">
-            <text class="detail-label">文献类型：</text>
-            <text class="detail-value">{{post.docType === 'journal' ? '期刊论文' : post.docType === 'conference' ? '会议论文' : post.docType === 'thesis' ? '博士论文' : '其他'}}</text>
+            <text class="detail-label">学术类型：</text>
+            <text class="detail-value">{{post.docType === 'polish' ? '润色' : post.docType === 'translation' ? '翻译' : post.docType === 'literature' ? '文献' : post.docType === 'typesetting' ? '排版' : post.docType === 'data_analysis' ? '数据分析' : post.docType === 'experiment' ? '实验' : '其他'}}</text>
           </view>
           <view class="help-detail-row" wx:if="{{post.docUrl}}">
             <text class="detail-label">文献网址：</text>
@@ -93,6 +93,29 @@
           <view class="help-detail-row">
             <text class="detail-label">求助时限：</text>
             <text class="detail-value">{{post.helpDeadline || '未设置'}}</text>
+          </view>
+        </view>
+
+        <!-- 附件列表 -->
+        <view class="help-attachments-card" wx:if="{{post.attachments && post.attachments.length > 0}}">
+          <view class="help-detail-title">📎 附件（{{post.attachments.length}}个）</view>
+          <view class="attachment-list">
+            <view class="attachment-item" wx:for="{{post.attachments}}" wx:key="index" bindtap="previewAttachment" data-index="{{index}}">
+              <view class="attachment-icon">
+                <text wx:if="{{item._isImage}}">🖼️</text>
+                <text wx:else>📄</text>
+              </view>
+              <view class="attachment-info">
+                <view class="attachment-name">{{item.name}}</view>
+                <view class="attachment-meta">
+                  <text wx:if="{{item._isImage}}">图片</text>
+                  <text wx:else>文件</text>
+                </view>
+              </view>
+              <view class="attachment-arrow">
+                <text>›</text>
+              </view>
+            </view>
           </view>
         </view>
 
@@ -169,7 +192,7 @@
       </view>
     </view>
 
-    <!-- 文献互助操作按钮（仅文献互助类型显示） -->
+    <!-- 学术互助操作按钮（仅学术互助类型显示） -->
     <view class="help-actions" wx:if="{{post.type === 'literature_help'}}">
       <button class="help-btn respond-btn" wx:if="{{post.canRespond}}" bindtap="onHelpRespondTap">
         📚 应助此求助

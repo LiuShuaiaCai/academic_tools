@@ -311,12 +311,12 @@ page { background: #F3F4F6; }
   transform: scale(0.98);
 }
 
-/* ========= 文献互助表单 ========= */
+/* ========= 学术互助表单 ========= */
 .help-section {
   margin-top: 16rpx;
 }
 
-/* 文献类型选择 */
+/* 学术类型选择 */
 .doc-type-options {
   display: flex;
   flex-wrap: wrap;
@@ -431,6 +431,110 @@ page { background: #F3F4F6; }
 .date-arrow {
   font-size: 20rpx;
   color: #9CA3AF;
+}
+
+/* ========== 附件上传 ========== */
+.attachment-list {
+  margin-bottom: 20rpx;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 20rpx;
+  background: #F9FAFB;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.attachment-icon {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  flex-shrink: 0;
+  background: #F3F4F6;
+  border-radius: 10rpx;
+}
+
+.attachment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.attachment-name {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-meta {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  margin-top: 4rpx;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.attachment-sep {
+  color: #D1D5DB;
+}
+
+.attachment-delete {
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #EF4444;
+  background: #FEF2F2;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.attachment-btns {
+  display: flex;
+}
+
+.attachment-btn-main {
+  width: 100%;
+}
+
+.attachment-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 24rpx 0;
+  border: 2rpx dashed #D1D5DB;
+  border-radius: 12rpx;
+  background: #F9FAFB;
+  transition: all 0.15s;
+}
+
+.attachment-btn:active {
+  background: #EFF6FF;
+  border-color: #2563eb;
+}
+
+.attachment-btn-icon {
+  font-size: 40rpx;
+}
+
+.attachment-btn-text {
+  font-size: 24rpx;
+  color: #6B7280;
+  font-weight: 500;
 }
 
 /* 必填标记 */

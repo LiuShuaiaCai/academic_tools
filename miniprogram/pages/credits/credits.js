@@ -201,7 +201,7 @@ Page({
     });
   },
 
-  // 静默修复文献互助积分（幂等安全，缺失补建）
+  // 静默修复学术互助积分（幂等安全，缺失补建）
   repairHelpCredits: function(callback) {
     wx.cloud.callFunction({
       name: 'academicAPI',

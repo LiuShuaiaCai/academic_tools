@@ -411,7 +411,7 @@ page { background: #F3F4F6; }
   font-weight: 500;
 }
 
-/* ========= 文献互助信息 ========= */
+/* ========= 学术互助信息 ========= */
 .post-help-info {
   display: flex;
   flex-direction: column;

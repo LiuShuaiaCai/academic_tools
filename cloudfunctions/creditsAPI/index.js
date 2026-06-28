@@ -83,8 +83,8 @@ var ACTION_LABELS = {
   new_conference: '新增会议',
   complete_profile: '完善资料',
   special_issue: '特刊策划',
-  help_reward: '文献互助',
-  literature_help: '文献互助悬赏'
+  help_reward: '学术互助',
+  literature_help: '学术互助悬赏'
 };
 
 // 获取今日日期字符串 YYYY-MM-DD（北京时间）
@@ -1026,9 +1026,9 @@ async function spendCredits(event) {
   };
 }
 
-// ==================== 文献互助积分相关函数 ====================
+// ==================== 学术互助积分相关函数 ====================
 
-// 冻结积分（用于文献互助悬赏）
+// 冻结积分（用于学术互助悬赏）
 // 设计：冻结只是锁定积分，不扣减余额。求助成功时由 transferCredits 真正扣减。
 // 总积分 = earn 总额（包含冻结），可用积分 = 总积分 - 已冻结积分
 async function freezeCredits(event) {
@@ -1228,7 +1228,7 @@ async function transferCredits(event) {
         type: 'spend',
         remainPoints: 0,
         balance: fromValidCredits,
-        description: '文献互助悬赏支出 -' + points,
+        description: '学术互助悬赏支出 -' + points,
         updateTime: now
       }
     });
@@ -1481,7 +1481,7 @@ exports.main = async (event, context) => {
         rules: CREDITS_RULES,
         labels: ACTION_LABELS
       };
-      // 文献互助积分
+      // 学术互助积分
       case 'freezeCredits':     return await freezeCredits(event);
       case 'transferCredits':   return await transferCredits(event);
       case 'refundFrozenCredits': return await refundFrozenCredits(event);

@@ -11,17 +11,20 @@ Page({
       { key: 'call_for_papers', label: '征稿通知', icon: '/pages/square/icons/type-call.svg', color: '#F97316' },
       { key: 'review', label: '学术审稿', icon: '/pages/square/icons/type-review.svg', color: '#10B981' },
       { key: 'journal', label: '学术会议', icon: '/pages/square/icons/type-conference.svg', color: '#06B6D4' },
-      { key: 'literature_help', label: '文献互助', icon: '/pages/square/icons/type-literature.svg', color: '#F43F5E' }
+      { key: 'literature_help', label: '学术互助', icon: '/pages/square/icons/type-literature.svg', color: '#F43F5E' }
     ],
 
     // 推荐标签
     suggestedTags: ['人工智能', '机器学习', '深度学习', 'NLP', '计算机视觉', '数据挖掘', '网络安全', '区块链', '大数据', '物联网'],
 
-    // 文献类型选项
+    // 学术类型选项
     docTypeOptions: [
-      { key: 'journal', label: '期刊论文' },
-      { key: 'book', label: '书籍' },
-      { key: 'thesis', label: '学术论文' },
+      { key: 'polish', label: '润色' },
+      { key: 'translation', label: '翻译' },
+      { key: 'literature', label: '文献' },
+      { key: 'typesetting', label: '排版' },
+      { key: 'data_analysis', label: '数据分析' },
+      { key: 'experiment', label: '实验' },
       { key: 'other', label: '其他' }
     ],
 
@@ -37,7 +40,6 @@ Page({
       { key: 'special_issue', label: '特刊征稿' },
       { key: 'journal', label: '期刊征稿' },
       { key: 'conference', label: '会议征稿' },
-      { key: 'workshop', label: 'Workshop' },
       { key: 'custom', label: '自定义' }
     ],
     callType: '',
@@ -54,12 +56,16 @@ Page({
     maxImages: 9,
     uploading: false,
 
-    // 文献互助相关字段
-    docType: '',         // 文献类型
+    // 学术互助相关字段
+    docType: '',         // 学术类型
     docUrl: '',          // 文献链接
     rewardPoints: 0,     // 悬赏积分
     helpDeadline: '',    // 关闭时间
     currentPoints: 0,    // 当前用户积分
+
+    // 附件上传
+    attachments: [],     // 附件列表 [{ fileID, name, size, type }]
+    maxAttachments: 6,
 
     // 用户信息
     currentOpenid: '',
@@ -154,18 +160,18 @@ Page({
     var type = e.currentTarget.dataset.type;
     var update = { postType: type, callType: '', customCallType: '' };
     if (type === 'literature_help') {
-      // 切换到文献互助时，清空通用内容相关字段
+      // 切换到学术互助时，清空通用内容相关字段
       update.content = '';
       update.images = [];
       update.tags = [];
       update.tagInput = '';
     } else {
-      // 切出文献互助时，清空文献互助字段
+      // 切出学术互助时，清空学术互助字段
       update.docType = '';
       update.docUrl = '';
       update.rewardPoints = 0;
       update.helpDeadline = '';
-
+      update.attachments = [];
     }
     this.setData(update);
   },
@@ -301,6 +307,129 @@ Page({
     this.setData({ tags: tags });
   },
 
+  // ========== 附件上传 ==========
+  // 统一入口：弹出选择面板
+  chooseAttachment: function () {
+    var that = this;
+    wx.showActionSheet({
+      itemList: ['从相册选择图片', '从聊天文件选择'],
+      success: function (res) {
+        if (res.tapIndex === 0) {
+          that.chooseAttachmentImage();
+        } else if (res.tapIndex === 1) {
+          that.chooseAttachmentFile();
+        }
+      }
+    });
+  },
+
+  // 选择图片作为附件
+  chooseAttachmentImage: function () {
+    var that = this;
+    var remain = this.data.maxAttachments - this.data.attachments.length;
+    if (remain <= 0) {
+      wx.showToast({ title: '最多上传6个附件', icon: 'none' });
+      return;
+    }
+    wx.chooseMedia({
+      count: remain,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: function (res) {
+        var files = res.tempFiles.filter(function (f) {
+          if (f.size > 10 * 1024 * 1024) {
+            wx.showToast({ title: '文件超过10MB限制，已跳过', icon: 'none' });
+            return false;
+          }
+          return true;
+        });
+        if (files.length === 0) return;
+        that.uploadAttachments(files, 'image');
+      }
+    });
+  },
+
+  // 选择文件作为附件
+  chooseAttachmentFile: function () {
+    var that = this;
+    var remain = this.data.maxAttachments - this.data.attachments.length;
+    if (remain <= 0) {
+      wx.showToast({ title: '最多上传6个附件', icon: 'none' });
+      return;
+    }
+    wx.chooseMessageFile({
+      count: remain,
+      type: 'file',
+      success: function (res) {
+        var files = res.tempFiles.filter(function (f) {
+          if (f.size > 10 * 1024 * 1024) {
+            wx.showToast({ title: '文件超过10MB限制，已跳过', icon: 'none' });
+            return false;
+          }
+          return true;
+        });
+        if (files.length === 0) return;
+        that.uploadAttachments(files, 'file');
+      }
+    });
+  },
+
+  // 上传附件到云存储
+  uploadAttachments: function (files, fileType) {
+    var that = this;
+    this.setData({ uploading: true });
+
+    var promises = files.map(function (f) {
+      // wx.chooseMedia 返回 tempFilePath，wx.chooseMessageFile 返回 path
+      var tempPath = f.tempFilePath || f.path;
+      if (!tempPath) {
+        console.error('[publish] 无法获取文件临时路径', f);
+        return Promise.reject(new Error('无法获取文件临时路径'));
+      }
+      var ext = fileType === 'image' ? 'jpg' : (f.name ? f.name.split('.').pop() : 'file');
+      var cloudPath = 'square/attachments/' + Date.now() + '_' + Math.random().toString(36).substr(2, 8) + '.' + ext;
+      return wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: tempPath
+      }).then(function (res) {
+        return {
+          fileID: res.fileID,
+          name: f.name || 'image_' + Date.now() + '.jpg',
+          size: f.size,
+          type: fileType
+        };
+      });
+    });
+
+    Promise.all(promises).then(function (results) {
+      var attachments = that.data.attachments.concat(results.map(function (r) {
+        r.sizeText = that.formatFileSize(r.size);
+        return r;
+      }));
+      that.setData({ attachments: attachments, uploading: false });
+    }).catch(function (err) {
+      console.error('[publish] 附件上传失败', err);
+      that.setData({ uploading: false });
+      wx.showToast({ title: '附件上传失败', icon: 'none' });
+    });
+  },
+
+  // 删除附件
+  deleteAttachment: function (e) {
+    var index = e.currentTarget.dataset.index;
+    var attachments = this.data.attachments;
+    attachments.splice(index, 1);
+    this.setData({ attachments: attachments });
+  },
+
+  // 格式化文件大小
+  formatFileSize: function (size) {
+    if (size < 1024) return size + 'B';
+    if (size < 1024 * 1024) return (size / 1024).toFixed(1) + 'KB';
+    return (size / (1024 * 1024)).toFixed(1) + 'MB';
+  },
+
   // 提交发布
   submitPost: function () {
     var that = this;
@@ -324,21 +453,21 @@ Page({
         return;
       }
     } else {
-      // 文献互助标题验证
+      // 学术互助标题验证
       if (this.data.title.length > 100) {
         wx.showToast({ title: '标题不能超过100字', icon: 'none' });
         return;
       }
     }
 
-    // 文献互助类型验证
+    // 学术互助类型验证
     if (this.data.postType === 'literature_help') {
       if (!this.data.title.trim()) {
-        wx.showToast({ title: '请输入文献标题', icon: 'none' });
+        wx.showToast({ title: '请输入求助标题', icon: 'none' });
         return;
       }
       if (!this.data.docType) {
-        wx.showToast({ title: '请选择文献类型', icon: 'none' });
+        wx.showToast({ title: '请选择学术类型', icon: 'none' });
         return;
       }
       if (!this.data.rewardPoints || this.data.rewardPoints <= 0) {
@@ -378,13 +507,14 @@ Page({
       }
     }
 
-    // 文献互助时传递相关字段
+    // 学术互助时传递相关字段
     if (this.data.postType === 'literature_help') {
       postData.docType = this.data.docType;
       postData.docUrl = this.data.docUrl.trim();
       postData.rewardPoints = this.data.rewardPoints;
       postData.helpDeadline = this.data.helpDeadline;
       postData.helpStatus = '求助中';
+      postData.attachments = this.data.attachments;
     }
 
     wx.cloud.callFunction({
@@ -396,11 +526,9 @@ Page({
 
       if (result.success) {
         wx.showToast({ title: '发布成功', icon: 'success' });
-        // 通知广场页刷新列表
-        var eventChannel = that.getOpenerEventChannel && that.getOpenerEventChannel();
-        if (eventChannel) {
-          eventChannel.emit('publishSuccess');
-        }
+        // 标记广场页需要刷新
+        var app = getApp();
+        app.globalData._squareNeedRefresh = true;
         setTimeout(function () {
           wx.navigateBack();
         }, 1200);
