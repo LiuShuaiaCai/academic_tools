@@ -23,7 +23,7 @@ module.exports = {
     toolbox: 'Toolbox',
     calendar: 'Calendar',
     profile: 'Profile',
-    academicTools: 'Academic Tools',
+    academicTools: 'ZhiYanTong Academic',
     specialIssue: 'Special Issue'
   },
 
