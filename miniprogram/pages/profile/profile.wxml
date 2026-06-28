@@ -54,7 +54,7 @@
     <view class="menu-item" bindtap="goToToolManager">
       <view class="menu-icon-box icon-cyan icon-tools"></view>
       <text class="menu-text">工具管理</text>
-      <text class="menu-badge" wx:if="{{statItems.length > 0}}">已启用{{statItems.length}}项</text>
+      <text class="menu-badge" wx:if="{{enabledToolCount > 0}}">已启用{{enabledToolCount}}项</text>
       <text class="menu-arrow">›</text>
     </view>
     <view class="menu-item" bindtap="goToSettings">

@@ -12,7 +12,8 @@ Page({
     nickname: '我的学术空间',
     isWechatAvatar: false,
     profileCompleted: false,
-    currentOpenid: ''
+    currentOpenid: '',
+    enabledToolCount: 0  // 用户实际启用的工具总数
   },
 
   onLoad: function () {
@@ -234,8 +235,10 @@ Page({
         return enabledTools;
       });
     }).then(function(tools) {
+      // 记录实际启用的工具总数（用于 badge 显示）
+      var totalEnabled = tools.length;
       if (tools.length === 0) {
-        self.setData({ statItems: [] });
+        self.setData({ statItems: [], enabledToolCount: 0 });
         return;
       }
       // 最多显示4个统计项，避免页面过长也减少查询
@@ -256,7 +259,7 @@ Page({
             pagePath: displayTools[i].pagePath
           });
         }
-        self.setData({ statItems: statItems });
+        self.setData({ statItems: statItems, enabledToolCount: totalEnabled });
       });
     }).catch(function (e) {
       console.error('[个人中心] 加载统计失败', e);
