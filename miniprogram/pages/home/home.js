@@ -1,6 +1,7 @@
 // pages/home/home.js
 var app = getApp();
 var creditsUtil = require('../../utils/credits.js');
+var themeUtil = require('../../utils/theme.js');
 
 Page({
   data: {
@@ -151,12 +152,15 @@ Page({
         var t = toolDefs[i];
         var isEnabled = userTools[t.id] === true;
         if (isEnabled) {
+          var toolTheme = themeUtil.getThemeByColor(t.color || 'blue');
           enabledTools.push({
             id: t.id,
             name: t.name,
             desc: t.desc,
             iconEmoji: t.iconEmoji || '🔧',
             color: t.color || 'blue',
+            themePrimary: toolTheme.primary,
+            themePrimaryLight: toolTheme.primaryLight,
             pagePath: t.pagePath || '',
             // 云函数 getAllTools 已对 isTaskType 做缺省推断，前端直接用
             isTaskType: t.isTaskType !== false,
@@ -209,6 +213,7 @@ Page({
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji || '🔧', color: tool.color,
+            themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight,
             pagePath: tool.pagePath || '',
             isTaskType: false,
             count: 0, urgent: 0
@@ -283,17 +288,18 @@ Page({
               return {
                 id: tool.id, name: tool.name, desc: tool.desc,
                 iconEmoji: tool.iconEmoji || '🔧', color: tool.color,
+                themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight,
                 pagePath: tool.pagePath || '',
                 isTaskType: tool.isTaskType,
                 count: results[0].total, urgent: results[1].total
               };
             }).catch(function() {
-              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', isTaskType: tool.isTaskType, count: 0, urgent: 0 };
+              return { id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight, pagePath: tool.pagePath || '', isTaskType: tool.isTaskType, count: 0, urgent: 0 };
             })
           );
         } else {
           promises.push(Promise.resolve({
-            id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, pagePath: tool.pagePath || '', isTaskType: tool.isTaskType, count: 0, urgent: 0
+            id: tool.id, name: tool.name, desc: tool.desc, iconEmoji: tool.iconEmoji || '🔧', color: tool.color, themePrimary: tool.themePrimary, themePrimaryLight: tool.themePrimaryLight, pagePath: tool.pagePath || '', isTaskType: tool.isTaskType, count: 0, urgent: 0
           }));
         }
       })(enabledTools[i]);
@@ -518,20 +524,10 @@ Page({
 
   // 小程序分享
   onShareAppMessage: function() {
-    var banners = this.data.banners || [];
-    var shareTitle = '学术管理工具 - 高效管理学术事务';
-    var shareImage = '';
-    // 优先使用第一个 Banner 图片作为分享图
-    if (banners.length > 0 && banners[0].image) {
-      shareImage = banners[0].image;
-      if (banners[0].title) {
-        shareTitle = banners[0].title;
-      }
-    }
     return {
-      title: shareTitle,
+      title: '学术管理 - 你的科研助手 · 一站式流程管理',
       path: '/pages/home/home',
-      imageUrl: shareImage
+      imageUrl: 'https://online-d7ghspq5r1b409893-1300094911.tcloudbaseapp.com/A_clean__modern_WeChat_mini_pr_2026-06-28T04-33-35.png'
     };
   }
 });

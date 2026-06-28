@@ -7,12 +7,11 @@
       <swiper class="header-swiper" indicator-dots="{{banners.length > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#fff" autoplay="{{banners.length > 1}}" circular="{{banners.length > 1}}" interval="4000" duration="500">
         <swiper-item wx:for="{{banners}}" wx:key="_id">
           <image class="header-banner-img" src="{{item.image}}" mode="aspectFill"></image>
-          <!-- 分享按钮覆盖整个 Banner -->
-          <button class="header-share-overlay" open-type="share" hover-class="share-hover"></button>
           <!-- 右上角分享徽章 -->
           <view class="header-share-badge">
             <text class="share-icon">↗</text>
             <text class="share-label">分享给朋友</text>
+            <button class="header-share-tap" open-type="share" hover-class="none"></button>
           </view>
           <view class="header-banner-text" wx:if="{{item.title || item.subTitle}}">
             <view class="header-banner-title" wx:if="{{item.title}}">{{item.title}}</view>
@@ -89,13 +88,14 @@
     <!-- 工具网格 -->
     <view wx:elif="{{enabledTools.length > 0}}" class="stats-grid" id="statsGrid">
       <view
-        class="stats-card {{item.color}}-accent"
+        class="stats-card"
         wx:for="{{displayTools}}"
         wx:key="id"
         bindtap="goToTool"
         data-page="{{item.pagePath}}"
       >
-        <view class="card-icon {{item.color}}-bg">{{item.iconEmoji}}</view>
+        <view class="card-accent-bar" style="background:{{item.themePrimary}}"></view>
+        <view class="card-icon" style="background:{{item.themePrimaryLight}};color:{{item.themePrimary}}">{{item.iconEmoji}}</view>
         <view class="card-info">
           <view class="card-title">{{item.name}}</view>
           <view class="card-desc">{{item.desc}}</view>
