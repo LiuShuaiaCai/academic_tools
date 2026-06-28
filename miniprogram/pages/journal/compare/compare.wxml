@@ -1,0 +1,92 @@
+<!--pages/journal/compare/compare.wxml-->
+<!--期刊对比页 - 指标固定+数据滚动-->
+<view class="container">
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>分析中...</text>
+  </view>
+
+  <block wx:if="{{!loading && journals.length >= 2}}">
+
+    <!-- 对比概览 -->
+    <view class="compare-overview">
+      <text class="overview-title">对比概览</text>
+      <text class="summary-text">共 {{journals.length}} 本期刊参与对比</text>
+      <view class="best-journals" wx:if="{{hasWinners}}">
+        <text class="best-label">优势维度速览</text>
+        <block wx:for="{{bestSummary}}" wx:for-item="bs" wx:key="journalId">
+          <view class="best-item" wx:if="{{bs.count > 0}}">
+            <text class="best-star">★</text>
+            <text class="best-journal-name">{{bs.title}}</text>
+            <text class="best-dims">{{bs.wins.join('、')}} 最优</text>
+          </view>
+        </block>
+      </view>
+      <text class="best-empty" wx:if="{{!hasWinners}}">当前对比数据无明显差异</text>
+    </view>
+
+    <!-- 分离表格：固定指标列 + 滚动数据区 -->
+    <view class="table-section" wx:if="{{tableData.length > 0}}">
+      <text class="table-hint" wx:if="{{rightWidth > 590}}">← 左滑查看全部 →</text>
+
+      <view class="table-split">
+        <!-- ===== 左侧：固定指标列 ===== -->
+        <view class="table-left">
+          <view class="label-cell label-head">指标</view>
+          <view class="label-cell {{ri % 2 === 1 ? 'label-stripe' : ''}}"
+            wx:for="{{tableData}}" wx:for-index="ri" wx:key="label"
+          >{{item.label}}</view>
+        </view>
+
+        <!-- ===== 右侧：滚动数据区 ===== -->
+        <scroll-view scroll-x="true" class="table-right-scroll"
+          enhanced="true" show-scrollbar="{{rightWidth > 590 ? true : false}}">
+          <view class="table-right-inner" style="width: {{rightWidth}}rpx;">
+
+            <!-- 表头行 -->
+            <view class="value-row value-head-row">
+              <view class="value-cell value-head {{item.winCount > 0 ? 'head-winner' : ''}}"
+                wx:for="{{tableHeaders}}" wx:for-item="item" wx:key="name">
+                <text class="head-name">{{item.shortName}}</text>
+                <text class="head-badge" wx:if="{{item.winCount > 0}}">★{{item.winCount}}</text>
+              </view>
+            </view>
+
+            <!-- 数据行 -->
+            <view class="value-row {{ri % 2 === 1 ? 'row-stripe' : ''}}"
+              wx:for="{{tableData}}" wx:for-index="ri" wx:key="label">
+              <view class="value-cell {{cell.isBest ? 'cell-best' : ''}} {{cell.isTrue ? 'cell-yes' : ''}} {{cell.isFalse ? 'cell-no' : ''}}"
+                wx:for="{{item.cells}}" wx:for-item="cell" wx:key="index">
+                <text>{{cell.value}}</text>
+              </view>
+            </view>
+
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- 投稿建议 -->
+    <view class="conclusion-section">
+      <text class="conclusion-title">投稿建议</text>
+      <view class="suggestion-text">
+        建议优先考虑标注<span style="color:#2563eb;font-weight:700">蓝色数值（最优）</span>的期刊。投稿前请核实最新收录状态、APC费用政策及审稿周期。
+      </view>
+    </view>
+
+  </block>
+
+  <!-- 少于2本 -->
+  <view class="empty-state" wx:if="{{!loading && journals.length === 1}}">
+    <text class="empty-icon">⚠️</text>
+    <text class="empty-text">请至少选择 2 本期刊进行对比</text>
+  </view>
+
+  <!-- 无数据 -->
+  <view class="empty-state" wx:elif="{{!loading && journals.length === 0}}">
+    <text class="empty-icon">😕</text>
+    <text class="empty-text">暂无对比数据</text>
+  </view>
+
+</view>

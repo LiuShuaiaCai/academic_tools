@@ -1,0 +1,245 @@
+/* ============================================
+   pages/journal/compare/compare.wxss
+   期刊对比页 - 指标固定 + 数据滚动 v5
+   ============================================ */
+
+/* ---- 容器 ---- */
+.container {
+  padding: 20rpx;
+  background: linear-gradient(180deg, #F0F4FF 0%, #F6F6F6 30%);
+  min-height: 100vh;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 120rpx;
+  color: #9CA3AF;
+  font-size: 28rpx;
+}
+
+/* ---- 对比概览 ---- */
+.compare-overview {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+}
+
+.overview-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8rpx;
+}
+
+.overview-title::before {
+  content: '';
+  display: inline-block;
+  width: 6rpx;
+  height: 26rpx;
+  background: linear-gradient(180deg, #2563eb, #6366F1);
+  border-radius: 3rpx;
+  margin-right: 8rpx;
+  vertical-align: middle;
+}
+
+.summary-text {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.best-journals { display: block; }
+
+.best-label {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.best-item {
+  font-size: 26rpx;
+  color: #374151;
+  padding: 10rpx 16rpx;
+  background: linear-gradient(135deg, #FEF3C7, #FFFBEB);
+  border-radius: 8rpx;
+  border-left: 4rpx solid #F59E0B;
+  margin-bottom: 8rpx;
+}
+
+.best-star       { color: #F59E0B; font-size: 28rpx; margin-right: 4rpx; }
+.best-journal-name { font-weight: 700; color: #1F2937; margin-right: 4rpx; }
+.best-dims       { color: #92400E; font-size: 24rpx; }
+.best-empty      { color: #9CA3AF; font-size: 24rpx; display: block; padding: 8rpx 0; }
+
+/* ============ 表格区域 ============ */
+.table-section {
+  background: #fff;
+  border-radius: 18rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.table-hint {
+  display: block;
+  text-align: center;
+  font-size: 22rpx;
+  color: #9CA3AF;
+  padding: 14rpx 0 8rpx;
+}
+
+/* ---- 分离布局主容器 ---- */
+.table-split {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+/* ===== 左侧：固定指标列 ===== */
+.table-left {
+  width: 160rpx;
+  flex-shrink: 0;
+  background: #F9FAFB;
+  border-right: 2rpx solid #E5E7EB;
+}
+
+.label-cell {
+  display: flex;
+  align-items: center;
+  min-height: 72rpx;
+  padding: 16rpx 12rpx 16rpx 24rpx;
+  font-size: 24rpx;
+  color: #6B7280;
+  font-weight: 500;
+  border-bottom: 1rpx solid #F3F4F6;
+  box-sizing: border-box;
+}
+
+.label-head {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  font-weight: 700;
+  border-bottom: 2rpx solid #E5E7EB;
+}
+
+.label-stripe { background: #F3F4F6; }
+
+/* ===== 右侧：滚动数据区 ===== */
+.table-right-scroll {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.table-right-inner {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4rpx;
+}
+
+/* 数据行 */
+.value-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 72rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.value-head-row {
+  background: #F9FAFB;
+  border-bottom: 2rpx solid #E5E7EB;
+}
+
+.row-stripe { background: #FAFBFC; }
+
+/* 数据单元格 */
+.value-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180rpx;
+  flex-shrink: 0;
+  padding: 16rpx 12rpx;
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 600;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+/* 表头单元格 */
+.value-head {
+  flex-direction: column;
+  color: #111827;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.head-name {
+  font-size: 24rpx;
+  max-width: 160rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.head-badge {
+  font-size: 20rpx;
+  color: #2563eb;
+  background: #DBEAFE;
+  padding: 2rpx 10rpx;
+  border-radius: 10rpx;
+  margin-top: 4rpx;
+}
+
+.head-winner {
+  background: linear-gradient(180deg, #EFF6FF, #F0F4FF);
+  border-bottom: 2rpx solid #BFDBFE;
+}
+
+/* 最优值高亮 */
+.cell-best { background: #EFF6FF; }
+.cell-best text { color: #2563eb; font-weight: 800; }
+
+/* 布尔型 */
+.cell-yes text { color: #059669; font-weight: 700; }
+.cell-no  text { color: #DC2626; }
+
+/* ---- 投稿建议 ---- */
+.conclusion-section {
+  background: linear-gradient(135deg, #fff, #F0F4FF);
+  border-radius: 18rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+  margin-bottom: 32rpx;
+  border: 1rpx solid #DBEAFE;
+}
+
+.conclusion-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 14rpx;
+}
+
+.suggestion-text {
+  font-size: 26rpx;
+  color: #6B7280;
+  line-height: 1.6;
+}
+
+/* ---- 空状态 ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 48rpx;
+}
+
+.empty-icon  { font-size: 80rpx; margin-bottom: 16rpx; }
+.empty-text  { font-size: 30rpx; color: #6B7280; }

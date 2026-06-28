@@ -45,6 +45,11 @@
             "name": "specialIssueAgent",
             "timeout": 600,
             "memorySize": 1024
+        },
+        {
+            "name": "journalAPI",
+            "timeout": 600,
+            "memorySize": 512
         }
     ]
 }

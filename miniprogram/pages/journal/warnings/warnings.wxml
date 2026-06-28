@@ -1,0 +1,86 @@
+<!--pages/journal/warnings/warnings.wxml-->
+<!--预警期刊页 - 增强版-->
+<view class="container">
+
+  <!-- 统计概览 -->
+  <view class="stats-dashboard" wx:if="{{!loading}}">
+    <view class="stat-item danger">
+      <text class="stat-num">{{highCount || 0}}</text>
+      <text class="stat-label">高危</text>
+    </view>
+    <view class="stat-item warning">
+      <text class="stat-num">{{mediumCount || 0}}</text>
+      <text class="stat-label">中危</text>
+    </view>
+    <view class="stat-item success">
+      <text class="stat-num">{{lowCount || 0}}</text>
+      <text class="stat-label">低危</text>
+    </view>
+    <view class="stat-item info">
+      <text class="stat-num">{{totalCount || 0}}</text>
+      <text class="stat-label">总计</text>
+    </view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-group">
+      <text class="filter-label">级别</text>
+      <view class="filter-options">
+        <view class="filter-chip {{filterLevel === 'high' ? 'active danger' : ''}}" bindtap="filterByLevel" data-level="high">高危</view>
+        <view class="filter-chip {{filterLevel === 'medium' ? 'active warning' : ''}}" bindtap="filterByLevel" data-level="medium">中危</view>
+        <view class="filter-chip {{filterLevel === 'low' ? 'active success' : ''}}" bindtap="filterByLevel" data-level="low">低危</view>
+      </view>
+    </view>
+    <view class="filter-group">
+      <text class="filter-label">状态</text>
+      <view class="filter-options">
+        <view class="filter-chip {{filterStatus === 'active' ? 'active' : ''}}" bindtap="filterByStatus" data-status="active">生效中</view>
+        <view class="filter-chip {{filterStatus === 'resolved' ? 'active' : ''}}" bindtap="filterByStatus" data-status="resolved">已解除</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 预警列表 -->
+  <view class="warning-list" wx:if="{{!loading && warningList.length > 0}}">
+    <view class="warning-card {{item.warning_level}}" wx:for="{{warningList}}" wx:key="_id"
+      bindtap="goToDetail" data-id="{{item.journal_id}}">
+      
+      <!-- 级别标识 -->
+      <view class="level-badge {{item.warning_level}}">
+        <text class="level-text">
+          {{item.warning_level === 'high' ? '高' : (item.warning_level === 'medium' ? '中' : '低')}}
+        </text>
+      </view>
+
+      <!-- 内容 -->
+      <view class="warning-body">
+        <text class="journal-title">{{item.journal_title || (item.journal && item.journal.title) || '未知期刊'}}</text>
+        <text class="warning-reason">{{item.reason || '未知原因'}}</text>
+        <view class="warning-meta">
+          <text class="warning-source" wx:if="{{item.source}}">{{item.source}}</text>
+          <text class="warning-status {{item.status}}">
+            {{item.status === 'active' ? '● 生效中' : (item.status === 'resolved' ? '● 已解除' : '')}}
+          </text>
+        </view>
+      </view>
+
+      <view class="card-arrow">
+        <text>›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && warningList.length === 0}}">
+    <text class="empty-icon">✅</text>
+    <text class="empty-text">暂无预警期刊</text>
+    <text class="empty-hint">所有期刊状态正常</text>
+  </view>
+
+</view>

@@ -1,0 +1,9 @@
+{
+  "name": "journalAPI",
+  "version": "1.0.0",
+  "description": "期刊分析云函数 - 提供期刊搜索、详情、对比等功能",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

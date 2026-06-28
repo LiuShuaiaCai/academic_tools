@@ -1,0 +1,260 @@
+/* ============================================
+   pages/journal/warnings/warnings.wxss
+   预警期刊页 - 统一设计系统 v2
+   ============================================ */
+
+/* ---- 容器 ---- */
+.container {
+  padding: 20rpx 24rpx;
+  padding-bottom: 80rpx;
+  background: linear-gradient(180deg, #FEF2F2 0%, #F6F6F6 20%);
+  min-height: 100vh;
+}
+
+/* ---- 统计面板 ---- */
+.stats-dashboard {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.stat-item {
+  flex: 1;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
+  border-top: 4rpx solid #E5E7EB;
+}
+
+.stat-item.danger { border-top-color: #EF4444; }
+.stat-item.warning { border-top-color: #F59E0B; }
+.stat-item.success { border-top-color: #059669; }
+.stat-item.info { border-top-color: #2563eb; }
+
+.stat-num {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-item.danger .stat-num { color: #EF4444; }
+.stat-item.warning .stat-num { color: #F59E0B; }
+.stat-item.success .stat-num { color: #059669; }
+.stat-item.info .stat-num { color: #2563eb; }
+
+.stat-label {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+/* ---- 筛选栏 ---- */
+.filter-bar {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+  margin-bottom: 20rpx;
+}
+
+.filter-group {
+  margin-bottom: 16rpx;
+}
+
+.filter-group:last-child {
+  margin-bottom: 0;
+}
+
+.filter-label {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.filter-options {
+  display: flex;
+  gap: 10rpx;
+}
+
+.filter-chip {
+  padding: 12rpx 24rpx;
+  background: #F3F4F6;
+  border-radius: 22rpx;
+  font-size: 26rpx;
+  color: #6B7280;
+  font-weight: 500;
+  border: 2rpx solid transparent;
+  transition: all 0.15s;
+}
+
+.filter-chip.active {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.filter-chip.active.danger {
+  background: #EF4444;
+  border-color: #EF4444;
+}
+
+.filter-chip.active.warning {
+  background: #F59E0B;
+  border-color: #F59E0B;
+}
+
+.filter-chip.active.success {
+  background: #059669;
+  border-color: #059669;
+}
+
+/* ---- 加载状态 ---- */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 120rpx;
+  color: #9CA3AF;
+  font-size: 28rpx;
+}
+
+/* ---- 预警列表 ---- */
+.warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.warning-card {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  border-left: 6rpx solid #D1D5DB;
+  transition: all 0.15s;
+}
+
+.warning-card.high {
+  border-left-color: #EF4444;
+  background: linear-gradient(135deg, #FEF2F2, #fff);
+}
+
+.warning-card.medium {
+  border-left-color: #F59E0B;
+  background: linear-gradient(135deg, #FFFBEB, #fff);
+}
+
+.warning-card.low {
+  border-left-color: #059669;
+  background: linear-gradient(135deg, #F0FDF4, #fff);
+}
+
+/* ---- 级别标识 ---- */
+.level-badge {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.level-badge.high { background: linear-gradient(135deg, #EF4444, #DC2626); }
+.level-badge.medium { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.level-badge.low { background: linear-gradient(135deg, #10B981, #059669); }
+
+.level-text {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ---- 内容 ---- */
+.warning-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.journal-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8rpx;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warning-reason {
+  font-size: 26rpx;
+  color: #6B7280;
+  margin-bottom: 12rpx;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warning-meta {
+  display: flex;
+  gap: 16rpx;
+  font-size: 22rpx;
+}
+
+.warning-source {
+  color: #9CA3AF;
+}
+
+.warning-status {
+  font-weight: 500;
+}
+
+.warning-status.active {
+  color: #EF4444;
+}
+
+.warning-status.resolved {
+  color: #059669;
+}
+
+/* ---- 箭头 ---- */
+.card-arrow {
+  color: #D1D5DB;
+  font-size: 36rpx;
+  font-weight: 300;
+}
+
+/* ---- 空状态 ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 48rpx;
+  gap: 16rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+}
+
+.empty-text {
+  font-size: 30rpx;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: #9CA3AF;
+}

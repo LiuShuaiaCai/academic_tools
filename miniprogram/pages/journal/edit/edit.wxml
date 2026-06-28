@@ -1,0 +1,110 @@
+<!--pages/journal/edit/edit.wxml-->
+<!--期刊指标数据录入页-->
+<view class="container">
+  
+  <!-- 搜索期刊 -->
+  <view class="search-section">
+    <view class="search-box">
+      <text class="search-icon">🔍</text>
+      <input class="search-input" placeholder="搜索期刊名称或ISSN" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="onSearch" />
+    </view>
+    <button class="search-btn" bindtap="onSearch">搜索</button>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view class="search-result" wx:if="{{searchResults.length > 0}}">
+    <view class="result-title">搜索结果（点击选择期刊）</view>
+    <view class="journal-item" wx:for="{{searchResults}}" wx:key="_id" bindtap="selectJournal" data-id="{{item._id}}" data-title="{{item.title}}">
+      <text class="journal-name">{{item.title}}</text>
+      <text class="journal-issn" wx:if="{{item.issn_print}}">ISSN: {{item.issn_print}}</text>
+    </view>
+  </view>
+
+  <!-- 录入表单 -->
+  <view class="form-section" wx:if="{{selectedJournal}}">
+    <view class="form-header">
+      <text class="form-title">录入期刊指标</text>
+      <text class="journal-name">{{selectedJournal.title}}</text>
+    </view>
+
+    <!-- 影响因子 -->
+    <view class="form-group">
+      <text class="form-label">影响因子（IF）</text>
+      <input class="form-input" type="digit" placeholder="如：5.2" value="{{form.impact_factor}}" bindinput="onFieldInput" data-field="impact_factor" />
+      <input class="form-input-sm" type="number" placeholder="年份" value="{{form.if_year}}" bindinput="onFieldInput" data-field="if_year" />
+    </view>
+
+    <!-- JCR分区 -->
+    <view class="form-group">
+      <text class="form-label">JCR分区</text>
+      <view class="radio-group">
+        <view class="radio-item {{form.jcr_quartile === 'Q1' ? 'active' : ''}}" bindtap="setQuartile" data-type="jcr" data-value="Q1">Q1</view>
+        <view class="radio-item {{form.jcr_quartile === 'Q2' ? 'active' : ''}}" bindtap="setQuartile" data-type="jcr" data-value="Q2">Q2</view>
+        <view class="radio-item {{form.jcr_quartile === 'Q3' ? 'active' : ''}}" bindtap="setQuartile" data-type="jcr" data-value="Q3">Q3</view>
+        <view class="radio-item {{form.jcr_quartile === 'Q4' ? 'active' : ''}}" bindtap="setQuartile" data-type="jcr" data-value="Q4">Q4</view>
+      </view>
+      <input class="form-input-sm" type="number" placeholder="JCR年份" value="{{form.jcr_year}}" bindinput="onFieldInput" data-field="jcr_year" />
+    </view>
+
+    <!-- 中科院分区 -->
+    <view class="form-group">
+      <text class="form-label">中科院分区</text>
+      <view class="radio-group">
+        <view class="radio-item cas {{form.cas_quartile === '1区' ? 'active' : ''}}" bindtap="setQuartile" data-type="cas" data-value="1区">1区</view>
+        <view class="radio-item cas {{form.cas_quartile === '2区' ? 'active' : ''}}" bindtap="setQuartile" data-type="cas" data-value="2区">2区</view>
+        <view class="radio-item cas {{form.cas_quartile === '3区' ? 'active' : ''}}" bindtap="setQuartile" data-type="cas" data-value="3区">3区</view>
+        <view class="radio-item cas {{form.cas_quartile === '4区' ? 'active' : ''}}" bindtap="setQuartile" data-type="cas" data-value="4区">4区</view>
+      </view>
+      <input class="form-input-sm" type="number" placeholder="中科院年份" value="{{form.cas_year}}" bindinput="onFieldInput" data-field="cas_year" />
+      <view class="radio-group-sm">
+        <text class="sm-label">版本：</text>
+        <view class="radio-item-sm {{form.cas_edition === '基础版' ? 'active' : ''}}" bindtap="setEdition" data-value="基础版">基础版</view>
+        <view class="radio-item-sm {{form.cas_edition === '升级版' ? 'active' : ''}}" bindtap="setEdition" data-value="升级版">升级版</view>
+      </view>
+    </view>
+
+    <!-- 录用率 -->
+    <view class="form-group">
+      <text class="form-label">录用率（%）</text>
+      <input class="form-input" type="digit" placeholder="如：15" value="{{form.acceptance_rate}}" bindinput="onFieldInput" data-field="acceptance_rate" />
+    </view>
+
+    <!-- 审稿周期 -->
+    <view class="form-group">
+      <text class="form-label">审稿周期</text>
+      <input class="form-input" placeholder="如：3-6周" value="{{form.review_cycle}}" bindinput="onFieldInput" data-field="review_cycle" />
+    </view>
+
+    <!-- 自引率 -->
+    <view class="form-group">
+      <text class="form-label">自引率（%）</text>
+      <input class="form-input" type="digit" placeholder="如：8.5" value="{{form.self_citation_rate}}" bindinput="onFieldInput" data-field="self_citation_rate" />
+    </view>
+
+    <!-- 数据来源 -->
+    <view class="form-group">
+      <text class="form-label">数据来源</text>
+      <view class="radio-group-sm">
+        <view class="radio-item-sm {{form.metrics_source === 'admin' ? 'active' : ''}}" bindtap="setSource" data-value="admin">官方数据</view>
+        <view class="radio-item-sm {{form.metrics_source === 'user_contributed' ? 'active' : ''}}" bindtap="setSource" data-value="user_contributed">用户贡献</view>
+        <view class="radio-item-sm {{form.metrics_source === 'crawled' ? 'active' : ''}}" bindtap="setSource" data-value="crawled">爬取数据</view>
+      </view>
+      <view class="checkbox-row">
+        <view class="checkbox {{form.metrics_verified ? 'checked' : ''}}" bindtap="toggleVerified">✓</view>
+        <text class="checkbox-label">已验证</text>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="btn-group">
+      <button class="btn-submit" bindtap="submitForm">提交</button>
+      <button class="btn-reset" bindtap="resetForm">重置</button>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!selectedJournal && searchResults.length === 0}}">
+    <text class="empty-icon">📊</text>
+    <text class="empty-text">搜索并选择期刊，然后录入指标数据</text>
+  </view>
+</view>

@@ -1,0 +1,247 @@
+<!--pages/journal/search/search.wxml-->
+<!--期刊搜索页 - 筛选+列表重构版 -->
+<view class="container">
+  
+  <!-- 临时迁移按钮（完成后删除） -->
+  <view class="migration-banner">
+    <button class="migration-btn" bindtap="runMigration" size="mini" type="warn">执行数据库迁移</button>
+  </view>
+
+  <!-- 顶部搜索栏 -->
+  <view class="search-header">
+    <view class="search-box">
+      <view class="search-input-wrap">
+        <text class="search-icon">🔍</text>
+        <input 
+          class="search-input" 
+          placeholder="搜索期刊名称、ISSN..." 
+          value="{{keyword}}" 
+          bindinput="onKeywordInput"
+          bindconfirm="onSearch"
+          confirm-type="search"
+        />
+        <view wx:if="{{keyword}}" class="clear-btn" bindtap="onClear">
+          <text>✕</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- ====== 筛选面板 ====== -->
+    <view class="filter-panel">
+      <!-- 收录筛选行 -->
+      <view class="filter-row">
+        <text class="filter-row-title">收录</text>
+        <scroll-view scroll-x class="filter-scroll">
+          <view class="filter-chip {{filters.is_in_doaj === true ? 'active chip-blue' : ''}}" 
+            bindtap="toggleDOAJFilter">
+            <text>DOAJ</text>
+          </view>
+          <view class="filter-chip {{filters.is_medline === true ? 'active chip-amber' : ''}}" 
+            bindtap="toggleMEDLINEFilter">
+            <text>MEDLINE</text>
+          </view>
+          <view class="filter-chip {{filters.is_pmc_journal === true ? 'active chip-green' : ''}}" 
+            bindtap="togglePMCJournalFilter">
+            <text>PMC</text>
+          </view>
+          <view class="filter-chip {{filters.is_oa === true ? 'active chip-teal' : ''}} {{filters.is_oa === false ? 'chip-oa-off' : ''}}" 
+            bindtap="toggleOAFIlter">
+            <text>{{filters.is_oa === true ? '仅OA' : (filters.is_oa === false ? '非OA' : 'OA')}}</text>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 排序+操作行 -->
+      <view class="filter-row filter-row-bottom">
+        <view class="sort-group">
+          <view class="sort-btn {{sortBy === 'works_count' ? 'sort-active' : ''}}" bindtap="setSortBy" data-sort="works_count">
+            <text class="sort-label">发文量</text>
+            <text class="sort-arrow" wx:if="{{sortBy === 'works_count'}}">↓</text>
+          </view>
+          <view class="sort-btn {{sortBy === 'cited_by_count' ? 'sort-active' : ''}}" bindtap="setSortBy" data-sort="cited_by_count">
+            <text class="sort-label">被引量</text>
+            <text class="sort-arrow" wx:if="{{sortBy === 'cited_by_count'}}">↓</text>
+          </view>
+        </view>
+
+        <view class="compare-entry {{compareMode ? 'compare-on' : ''}}" bindtap="{{compareMode ? 'exitCompareMode' : 'enterCompareMode'}}">
+          <text>{{compareMode ? '对比中' : '对比'}}</text>
+          <text class="compare-num" wx:if="{{compareList.length > 0}}">{{compareList.length}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 活跃筛选条 -->
+  <view class="active-filters" wx:if="{{getFilterLabel()}}">
+    <text class="af-label">筛选：</text>
+    <view class="af-chip" wx:if="{{filters.is_oa === true}}" bindtap="cancelOAFilter">
+      <text>OA</text><text class="af-close">✕</text>
+    </view>
+    <view class="af-chip" wx:elif="{{filters.is_oa === false}}" bindtap="cancelOAFilter">
+      <text>非OA</text><text class="af-close">✕</text>
+    </view>
+    <view class="af-chip" wx:if="{{filters.is_in_doaj === true}}" bindtap="toggleDOAJFilter">
+      <text>DOAJ</text><text class="af-close">✕</text>
+    </view>
+    <view class="af-chip" wx:if="{{filters.is_medline === true}}" bindtap="toggleMEDLINEFilter">
+      <text>MEDLINE</text><text class="af-close">✕</text>
+    </view>
+    <view class="af-chip" wx:if="{{filters.is_pmc_journal === true}}" bindtap="togglePMCJournalFilter">
+      <text>PMC</text><text class="af-close">✕</text>
+    </view>
+    <view class="af-clear-all" bindtap="clearAllFilters">清空</view>
+  </view>
+
+  <!-- 对比浮层 -->
+  <view class="compare-bar" wx:if="{{compareMode && compareList.length > 0}}">
+    <view class="compare-bar-inner">
+      <text class="compare-info">已选<text class="compare-num-highlight">{{compareList.length}}</text>本期刊</text>
+      <view class="compare-actions">
+        <view class="compare-btn" bindtap="startCompare">开始对比</view>
+        <view class="compare-cancel" bindtap="exitCompareMode">取消</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view class="result-section" wx:if="{{!compareMode || compareList.length >= 0}}">
+    <!-- 结果统计 -->
+    <view class="result-header" wx:if="{{journalList.length > 0}}">
+      <text class="result-count">共 <text class="result-num">{{total}}</text> 本期刊</text>
+      <text class="result-sort">按{{sortBy === 'works_count' ? '发文量' : '被引量'}}排序</text>
+    </view>
+
+    <!-- 期刊列表 -->
+    <view class="journal-list">
+      <view class="journal-card {{compareMode ? 'compare-mode' : ''}} {{item._selected ? 'selected' : ''}}" 
+        wx:for="{{journalList}}" wx:key="_id" wx:for-index="idx"
+        bindtap="{{compareMode ? 'toggleCompare' : 'goToDetail'}}" 
+        data-id="{{item._id}}">
+        
+        <!-- 对比勾选框 -->
+        <view class="compare-check" wx:if="{{compareMode}}">
+          <view class="checkbox {{item._selected ? 'checked' : ''}}">
+            <text wx:if="{{item._selected}}" class="check-icon">✓</text>
+          </view>
+        </view>
+
+        <!-- 选中高亮遮罩 -->
+        <view class="card-selected-mask" wx:if="{{compareMode && item._selected}}"></view>
+
+        <!-- 左侧序号色条 -->
+        <view class="card-rank-strip strip-{{idx < 3 ? 'top' : 'normal'}}"></view>
+        
+        <view class="card-body">
+        <!-- 期刊标题行 -->
+        <view class="card-title-row">
+          <text class="journal-title-text">{{item.title}}</text>
+          <view class="oa-badge" wx:if="{{item.is_open_access}}">OA</view>
+        </view>
+
+        <!-- 学科分类标签（始终显示，最多3个） -->
+        <view class="card-subject-row" wx:if="{{item.subject_category && item.subject_category.length > 0}}">
+          <view class="subject-tag" wx:for="{{item.subject_category}}" wx:key="*this" wx:if="{{index < 3}}">{{item}}</view>
+        </view>
+          
+        <!-- 出版社 + ISSN + 国家 -->
+        <view class="card-meta-row">
+          <text class="meta-text" wx:if="{{item.publisher}}">{{item.publisher}}</text>
+          <text class="meta-sep" wx:if="{{item.publisher && item.issn_print}}">·</text>
+          <text class="meta-text" wx:if="{{item.issn_print}}">ISSN {{item.issn_print}}</text>
+          <text class="meta-country" wx:if="{{item.country}}">{{item.country}}</text>
+        </view>
+
+        <!-- 核心指标徽章行：IF + JCR + CAS -->
+        <view class="card-badge-row" wx:if="{{item.if_display || item.jcr_quartile || item.cas_quartile}}">
+          <view class="badge-if" wx:if="{{item.if_display}}">
+            <text class="badge-if-label">IF</text>
+            <text class="badge-if-value">{{item.if_display}}</text>
+          </view>
+          <view class="badge-jcr q-{{item.jcr_quartile}}" wx:if="{{item.jcr_quartile}}">
+            <text>JCR {{item.jcr_quartile}}</text>
+          </view>
+          <view class="badge-cas" wx:if="{{item.cas_quartile}}">
+            <text>CAS {{item.cas_quartile}}</text>
+          </view>
+        </view>
+          
+        <!-- 指标网格（永远显示4项基础指标） -->
+        <view class="card-metrics-grid">
+          <view class="metric-cell">
+            <text class="m-value">{{item.works_count_latest || 0}}</text>
+            <text class="m-label">年发文</text>
+          </view>
+          <view class="metric-cell">
+            <text class="m-value">{{item.cited_by_count_latest || 0}}</text>
+            <text class="m-label">总被引</text>
+          </view>
+          <view class="metric-cell">
+            <text class="m-value">{{item.h_index_latest || 0}}</text>
+            <text class="m-label">h指数</text>
+          </view>
+          <view class="metric-cell" wx:if="{{item.acceptance_rate}}">
+            <text class="m-value m-accent-green">{{item.acceptance_rate}}%</text>
+            <text class="m-label">录用率</text>
+          </view>
+          <view class="metric-cell" wx:elif="{{item.citedness_2yr}}">
+            <text class="m-value m-accent-blue">{{item.citedness_2yr}}</text>
+            <text class="m-label">2年均引</text>
+          </view>
+          <view class="metric-cell" wx:else>
+            <text class="m-value">{{item.avg_citation}}</text>
+            <text class="m-label">篇均引</text>
+          </view>
+        </view>
+
+        <!-- 投稿指标行（仅当有数据时显示第二行） -->
+        <view class="card-metrics-extra" wx:if="{{item.acceptance_rate || item.review_cycle || item.scr_display || item.self_citation_rate}}">
+          <view class="metric-cell" wx:if="{{item.review_cycle}}">
+            <text class="m-value m-accent-amber">{{item.review_cycle}}</text>
+            <text class="m-label">审稿周期</text>
+          </view>
+          <view class="metric-cell" wx:if="{{item.scr_display}}">
+            <text class="m-value">{{item.scr_display}}</text>
+            <text class="m-label">自引率</text>
+          </view>
+          <view class="metric-cell" wx:if="{{item.if_display && !item.review_cycle && item.acceptance_rate}}">
+            <text class="m-value m-accent-blue">{{item.citedness_2yr || item.avg_citation}}</text>
+            <text class="m-label">篇均引</text>
+          </view>
+        </view>
+
+        <!-- 收录标签行 -->
+        <view class="card-tags-row" wx:if="{{item.is_in_doaj || item.is_medline_current || item.pubmed_article_count > 0 || item.pmc_article_count > 0 || item.apc_amount}}">
+          <view class="card-tag tag-blue" wx:if="{{item.is_in_doaj}}">DOAJ</view>
+          <view class="card-tag tag-amber" wx:if="{{item.is_medline_current}}">MEDLINE</view>
+          <view class="card-tag tag-amber" wx:if="{{item.pubmed_article_count > 0}}">PubMed {{item.pubmed_article_count}}</view>
+          <view class="card-tag tag-green" wx:if="{{item.pmc_article_count > 0}}">PMC {{item.pmc_article_count}}</view>
+          <view class="card-tag tag-red" wx:if="{{item.apc_amount}}">APC {{item.apc_currency}} {{item.apc_amount}}</view>
+        </view>
+        </view>
+
+        <!-- 右侧箭头 -->
+        <view class="card-arrow" wx:if="{{!compareMode}}">
+          <text class="arrow-icon">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading-more" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+    
+    <view class="no-more" wx:if="{{!hasMore && journalList.length > 0}}">
+      <text>— 没有更多了 —</text>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && journalList.length === 0}}">
+    <text class="empty-icon">🔍</text>
+    <text class="empty-text">暂无期刊数据</text>
+    <text class="empty-hint">请先同步期刊数据，或尝试其他搜索词</text>
+  </view>
+
+</view>

@@ -1,0 +1,394 @@
+<!--pages/journal/detail/detail.wxml-->
+<!--期刊详情页-->
+<view class="container">
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:if="{{!loading && journal}}">
+
+    <!-- 顶部信息区 -->
+    <view class="header-card">
+      <view class="journal-title-row">
+        <text class="journal-title">{{journal.title}}</text>
+        <view class="oa-badge" wx:if="{{journal.is_open_access}}">OA</view>
+      </view>
+      <view class="journal-subtitle" wx:if="{{journal.title_abbrev}}">{{journal.title_abbrev}}</view>
+
+      <!-- 学科分类（前置、醒目） -->
+      <view class="subject-section" wx:if="{{journal.subject_category && journal.subject_category.length > 0}}">
+        <text class="subject-section-title">学科分类</text>
+        <view class="subject-tag-row">
+          <view class="subject-tag" wx:for="{{journal.subject_category}}" wx:key="*this">{{item}}</view>
+        </view>
+        <view class="subject-sub-row" wx:if="{{journal.subject_subcategory && journal.subject_subcategory.length > 0}}">
+          <text class="sub-prefix">细分方向</text>
+          <view class="subject-tag sub" wx:for="{{journal.subject_subcategory}}" wx:key="*this" wx:if="{{index < 4}}">{{item}}</view>
+        </view>
+      </view>
+
+      <!-- 核心指标速览（IF/JCR/CAS，永远显示区域） -->
+      <view class="metrics-highlight">
+        <view class="metric-big" wx:if="{{journal.impact_factor}}">
+          <text class="metric-big-value">{{journal.impact_factor}}</text>
+          <text class="metric-big-label">影响因子 ({{journal.if_year || '--'}})</text>
+        </view>
+        <view class="metric-big empty" wx:else>
+          <text class="metric-big-value dim">--</text>
+          <text class="metric-big-label">影响因子（待录入）</text>
+        </view>
+        
+        <view class="metric-big" wx:if="{{journal.jcr_quartile}}">
+          <view class="quartile-badge q-{{journal.jcr_quartile}}">{{journal.jcr_quartile}}</view>
+          <text class="metric-big-label">JCR分区</text>
+        </view>
+        <view class="metric-big empty" wx:else>
+          <text class="metric-big-value dim">--</text>
+          <text class="metric-big-label">JCR分区（待录入）</text>
+        </view>
+        
+        <view class="metric-big" wx:if="{{journal.cas_quartile}}">
+          <text class="metric-big-value cas">{{journal.cas_quartile}}</text>
+          <text class="metric-big-label">中科院分区{{journal.cas_edition ? '(' + journal.cas_edition + ')' : ''}}</text>
+        </view>
+        <view class="metric-big empty" wx:else>
+          <text class="metric-big-value dim">--</text>
+          <text class="metric-big-label">中科院分区（待录入）</text>
+        </view>
+      </view>
+
+      <!-- 基础信息 -->
+      <view class="info-grid">
+        <view class="info-item" wx:if="{{journal.publisher}}">
+          <text class="info-label">出版社</text>
+          <text class="info-value">{{journal.publisher}}</text>
+        </view>
+        <view class="info-item" wx:if="{{journal.country}}">
+          <text class="info-label">国家</text>
+          <text class="info-value">{{journal.country}}</text>
+        </view>
+        <view class="info-item" wx:if="{{journal.issn_print}}">
+          <text class="info-label">ISSN(印刷)</text>
+          <text class="info-value">{{journal.issn_print}}</text>
+        </view>
+        <view class="info-item" wx:if="{{journal.issn_online}}">
+          <text class="info-label">ISSN(在线)</text>
+          <text class="info-value">{{journal.issn_online}}</text>
+        </view>
+        <view class="info-item" wx:if="{{journal.homepage_url}}">
+          <text class="info-label">官网</text>
+          <text class="info-value link" bindtap="openUrl" data-url="{{journal.homepage_url}}">查看</text>
+        </view>
+      </view>
+
+      <!-- 收录标签 -->
+      <view class="tag-row">
+        <view class="tag doaj" wx:if="{{journal.is_in_doaj}}">DOAJ收录</view>
+        <view class="tag medline" wx:if="{{journal.is_medline_current}}">MEDLINE当前收录</view>
+        <view class="tag medline-previous" wx:if="{{journal.is_medline_current_or_previous && !journal.is_medline_current}}">曾MEDLINE收录</view>
+        <view class="tag pubmed" wx:if="{{journal.pubmed_article_count > 0}}">PubMed ({{journal.pubmed_article_count}}篇)</view>
+        <view class="tag pmc" wx:if="{{journal.pmc_article_count > 0}}">PMC ({{journal.pmc_article_count}}篇)</view>
+        <view class="tag nlm" wx:if="{{journal.nlm_id}}">NLM收录</view>
+        <view class="tag pmc-journal" wx:if="{{journal.is_pmc_journal}}">PMC期刊</view>
+      </view>
+
+      <!-- 费用信息 -->
+      <view class="fee-section" wx:if="{{journal.apc_amount}}">
+        <text class="section-label">APC费用</text>
+        <text class="fee-value">{{journal.apc_currency}} {{journal.apc_amount}}</text>
+        <text class="fee-license" wx:if="{{journal.license}}">{{journal.license}}</text>
+      </view>
+    </view>
+
+    <!-- 核心指标卡片（永远显示） -->
+    <view class="metrics-card">
+      <text class="card-title">综合指标</text>
+      <view class="metrics-grid">
+        <!-- 影响因子 -->
+        <view class="metric-box highlight" wx:if="{{journal.impact_factor}}">
+          <text class="metric-number">{{journal.impact_factor}}</text>
+          <text class="metric-desc">IF ({{journal.if_year || '--'}})</text>
+        </view>
+        <view class="metric-box" wx:else>
+          <text class="metric-number dim">--</text>
+          <text class="metric-desc">影响因子</text>
+        </view>
+        
+        <!-- 录用率 -->
+        <view class="metric-box" wx:if="{{journal.acceptance_rate}}">
+          <text class="metric-number rate">{{journal.acceptance_rate}}%</text>
+          <text class="metric-desc">录用率</text>
+        </view>
+        <view class="metric-box" wx:else>
+          <text class="metric-number dim">--</text>
+          <text class="metric-desc">录用率</text>
+        </view>
+
+        <!-- 年发文量 -->
+        <view class="metric-box">
+          <text class="metric-number">{{journal.works_count_latest || 0}}</text>
+          <text class="metric-desc">年发文量</text>
+        </view>
+        
+        <!-- 总被引 -->
+        <view class="metric-box">
+          <text class="metric-number">{{journal.cited_by_count_latest || 0}}</text>
+          <text class="metric-desc">总被引</text>
+        </view>
+        
+        <!-- h指数 -->
+        <view class="metric-box">
+          <text class="metric-number">{{journal.h_index_latest || 0}}</text>
+          <text class="metric-desc">h指数</text>
+        </view>
+        
+        <!-- 审稿周期/自引率 -->
+        <view class="metric-box" wx:if="{{journal.review_cycle}}">
+          <text class="metric-number cycle">{{journal.review_cycle}}</text>
+          <text class="metric-desc">审稿周期</text>
+        </view>
+        <view class="metric-box" wx:elif="{{journal.self_citation_rate}}">
+          <text class="metric-number">{{journal.self_citation_rate}}%</text>
+          <text class="metric-desc">自引率</text>
+        </view>
+        <view class="metric-box" wx:else>
+          <text class="metric-number dim">--</text>
+          <text class="metric-desc">审稿周期</text>
+        </view>
+      </view>
+      
+      <!-- 数据来源提示 -->
+      <view class="metrics-source" wx:if="{{journal.metrics_source}}">
+        <text class="source-text">IF/分区等数据来源：{{journal.metrics_source === 'admin' ? '官方录入' : (journal.metrics_source === 'user_contributed' ? '用户贡献' : journal.metrics_source)}}</text>
+        <text class="source-verified" wx:if="{{journal.metrics_verified}}">✓ 已验证</text>
+      </view>
+    </view>
+
+    <!-- Tab切换 - 胶囊式 -->
+    <view class="tab-bar">
+      <view class="tab-bar-inner">
+        <view class="tab-item {{activeTab === item.id ? 'active' : ''}}" 
+          wx:for="{{tabs}}" wx:key="id" 
+          bindtap="switchTab" data-tab="{{item.id}}">
+          <text class="tab-text">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Tab内容: 概览 -->
+    <view class="tab-content" wx:if="{{activeTab === 'overview'}}">
+      <!-- 学科分类 -->
+      <view class="section-card" wx:if="{{journal.subject_category && journal.subject_category.length > 0}}">
+        <text class="card-title">学科分类</text>
+        <view class="subject-list">
+          <view class="subject-item" wx:for="{{journal.subject_category}}" wx:key="*this">
+            <text class="subject-icon">📚</text>
+            <text class="subject-name">{{item}}</text>
+            <text class="subject-type">大类</text>
+          </view>
+          <view class="subject-item sub" wx:for="{{journal.subject_subcategory}}" wx:key="*this" wx:if="{{index < 3}}">
+            <text class="subject-icon">📖</text>
+            <text class="subject-name">{{item}}</text>
+            <text class="subject-type">小类</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 学科主题（细粒度，可折叠） -->
+      <view class="section-card" wx:if="{{topics.length > 0}}">
+        <view class="card-title-row" bindtap="toggleTopics">
+          <text class="card-title">研究话题</text>
+          <text class="card-title-arrow">{{showTopics ? '▲' : '▼'}}</text>
+        </view>
+        <view class="topic-list" wx:if="{{showTopics}}">
+          <view class="topic-item" wx:for="{{topics}}" wx:key="display_name">
+            <text class="topic-name">{{item.display_name}}</text>
+            <text class="topic-count">{{item.count}}篇</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- NCBI收录状态 -->
+      <view class="section-card" wx:if="{{journal.nlm_id || journal.is_medline_current || journal.is_pmc_journal || journal.pubmed_article_count > 0 || journal.pmc_article_count > 0}}">
+        <text class="card-title">NCBI 收录状态</text>
+        <view class="ncbi-status-grid">
+          <view class="ncbi-item" wx:if="{{journal.nlm_id}}">
+            <text class="ncbi-label">NLM ID</text>
+            <text class="ncbi-value">{{journal.nlm_id}}</text>
+          </view>
+          <view class="ncbi-item">
+            <text class="ncbi-label">MEDLINE 当前收录</text>
+            <text class="ncbi-value {{journal.is_medline_current ? 'status-yes' : 'status-no'}}">{{journal.is_medline_current ? '✓ 是' : '✗ 否'}}</text>
+          </view>
+          <view class="ncbi-item">
+            <text class="ncbi-label">PMC 期刊</text>
+            <text class="ncbi-value {{journal.is_pmc_journal ? 'status-yes' : 'status-no'}}">{{journal.is_pmc_journal ? '✓ 是' : '✗ 否'}}</text>
+          </view>
+          <view class="ncbi-item">
+            <text class="ncbi-label">PubMed 文章数</text>
+            <text class="ncbi-value ncbi-count">{{journal.pubmed_article_count || 0}}</text>
+          </view>
+          <view class="ncbi-item">
+            <text class="ncbi-label">PMC 全文文章数</text>
+            <text class="ncbi-value ncbi-count">{{journal.pmc_article_count || 0}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 最新年度数据 -->
+      <view class="section-card" wx:if="{{yearlyData.length > 0}}">
+        <text class="card-title">最新年度数据 ({{yearlyData[0].year}})</text>
+        <view class="yearly-info">
+          <view class="yearly-row">
+            <text class="yearly-label">发文量</text>
+            <text class="yearly-value">{{yearlyData[0].works_count || 0}}</text>
+          </view>
+          <view class="yearly-row">
+            <text class="yearly-label">被引量</text>
+            <text class="yearly-value">{{yearlyData[0].cited_by_count || 0}}</text>
+          </view>
+          <view class="yearly-row" wx:if="{{yearlyData[0].research_articles}}">
+            <text class="yearly-label">研究论文</text>
+            <text class="yearly-value">{{yearlyData[0].research_articles}}</text>
+          </view>
+          <view class="yearly-row" wx:if="{{yearlyData[0].review_articles}}">
+            <text class="yearly-label">综述论文</text>
+            <text class="yearly-value">{{yearlyData[0].review_articles}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Tab内容: 投稿分析 -->
+    <view class="tab-content" wx:if="{{activeTab === 'analysis'}}">
+      <view class="loading-hint" wx:if="{{analyticsLoading}}">
+        <text class="loading-text">正在分析...</text>
+      </view>
+
+      <block wx:if="{{!analyticsLoading && analytics}}">
+        <!-- 投稿建议 -->
+        <view class="section-card suggest-card">
+          <text class="card-title">投稿建议</text>
+          <view class="suggest-content">
+            <view class="suggest-level" style="color: {{analytics.suggestion.color}}">{{analytics.suggestion.levelText}}</view>
+            <text class="suggest-text">{{analytics.suggestion.text}}</text>
+          </view>
+        </view>
+
+        <!-- 期刊趋势 -->
+        <view class="section-card">
+          <text class="card-title">年度趋势</text>
+          <view class="trend-list">
+            <view class="trend-item" wx:for="{{yearlyData}}" wx:key="year" wx:if="{{index < 5}}">
+              <text class="trend-year">{{item.year}}</text>
+              <view class="trend-bar-wrap">
+                <view class="trend-bar" style="width: {{item.works_count / maxWorks * 100}}%"></view>
+              </view>
+              <text class="trend-value">{{item.works_count}}篇</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 关键指标 -->
+        <view class="section-card">
+          <text class="card-title">引用指标</text>
+          <view class="kpi-grid">
+            <view class="kpi-item">
+              <text class="kpi-label">篇均被引</text>
+              <text class="kpi-value">{{analytics.cpp}}</text>
+            </view>
+            <view class="kpi-item">
+              <text class="kpi-label">年发文增速</text>
+              <text class="kpi-value {{analytics.growthRate >= 0 ? 'text-green' : 'text-red'}}">{{analytics.growthRate >= 0 ? '+' : ''}}{{analytics.growthRate}}%</text>
+            </view>
+            <view class="kpi-item">
+              <text class="kpi-label">h指数</text>
+              <text class="kpi-value">{{journal.h_index_latest || 0}}</text>
+            </view>
+            <view class="kpi-item">
+              <text class="kpi-label">自引率</text>
+              <text class="kpi-value {{journal.self_citation_rate > 20 ? 'text-red' : 'text-green'}}">{{journal.self_citation_rate || '未知'}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view class="empty-hint" wx:if="{{!analyticsLoading && !analytics}}">
+        <text>暂无分析数据</text>
+      </view>
+    </view>
+
+    <!-- Tab内容: 趋势 -->
+    <view class="tab-content" wx:if="{{activeTab === 'trends'}}">
+      <view class="section-card">
+        <text class="card-title">年度发文量趋势</text>
+        <view class="chart-placeholder" wx:if="{{yearlyData.length > 0}}">
+          <!-- 简易柱状图 -->
+          <view class="bar-chart">
+            <view class="bar-item" wx:for="{{chartData}}" wx:key="year">
+              <view class="bar" style="height: {{item.works_count / maxWorks * 200}}rpx;"></view>
+              <text class="bar-value">{{item.works_count || 0}}篇</text>
+              <text class="bar-label">{{item.year}}年</text>
+            </view>
+          </view>
+        </view>
+        <view class="empty-hint" wx:else>
+          <text>暂无年度数据</text>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="card-title">年度被引量趋势</text>
+        <view class="chart-placeholder" wx:if="{{yearlyData.length > 0}}">
+          <view class="bar-chart">
+            <view class="bar-item" wx:for="{{chartData}}" wx:key="year">
+              <view class="bar cite-bar" style="height: {{item.cited_by_count / maxCited * 200}}rpx;" wx:if="{{maxCited > 0}}"></view>
+              <text class="bar-value">{{item.cited_by_count || 0}}次</text>
+              <text class="bar-label">{{item.year}}年</text>
+            </view>
+          </view>
+        </view>
+        <view class="empty-hint" wx:else>
+          <text>暂无年度数据</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Tab内容: 文章 -->
+    <view class="tab-content" wx:if="{{activeTab === 'articles'}}">
+      <view class="article-list">
+        <view class="article-item" wx:for="{{articles}}" wx:key="id" 
+          bindtap="openArticle" data-doi="{{item.doi}}">
+          <text class="article-title">{{item.title}}</text>
+          <view class="article-meta">
+            <text class="article-year" wx:if="{{item.year}}">{{item.year}}</text>
+            <text class="article-cited" wx:if="{{item.cited_by_count !== undefined}}">被引{{item.cited_by_count}}</text>
+            <text class="article-doi" wx:if="{{item.doi}}">{{item.doi}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="loading-more" wx:if="{{articlesLoading}}">
+        <text>加载中...</text>
+      </view>
+
+      <view class="load-more-btn" wx:if="{{articlesHasMore && !articlesLoading && articles.length > 0}}" bindtap="loadMoreArticles">
+        <text>加载更多</text>
+      </view>
+
+      <view class="empty-hint" wx:if="{{!articlesLoading && articles.length === 0}}">
+        <text>暂无文章数据</text>
+      </view>
+    </view>
+
+  </block>
+
+  <!-- 加载失败 -->
+  <view class="empty-state" wx:if="{{!loading && !journal}}">
+    <text class="empty-icon">😕</text>
+    <text class="empty-text">未找到该期刊</text>
+  </view>
+
+</view>

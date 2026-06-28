@@ -28,7 +28,13 @@
     "pages/square/square",
     "pages/square/publish/publish",
     "pages/square/detail/detail",
-    "pages/square/favorites/favorites"
+    "pages/square/favorites/favorites",
+    "pages/journal/search/search",
+    "pages/journal/detail/detail",
+    "pages/journal/compare/compare",
+    "pages/journal/recommend/recommend",
+    "pages/journal/warnings/warnings",
+    "pages/journal/edit/edit"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

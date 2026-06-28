@@ -1,0 +1,746 @@
+/* ============================================
+   pages/journal/detail/detail.wxss
+   期刊详情页 - 现代精致版 v3
+   ============================================ */
+
+/* ---- 容器 ---- */
+.container {
+  padding: 0;
+  padding-bottom: 100rpx;
+  background: #F5F6FA;
+  min-height: 100vh;
+}
+
+.loading-state, .loading-hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 120rpx;
+  font-size: 28rpx;
+  color: #B0B5C1;
+}
+
+.loading-text {
+  color: #4F6EF7;
+  font-weight: 500;
+}
+
+/* ============ 顶部信息卡 (Hero Card) ============ */
+.header-card {
+  background: linear-gradient(160deg, #FFFFFF 0%, #F8F9FC 100%);
+  margin: 0 0 16rpx;
+  padding: 36rpx 28rpx 28rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.header-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 6rpx;
+  background: linear-gradient(90deg, #4F6EF7, #8B5CF6, #EC4899);
+}
+
+/* ---- 期刊标题 ---- */
+.journal-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  margin-bottom: 6rpx;
+}
+
+.journal-title {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #1A1D28;
+  flex: 1;
+  line-height: 1.35;
+  letter-spacing: 0.5rpx;
+}
+
+.journal-subtitle {
+  font-size: 24rpx;
+  color: #9DA3B3;
+  margin-bottom: 30rpx;
+  display: block;
+  letter-spacing: 1rpx;
+}
+
+/* OA 徽章 */
+.oa-badge {
+  padding: 6rpx 18rpx;
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 6rpx;
+  box-shadow: 0 2rpx 8rpx rgba(5, 150, 105, 0.25);
+}
+
+/* ============ 三指标速览 (IF / JCR / CAS) ============ */
+.metrics-highlight {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.metric-big {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 24rpx 8rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+  border: 1rpx solid #F0F2F8;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-big::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20%; right: 20%;
+  height: 3rpx;
+  border-radius: 3rpx;
+  background: #4F6EF7;
+  opacity: 0.3;
+}
+
+.metric-big.empty {
+  opacity: 0.5;
+}
+
+.metric-big-value {
+  font-size: 46rpx;
+  font-weight: 800;
+  color: #4F6EF7;
+  line-height: 1;
+}
+
+.metric-big-value.cas {
+  color: #10B981;
+}
+
+.metric-big-value.dim {
+  color: #D1D5DB;
+  font-size: 32rpx;
+}
+
+.metric-big-label {
+  font-size: 20rpx;
+  color: #9DA3B3;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* JCR 分区徽章 */
+.quartile-badge {
+  padding: 10rpx 28rpx;
+  border-radius: 10rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 3rpx 10rpx rgba(0,0,0,0.15);
+}
+
+.quartile-badge.q-Q1 { background: linear-gradient(135deg, #10B981, #059669); }
+.quartile-badge.q-Q2 { background: linear-gradient(135deg, #4F6EF7, #3B5DE7); }
+.quartile-badge.q-Q3 { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.quartile-badge.q-Q4 { background: linear-gradient(135deg, #EF4444, #DC2626); }
+
+/* ============ 学科标签 ============ */
+.subject-section {
+  margin-bottom: 24rpx;
+}
+
+.subject-section-title {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #9DA3B3;
+  margin-bottom: 14rpx;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 2rpx;
+}
+
+.subject-tag-row {
+  display: flex;
+  gap: 10rpx;
+  flex-wrap: wrap;
+  margin-bottom: 10rpx;
+}
+
+.subject-tag {
+  padding: 8rpx 20rpx;
+  background: #EEF2FF;
+  color: #4F6EF7;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+  border: 1rpx solid #E0E7FF;
+}
+
+.subject-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-wrap: wrap;
+}
+
+.sub-prefix {
+  font-size: 22rpx;
+  color: #C5CAD5;
+  flex-shrink: 0;
+}
+
+.subject-tag.sub {
+  padding: 4rpx 14rpx;
+  background: #F8F6FD;
+  color: #8B5CF6;
+  font-size: 20rpx;
+  border-radius: 6rpx;
+  font-weight: 500;
+  border: 1rpx solid #EEE7FD;
+}
+
+/* ============ 基础信息网格 ============ */
+.info-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-radius: 12rpx;
+  overflow: hidden;
+  border: 1rpx solid #F0F2F8;
+  margin-bottom: 24rpx;
+}
+
+.info-item {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  padding: 16rpx 20rpx;
+  background: #FAFBFD;
+  border-right: 1rpx solid #F0F2F8;
+  border-bottom: 1rpx solid #F0F2F8;
+  box-sizing: border-box;
+}
+
+.info-item:nth-child(2n) {
+  border-right: none;
+}
+
+.info-label {
+  font-size: 20rpx;
+  color: #B0B5C1;
+  letter-spacing: 1rpx;
+}
+
+.info-value {
+  font-size: 26rpx;
+  color: #3A3F50;
+  font-weight: 500;
+}
+
+.info-value.link {
+  color: #4F6EF7;
+}
+
+/* ============ 收录标签 ============ */
+.tag-row {
+  display: flex;
+  gap: 10rpx;
+  flex-wrap: wrap;
+  margin-bottom: 4rpx;
+}
+
+.tag {
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.tag.doaj  { background: #EFF6FF; color: #3B5DE7; }
+.tag.medline  { background: #FEF9EF; color: #B85C00; }
+.tag.medline-previous  { background: #FEFEF8; color: #8B6D15; border: 1rpx solid #FCE9A4; }
+.tag.pubmed  { background: #FFF5F0; color: #C2410C; }
+.tag.pmc  { background: #EDFCF4; color: #0D7B4A; }
+.tag.nlm  { background: #F4F3FE; color: #5B4DCF; }
+.tag.pmc-journal  { background: #EFFDF7; color: #065F46; }
+
+/* ============ APC费用 ============ */
+.fee-section {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 18rpx 24rpx;
+  background: linear-gradient(135deg, #FFFBF0, #FEF5E0);
+  border-radius: 14rpx;
+  border: 1rpx solid #FDE8B3;
+}
+
+.section-label {
+  font-size: 24rpx;
+  color: #8B6D15;
+  font-weight: 500;
+}
+
+.fee-value {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #B85C00;
+}
+
+.fee-license {
+  font-size: 22rpx;
+  color: #9DA3B3;
+  margin-left: auto;
+}
+
+/* ============ 综合指标卡片 ============ */
+.metrics-card {
+  background: #FFFFFF;
+  margin: 16rpx 0;
+  padding: 28rpx 24rpx;
+  border-radius: 0;
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1A1D28;
+  margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.card-title::before {
+  content: '';
+  width: 5rpx;
+  height: 26rpx;
+  background: #4F6EF7;
+  border-radius: 3rpx;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+}
+
+.metric-box {
+  background: linear-gradient(160deg, #F9FAFD, #F2F4FB);
+  border-radius: 14rpx;
+  padding: 22rpx 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  border: 1rpx solid #EEF0F8;
+}
+
+.metric-box.highlight {
+  background: linear-gradient(160deg, #EEF2FF, #E4EAFE);
+  border: 1rpx solid #C7D3FD;
+}
+
+.metric-number {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #3B5DE7;
+  line-height: 1;
+}
+
+.metric-number.dim {
+  color: #D1D5DB;
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+.metric-number.rate  { color: #10B981; }
+.metric-number.cycle { color: #F59E0B; font-size: 26rpx; }
+
+.metric-desc {
+  font-size: 22rpx;
+  color: #8A90A2;
+  text-align: center;
+}
+
+/* ---- 数据来源 ---- */
+.metrics-source {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 14rpx 20rpx;
+  background: #F8F9FD;
+  border-radius: 10rpx;
+  font-size: 22rpx;
+}
+
+.source-text    { color: #B0B5C1; }
+.source-verified { color: #10B981; font-weight: 600; }
+
+/* ============ Tab 导航 (胶囊式) ============ */
+.tab-bar {
+  background: transparent;
+  padding: 20rpx 24rpx 16rpx;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tab-bar-inner {
+  display: flex;
+  background: #EDF0F5;
+  border-radius: 20rpx;
+  padding: 6rpx;
+  gap: 6rpx;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18rpx 0;
+  border-radius: 16rpx;
+  background: transparent;
+  transition: background 0.22s ease, box-shadow 0.22s ease;
+}
+
+.tab-item.active {
+  background: linear-gradient(135deg, #4F6EF7, #6366F1);
+  box-shadow: 0 4rpx 12rpx rgba(79, 110, 247, 0.35);
+}
+
+.tab-text {
+  font-size: 26rpx;
+  color: #8A90A2;
+  font-weight: 500;
+  transition: color 0.22s ease, font-weight 0.22s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.tab-item.active .tab-text {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+/* ============ Tab 内容通用卡片 ============ */
+.tab-content {
+  min-height: 200rpx;
+  padding: 0 16rpx;
+}
+
+.section-card {
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-top: 16rpx;
+  box-shadow: 0 1rpx 6rpx rgba(0,0,0,0.03);
+}
+
+/* ============ 学科分类列表 (概览Tab) ============ */
+.subject-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.subject-item {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 16rpx 20rpx;
+  background: #F9FAFD;
+  border-radius: 12rpx;
+  border-left: 4rpx solid #4F6EF7;
+}
+
+.subject-item.sub {
+  border-left-color: #8B5CF6;
+  background: #FBFAFF;
+}
+
+.subject-icon   { font-size: 30rpx; flex-shrink: 0; }
+.subject-name   { font-size: 26rpx; color: #3A3F50; flex: 1; font-weight: 500; }
+.subject-type   { font-size: 20rpx; color: #B0B5C1; flex-shrink: 0; padding: 4rpx 12rpx; background: #EEF0F8; border-radius: 6rpx; }
+
+/* ============ 研究话题 ============ */
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.card-title-arrow {
+  font-size: 24rpx;
+  color: #B0B5C1;
+  transition: transform 0.2s;
+}
+
+.topic-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.topic-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 18rpx;
+  background: #F5F6FB;
+  border-radius: 10rpx;
+}
+
+.topic-name  { font-size: 24rpx; color: #3A3F50; font-weight: 500; }
+.topic-count { font-size: 22rpx; color: #9DA3B3; }
+
+/* ============ NCBI 收录状态 ============ */
+.ncbi-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10rpx;
+}
+
+.ncbi-item {
+  padding: 18rpx;
+  background: #F8F9FD;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.ncbi-label { font-size: 22rpx; color: #B0B5C1; }
+.ncbi-value { font-size: 26rpx; color: #3A3F50; font-weight: 600; }
+.ncbi-value.status-yes  { color: #10B981; }
+.ncbi-value.status-no   { color: #D1D5DB; }
+.ncbi-value.ncbi-count  { font-size: 32rpx; font-weight: 800; color: #4F6EF7; }
+
+/* ============ 年度数据行 ============ */
+.yearly-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.yearly-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #F3F5FA;
+}
+
+.yearly-row:last-child { border-bottom: none; }
+
+.yearly-label { font-size: 26rpx; color: #8A90A2; }
+.yearly-value { font-size: 26rpx; font-weight: 700; color: #1A1D28; }
+
+/* ============ 投稿分析 ============ */
+.suggest-card {
+  background: linear-gradient(160deg, #F0FDF6, #FFFFFF);
+  border: 1rpx solid #BAF3D2;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-top: 20rpx;
+  box-shadow: 0 1rpx 6rpx rgba(0,0,0,0.03);
+}
+
+.suggest-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.suggest-level {
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.suggest-text {
+  font-size: 26rpx;
+  color: #3A3F50;
+  line-height: 1.7;
+}
+
+/* ---- 趋势列表 ---- */
+.trend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.trend-item {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.trend-year {
+  width: 80rpx;
+  font-size: 24rpx;
+  color: #8A90A2;
+  flex-shrink: 0;
+}
+
+.trend-bar-wrap {
+  flex: 1;
+  height: 26rpx;
+  background: #F0F2F8;
+  border-radius: 13rpx;
+  overflow: hidden;
+}
+
+.trend-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4F6EF7, #8B5CF6);
+  border-radius: 13rpx;
+}
+
+.trend-value {
+  width: 100rpx;
+  text-align: right;
+  font-size: 24rpx;
+  color: #3A3F50;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ---- KPI 网格 ---- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10rpx;
+}
+
+.kpi-item {
+  padding: 20rpx 16rpx;
+  background: #F8F9FD;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.kpi-label { font-size: 22rpx; color: #B0B5C1; }
+.kpi-value { font-size: 30rpx; font-weight: 700; color: #3A3F50; }
+
+.text-green  { color: #10B981 !important; }
+.text-orange { color: #F59E0B !important; }
+.text-red    { color: #EF4444 !important; }
+.text-blue   { color: #4F6EF7 !important; }
+
+/* ============ 趋势Tab - 柱状图 ============ */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 300rpx;
+  padding: 20rpx 8rpx;
+  border-bottom: 2rpx solid #E5E7EB;
+  gap: 2rpx;
+}
+
+.bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  flex: 1;
+}
+
+.bar {
+  width: 40rpx;
+  background: linear-gradient(180deg, #4F6EF7, #7B93F9);
+  border-radius: 6rpx 6rpx 0 0;
+  min-height: 6rpx;
+}
+
+.bar.cite-bar {
+  background: linear-gradient(180deg, #10B981, #34D399);
+}
+
+.bar-label { font-size: 20rpx; color: #B0B5C1; margin-top: 4rpx; }
+.bar-value { font-size: 18rpx; color: #8A90A2; font-weight: 500; }
+
+/* ============ 文章列表 ============ */
+.article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.article-item {
+  background: #FFFFFF;
+  padding: 22rpx 20rpx;
+  border-bottom: 1rpx solid #F3F5FA;
+  border-left: 3rpx solid transparent;
+  transition: all 0.15s;
+}
+
+.article-item:active {
+  background: #F7F8FD;
+  border-left-color: #4F6EF7;
+}
+
+.article-title {
+  font-size: 28rpx;
+  color: #1A1D28;
+  font-weight: 500;
+  margin-bottom: 12rpx;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.45;
+}
+
+.article-meta {
+  display: flex;
+  gap: 20rpx;
+  font-size: 22rpx;
+  color: #B0B5C1;
+}
+
+.article-year  { color: #8A90A2; }
+.article-cited { color: #4F6EF7; font-weight: 500; }
+.article-doi   { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280rpx; }
+
+/* ---- 加载更多 ---- */
+.loading-more, .load-more-btn {
+  text-align: center;
+  padding: 28rpx;
+  font-size: 26rpx;
+}
+
+.loading-more   { color: #B0B5C1; }
+.load-more-btn  { color: #4F6EF7; font-weight: 500; }
+
+/* ============ 空状态 ============ */
+.empty-hint  { text-align: center; padding: 80rpx 40rpx; color: #B0B5C1; font-size: 26rpx; }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 140rpx 48rpx;
+  gap: 20rpx;
+}
+
+.empty-icon  { font-size: 96rpx; }
+.empty-text  { font-size: 30rpx; color: #8A90A2; }

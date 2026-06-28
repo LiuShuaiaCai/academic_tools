@@ -1,0 +1,300 @@
+/* pages/journal/edit/edit.wxss */
+/* 期刊指标数据录入页 */
+.container {
+  padding: 20rpx 24rpx;
+  padding-bottom: 80rpx;
+  background: #F5F6FA;
+  min-height: 100vh;
+}
+
+/* 搜索区域 */
+.search-section {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 48rpx;
+  padding: 12rpx 24rpx;
+  gap: 12rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+}
+
+.search-icon {
+  font-size: 28rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #111827;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #2563EB, #6366F1);
+  color: #fff;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  padding: 12rpx 32rpx;
+  border: none;
+}
+
+/* 搜索结果 */
+.search-result {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+}
+
+.result-title {
+  font-size: 26rpx;
+  color: #6B7280;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.journal-item {
+  padding: 16rpx 20rpx;
+  border-bottom: 1rpx solid #F3F4F6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.journal-item:active {
+  background: #F0F4FF;
+}
+
+.journal-name {
+  font-size: 28rpx;
+  color: #111827;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.journal-issn {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+/* 表单区域 */
+.form-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+}
+
+.form-header {
+  margin-bottom: 28rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 2rpx solid #F3F4F6;
+}
+
+.form-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111827;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.journal-name {
+  font-size: 26rpx;
+  color: #2563EB;
+  font-weight: 500;
+}
+
+/* 表单项 */
+.form-group {
+  margin-bottom: 24rpx;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  padding: 16rpx 20rpx;
+  background: #F9FAFB;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #111827;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: #2563EB;
+  background: #F8FAFF;
+}
+
+.form-input-sm {
+  width: 200rpx;
+  padding: 12rpx 16rpx;
+  background: #F9FAFB;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 10rpx;
+  font-size: 26rpx;
+  color: #111827;
+  margin-top: 12rpx;
+}
+
+/* 单选组 */
+.radio-group {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.radio-item {
+  padding: 12rpx 28rpx;
+  background: #F1F3F8;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #5A6478;
+  font-weight: 500;
+  border: 2rpx solid transparent;
+  transition: all 0.18s;
+}
+
+.radio-item.active {
+  background: #E8EDFF;
+  color: #2563EB;
+  border-color: #2563EB;
+  font-weight: 700;
+}
+
+.radio-item.cas.active {
+  background: #D1FAE5;
+  color: #059669;
+  border-color: #059669;
+}
+
+.radio-group-sm {
+  display: flex;
+  gap: 10rpx;
+  align-items: center;
+  margin-top: 12rpx;
+}
+
+.sm-label {
+  font-size: 24rpx;
+  color: #9CA3AF;
+}
+
+.radio-item-sm {
+  padding: 8rpx 20rpx;
+  background: #F1F3F8;
+  border-radius: 24rpx;
+  font-size: 22rpx;
+  color: #5A6478;
+  font-weight: 500;
+  border: 2rpx solid transparent;
+  transition: all 0.18s;
+}
+
+.radio-item-sm.active {
+  background: #E8EDFF;
+  color: #2563EB;
+  border-color: #2563EB;
+}
+
+/* 复选框 */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 3rpx solid #CBD5E1;
+  border-radius: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #fff;
+  background: #fff;
+  transition: all 0.18s;
+}
+
+.checkbox.checked {
+  background: #059669;
+  border-color: #059669;
+}
+
+.checkbox-label {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+/* 按钮组 */
+.btn-group {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 36rpx;
+}
+
+.btn-submit {
+  flex: 1;
+  background: linear-gradient(135deg, #2563EB, #6366F1);
+  color: #fff;
+  border-radius: 32rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  padding: 20rpx 0;
+  border: none;
+  box-shadow: 0 4rpx 14rpx rgba(37, 99, 235, 0.3);
+}
+
+.btn-reset {
+  width: 200rpx;
+  background: #F1F3F8;
+  color: #6B7280;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  padding: 20rpx 0;
+  border: none;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 48rpx;
+  gap: 16rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #6B7280;
+  text-align: center;
+}
