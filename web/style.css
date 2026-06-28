@@ -465,22 +465,26 @@ img { max-width: 100%; display: block; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
   color: var(--text-muted);
-  animation: bounce-scroll 2s infinite;
+  cursor: pointer;
+  text-decoration: none;
 }
 
-@keyframes bounce-scroll {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(8px); }
+.hero-arrow {
+  animation: arrow-bounce 2s ease-in-out infinite;
 }
 
-.scroll-indicator {
-  width: 2px;
-  height: 24px;
-  background: var(--text-muted);
-  border-radius: 1px;
+.hero-arrow--ghost {
+  position: absolute;
+  top: 6px;
+  opacity: 0.4;
+  animation: arrow-bounce 2s ease-in-out 0.3s infinite;
+}
+
+@keyframes arrow-bounce {
+  0%, 50%, 100% { transform: translateY(0); opacity: 1; }
+  25% { transform: translateY(8px); opacity: 0.5; }
+  75% { transform: translateY(-2px); opacity: 0.8; }
 }
 
 /* ---------- AI Banner ---------- */
