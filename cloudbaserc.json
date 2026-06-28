@@ -50,6 +50,23 @@
             "name": "journalAPI",
             "timeout": 600,
             "memorySize": 512
+        },
+        {
+            "name": "academicAPI",
+            "timeout": 60,
+            "memorySize": 256,
+            "triggers": [
+                {
+                    "name": "checkHelpExpiry",
+                    "type": "timer",
+                    "config": "0 0 1 * * *"
+                }
+            ]
+        },
+        {
+            "name": "submitFeedback",
+            "timeout": 30,
+            "memorySize": 256
         }
     ]
 }

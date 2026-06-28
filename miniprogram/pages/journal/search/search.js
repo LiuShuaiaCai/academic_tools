@@ -47,33 +47,6 @@ Page({
   },
 
   /**
-   * 执行数据库迁移（临时，完成后删除）
-   */
-  runMigration: function() {
-    wx.showLoading({ title: '迁移中...' });
-    wx.cloud.callFunction({
-      name: 'journalAPI',
-      data: { action: 'migrateJournals' }
-    }).then(res => {
-      wx.hideLoading();
-      console.log('迁移结果:', res);
-      wx.showModal({
-        title: '迁移完成',
-        content: JSON.stringify(res, null, 2),
-        showCancel: false
-      });
-    }).catch(err => {
-      wx.hideLoading();
-      console.error('迁移失败:', err);
-      wx.showModal({
-        title: '迁移失败',
-        content: err.message || '未知错误',
-        showCancel: false
-      });
-    });
-  },
-
-  /**
    * 输入关键词
    */
   onKeywordInput: function(e) {

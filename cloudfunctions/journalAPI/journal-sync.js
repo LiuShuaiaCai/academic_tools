@@ -8,6 +8,8 @@
 const https = require('https');
 const http = require('http');
 
+const VERBOSE = false;
+
 // ==================== HTTP 工具 ====================
 
 async function httpGet(url, timeout = 15000, maxRetries = 3) {
@@ -21,7 +23,7 @@ async function httpGet(url, timeout = 15000, maxRetries = 3) {
       return result;
     } catch (err) {
       lastErr = err;
-      console.log(`[httpGet] 第${attempt + 1}次失败:`, err.message);
+      VERBOSE && console.log(`[httpGet] 第${attempt + 1}次失败:`, err.message);
     }
   }
   throw lastErr;
@@ -82,7 +84,7 @@ async function fetchPageFromOpenAlex(cursor, perPage, filter) {
   try {
     const result = await httpGet(url, 30000);
     if (result.statusCode !== 200 || !result.data) {
-      console.log(`[OpenAlex分页] 状态码: ${result.statusCode}`);
+      VERBOSE && console.log(`[OpenAlex分页] 状态码: ${result.statusCode}`);
       return null;
     }
 
@@ -108,7 +110,7 @@ async function fetchPageFromCrossref(offset, rows) {
   try {
     const result = await httpGet(url, 30000);
     if (result.statusCode !== 200 || !result.data) {
-      console.log(`[Crossref分页] 状态码: ${result.statusCode}`);
+      VERBOSE && console.log(`[Crossref分页] 状态码: ${result.statusCode}`);
       return null;
     }
 
@@ -222,8 +224,8 @@ async function syncFromOpenAlex(event, db, _) {
     last_cursor: null
   };
 
-  console.log(`=== Step 1: OpenAlex 批量同步 ===`);
-  console.log(`maxPages=${maxPages}, perPage=${perPage}, delay=${delay}`);
+  VERBOSE && console.log(`=== Step 1: OpenAlex 批量同步 ===`);
+  VERBOSE && console.log(`maxPages=${maxPages}, perPage=${perPage}, delay=${delay}`);
 
   let cursor = resumeCursor;
   let pageNum = 0;
@@ -231,15 +233,15 @@ async function syncFromOpenAlex(event, db, _) {
   while (true) {
     pageNum++;
     if (maxPages > 0 && pageNum > maxPages) {
-      console.log(`已达到最大页数 ${maxPages}，停止`);
+      VERBOSE && console.log(`已达到最大页数 ${maxPages}，停止`);
       break;
     }
 
-    console.log(`\n--- OpenAlex 第 ${pageNum} 页 ---`);
+    VERBOSE && console.log(`\n--- OpenAlex 第 ${pageNum} 页 ---`);
 
     const pageData = await fetchPageFromOpenAlex(cursor, perPage);
     if (!pageData || pageData.results.length === 0) {
-      console.log('无更多数据');
+      VERBOSE && console.log('无更多数据');
       break;
     }
 
@@ -248,28 +250,28 @@ async function syncFromOpenAlex(event, db, _) {
     results.items_fetched += pageData.results.length;
     results.last_cursor = pageData.next_cursor;
 
-    console.log(`  总数: ${pageData.total}, 本页: ${pageData.results.length} 条`);
+    VERBOSE && console.log(`  总数: ${pageData.total}, 本页: ${pageData.results.length} 条`);
 
     const importResult = await _importOpenAlexPage(pageData.results, db, _);
     results.success += importResult.success;
     results.failed += importResult.failed;
 
-    console.log(`  ✅ 成功${importResult.success} ❌ 失败${importResult.failed}`);
+    VERBOSE && console.log(`  ✅ 成功${importResult.success} ❌ 失败${importResult.failed}`);
 
     if (!pageData.next_cursor) {
-      console.log('已到最后一页');
+      VERBOSE && console.log('已到最后一页');
       break;
     }
 
     cursor = pageData.next_cursor;
-    console.log(`  等待 ${delay}ms...`);
+    VERBOSE && console.log(`  等待 ${delay}ms...`);
     await sleep(delay);
   }
 
-  console.log(`\n=== Step 1 完成 ===`);
-  console.log(`API总数: ${results.total_remote}, 拉取: ${results.items_fetched}, 成功: ${results.success}, 失败: ${results.failed}`);
+  VERBOSE && console.log(`\n=== Step 1 完成 ===`);
+  VERBOSE && console.log(`API总数: ${results.total_remote}, 拉取: ${results.items_fetched}, 成功: ${results.success}, 失败: ${results.failed}`);
   if (results.last_cursor) {
-    console.log(`断点续传 cursor: ${results.last_cursor}`);
+    VERBOSE && console.log(`断点续传 cursor: ${results.last_cursor}`);
   }
 
   return {
@@ -486,8 +488,8 @@ async function supplementFromCrossref(event, db, _) {
     last_offset: 0
   };
 
-  console.log(`=== Step 2: Crossref 补充同步 ===`);
-  console.log(`maxPages=${maxPages}, perPage=${perPage}, delay=${delay}`);
+  VERBOSE && console.log(`=== Step 2: Crossref 补充同步 ===`);
+  VERBOSE && console.log(`maxPages=${maxPages}, perPage=${perPage}, delay=${delay}`);
 
   let offset = resumeOffset;
   let pageNum = 0;
@@ -495,15 +497,15 @@ async function supplementFromCrossref(event, db, _) {
   while (true) {
     pageNum++;
     if (maxPages > 0 && pageNum > maxPages) {
-      console.log(`已达到最大页数 ${maxPages}，停止`);
+      VERBOSE && console.log(`已达到最大页数 ${maxPages}，停止`);
       break;
     }
 
-    console.log(`\n--- Crossref 第 ${pageNum} 页 (offset=${offset}) ---`);
+    VERBOSE && console.log(`\n--- Crossref 第 ${pageNum} 页 (offset=${offset}) ---`);
 
     const pageData = await fetchPageFromCrossref(offset, perPage);
     if (!pageData || pageData.results.length === 0) {
-      console.log('无更多数据');
+      VERBOSE && console.log('无更多数据');
       break;
     }
 
@@ -512,28 +514,28 @@ async function supplementFromCrossref(event, db, _) {
     results.items_fetched += pageData.results.length;
     results.last_offset = offset + pageData.results.length;
 
-    console.log(`  总数: ${pageData.total}, 本页: ${pageData.results.length} 条`);
+    VERBOSE && console.log(`  总数: ${pageData.total}, 本页: ${pageData.results.length} 条`);
 
     const updateResult = await _supplementCrossrefPage(pageData.results, db, _);
     results.updated += updateResult.updated;
     results.skipped += updateResult.skipped;
     results.failed += updateResult.failed;
 
-    console.log(`  🔄 更新${updateResult.updated} ⏭️ 跳过${updateResult.skipped} ❌ 失败${updateResult.failed}`);
+    VERBOSE && console.log(`  🔄 更新${updateResult.updated} ⏭️ 跳过${updateResult.skipped} ❌ 失败${updateResult.failed}`);
 
     if (pageData.results.length < perPage) {
-      console.log('已到最后一页');
+      VERBOSE && console.log('已到最后一页');
       break;
     }
 
     offset = results.last_offset;
-    console.log(`  等待 ${delay}ms...`);
+    VERBOSE && console.log(`  等待 ${delay}ms...`);
     await sleep(delay);
   }
 
-  console.log(`\n=== Step 2 完成 ===`);
-  console.log(`API总数: ${results.total_remote}, 拉取: ${results.items_fetched}, 更新: ${results.updated}, 跳过: ${results.skipped}, 失败: ${results.failed}`);
-  console.log(`断点续传 offset: ${results.last_offset}`);
+  VERBOSE && console.log(`\n=== Step 2 完成 ===`);
+  VERBOSE && console.log(`API总数: ${results.total_remote}, 拉取: ${results.items_fetched}, 更新: ${results.updated}, 跳过: ${results.skipped}, 失败: ${results.failed}`);
+  VERBOSE && console.log(`断点续传 offset: ${results.last_offset}`);
 
   return {
     code: 0,
@@ -622,8 +624,8 @@ async function supplementDOAJAndNCBI(event, db, _) {
     failed: 0
   };
 
-  console.log(`=== Step 3: DOAJ/NCBI 补充同步 ===`);
-  console.log(`start=${start}, limit=${limit}, delay=${delay}, onlyMissing=${onlyMissing}`);
+  VERBOSE && console.log(`=== Step 3: DOAJ/NCBI 补充同步 ===`);
+  VERBOSE && console.log(`start=${start}, limit=${limit}, delay=${delay}, onlyMissing=${onlyMissing}`);
 
   // 构建查询条件
   let query = {};
@@ -644,7 +646,7 @@ async function supplementDOAJAndNCBI(event, db, _) {
     .get();
 
   results.total = journals.data.length;
-  console.log(`找到 ${results.total} 本待补充期刊`);
+  VERBOSE && console.log(`找到 ${results.total} 本待补充期刊`);
 
   for (let i = 0; i < journals.data.length; i++) {
     const journal = journals.data[i];
@@ -704,7 +706,7 @@ async function supplementDOAJAndNCBI(event, db, _) {
 
       results.processed++;
       if ((results.processed % 10 === 0)) {
-        console.log(`  进度: ${results.processed}/${results.total}, DOAJ:${results.doaj_updated}, NCBI:${results.ncbi_updated}`);
+        VERBOSE && console.log(`  进度: ${results.processed}/${results.total}, DOAJ:${results.doaj_updated}, NCBI:${results.ncbi_updated}`);
       }
     } catch (err) {
       console.error(`  [${title}] 处理失败: ${err.message}`);
@@ -712,8 +714,8 @@ async function supplementDOAJAndNCBI(event, db, _) {
     }
   }
 
-  console.log(`\n=== Step 3 完成 ===`);
-  console.log(`处理: ${results.processed}, DOAJ更新: ${results.doaj_updated}, NCBI更新: ${results.ncbi_updated}, 跳过: ${results.skipped}, 失败: ${results.failed}`);
+  VERBOSE && console.log(`\n=== Step 3 完成 ===`);
+  VERBOSE && console.log(`处理: ${results.processed}, DOAJ更新: ${results.doaj_updated}, NCBI更新: ${results.ncbi_updated}, 跳过: ${results.skipped}, 失败: ${results.failed}`);
 
   return {
     code: 0,

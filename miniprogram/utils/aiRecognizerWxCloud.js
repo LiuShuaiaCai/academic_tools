@@ -1,4 +1,6 @@
 // miniprogram/utils/aiRecognizer.js
+var VERBOSE = false;
+
 // AI 识别公共工具 - 统一使用 wx.cloud.extend.AI
 // 所有 AI 调用从云函数迁移到小程序端，避免 cloud.AI 版本兼容问题
 
@@ -140,7 +142,7 @@ async function recognizeEmailText(emailText) {
     return { success: false, error: '邮件内容过短，请粘贴完整邮件' };
   }
 
-  console.log('[aiRecognizer] recognizeEmailText 开始, 文本长度:', emailText.length);
+  VERBOSE && console.log('[aiRecognizer] recognizeEmailText 开始, 文本长度:', emailText.length);
 
   var provider = AI_REVIEW_PROVIDERS[DEFAULT_REVIEW_PROVIDER];
   var model = wx.cloud.extend.AI.createModel(provider.group || DEFAULT_REVIEW_PROVIDER);
@@ -176,9 +178,9 @@ async function recognizeEmailText(emailText) {
   }
 
   var content = extractContent(result);
-  console.log('[aiRecognizer] recognizeEmailText 返回长度:', content.length);
+  VERBOSE && console.log('[aiRecognizer] recognizeEmailText 返回长度:', content.length);
   var parsed = parseJSONFromText(content);
-  console.log('[aiRecognizer] recognizeEmailText 有效字段:', countFilledFields(parsed));
+  VERBOSE && console.log('[aiRecognizer] recognizeEmailText 有效字段:', countFilledFields(parsed));
 
   return buildResult(parsed, content);
 }
@@ -199,7 +201,7 @@ async function recognizeManuscript(paperText, maxInput) {
     ? paperText.substring(0, maxInput) + '\n\n[... 稿件内容过长，已截断 ...]'
     : paperText;
 
-  console.log('[aiRecognizer] recognizeManuscript 开始, 送入长度:', truncated.length);
+  VERBOSE && console.log('[aiRecognizer] recognizeManuscript 开始, 送入长度:', truncated.length);
 
   var provider = AI_REVIEW_PROVIDERS[DEFAULT_REVIEW_PROVIDER];
   var model = wx.cloud.extend.AI.createModel(provider.group || DEFAULT_REVIEW_PROVIDER);
@@ -235,9 +237,9 @@ async function recognizeManuscript(paperText, maxInput) {
   }
 
   var content = extractContent(result);
-  console.log('[aiRecognizer] recognizeManuscript 返回长度:', content.length);
+  VERBOSE && console.log('[aiRecognizer] recognizeManuscript 返回长度:', content.length);
   var parsed = parseJSONFromText(content);
-  console.log('[aiRecognizer] recognizeManuscript 有效字段:', countFilledFields(parsed));
+  VERBOSE && console.log('[aiRecognizer] recognizeManuscript 有效字段:', countFilledFields(parsed));
 
   var output = buildResult(parsed, content);
   output.originalLength = paperText.length;
@@ -254,7 +256,7 @@ async function recognizeEmailImage(imageUrl) {
     return { success: false, error: '缺少图片链接' };
   }
 
-  console.log('[aiRecognizer] recognizeEmailImage 开始');
+  VERBOSE && console.log('[aiRecognizer] recognizeEmailImage 开始');
 
   var provider = AI_REVIEW_PROVIDERS[DEFAULT_REVIEW_PROVIDER];
   var model = wx.cloud.extend.AI.createModel(provider.group || DEFAULT_REVIEW_PROVIDER);
@@ -294,9 +296,9 @@ async function recognizeEmailImage(imageUrl) {
   }
 
   var content = extractContent(result);
-  console.log('[aiRecognizer] recognizeEmailImage 返回长度:', content.length);
+  VERBOSE && console.log('[aiRecognizer] recognizeEmailImage 返回长度:', content.length);
   var parsed = parseJSONFromText(content);
-  console.log('[aiRecognizer] recognizeEmailImage 有效字段:', countFilledFields(parsed));
+  VERBOSE && console.log('[aiRecognizer] recognizeEmailImage 有效字段:', countFilledFields(parsed));
 
   return buildResult(parsed, content);
 }
@@ -311,7 +313,7 @@ async function ocrImage(imageUrl) {
     return { success: false, error: '缺少图片链接' };
   }
 
-  console.log('[aiRecognizer] ocrImage 开始');
+  VERBOSE && console.log('[aiRecognizer] ocrImage 开始');
 
   var provider = AI_REVIEW_PROVIDERS[DEFAULT_REVIEW_PROVIDER];
   var model = wx.cloud.extend.AI.createModel(provider.group || DEFAULT_REVIEW_PROVIDER);
@@ -341,7 +343,7 @@ async function ocrImage(imageUrl) {
   }
 
   var content = extractContent(result);
-  console.log('[aiRecognizer] ocrImage 返回长度:', content.length);
+  VERBOSE && console.log('[aiRecognizer] ocrImage 返回长度:', content.length);
 
   var jsonMatch = content.match(/\{[\s\S]*?\}/);
   var parsed = { doi: '', title: '' };
@@ -396,7 +398,7 @@ function startAiReview(paperText, originalLength) {
     var modelName = provider.name;
     var prompt = buildReviewPrompt(paperText, maxChars);
 
-    console.log('[aiRecognizer] startAiReview 开始, 送入长度:', prompt.length);
+    VERBOSE && console.log('[aiRecognizer] startAiReview 开始, 送入长度:', prompt.length);
 
     var group = (AI_REVIEW_PROVIDERS[providerId] || {}).group || providerId;
     var model = wx.cloud.extend.AI.createModel(group);

@@ -8,6 +8,7 @@ const http = require('http');
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
+const VERBOSE = false;
 const _ = db.command;
 
 var TASK_COLLECTION = 'special_issue_tasks';
@@ -158,21 +159,21 @@ async function callOpenAlex(action, params) {
   }
   url += '&mailto=liushuaicai66@gmail.com';
 
-  console.log('[OpenAlex] ' + action + ' URL:', url);
+  VERBOSE && console.log('[OpenAlex] ' + action + ' URL:', url);
 
   // 直连 HTTP（3次重试，指数退避）
   for (var attempt = 0; attempt < 3; attempt++) {
     try {
       if (attempt > 0) {
         await new Promise(function(r) { setTimeout(r, 2000 * Math.pow(2, attempt - 1)); });
-        console.log('[OpenAlex] 第' + (attempt + 1) + '次重试 ' + action);
+        VERBOSE && console.log('[OpenAlex] 第' + (attempt + 1) + '次重试 ' + action);
       }
       var result = await httpGetOnce(url, 30000);
       if (result.statusCode === 200) {
-        console.log('[OpenAlex] ' + action + ' 成功');
+        VERBOSE && console.log('[OpenAlex] ' + action + ' 成功');
         return { success: true, data: result.data, url: url };
       }
-      console.log('[OpenAlex] ' + action + ' 返回非200: ' + result.statusCode);
+      VERBOSE && console.log('[OpenAlex] ' + action + ' 返回非200: ' + result.statusCode);
     } catch (err) {
       console.error('[OpenAlex] ' + action + ' 第' + (attempt + 1) + '次异常:', err.message);
     }
@@ -305,17 +306,17 @@ function validateSourceRefs(json, sourcePapers, sourceAuthors) {
   for (var i = 0; i < sourcePapers.length; i++) validPaperIds[sourcePapers[i].id] = true;
   for (var i = 0; i < sourceAuthors.length; i++) validAuthorIds[sourceAuthors[i].id] = true;
 
-  console.log('[validateSourceRefs] validPaperIds 样本(前5):', JSON.stringify(Object.keys(validPaperIds).slice(0, 5)));
+  VERBOSE && console.log('[validateSourceRefs] validPaperIds 样本(前5):', JSON.stringify(Object.keys(validPaperIds).slice(0, 5)));
   for (var p = 0; p < plans.length; p++) {
     var plan = plans[p];
     var rawIds = plan.sourceArticleIds || [];
-    console.log('[validateSourceRefs] plan[' + p + '] key=' + plan.key + ' 原始IDs (' + rawIds.length + '个):', JSON.stringify(rawIds));
+    VERBOSE && console.log('[validateSourceRefs] plan[' + p + '] key=' + plan.key + ' 原始IDs (' + rawIds.length + '个):', JSON.stringify(rawIds));
     plan.sourceArticleIds = rawIds.filter(function(id) {
       var isValid = validPaperIds[id];
-      if (!isValid) console.log('[validateSourceRefs] plan[' + p + '] 无效ID:', JSON.stringify(id));
+      if (!isValid) VERBOSE && console.log('[validateSourceRefs] plan[' + p + '] 无效ID:', JSON.stringify(id));
       return isValid;
     });
-    console.log('[validateSourceRefs] plan[' + p + '] 过滤后有效IDs (' + plan.sourceArticleIds.length + '个):', JSON.stringify(plan.sourceArticleIds));
+    VERBOSE && console.log('[validateSourceRefs] plan[' + p + '] 过滤后有效IDs (' + plan.sourceArticleIds.length + '个):', JSON.stringify(plan.sourceArticleIds));
     if (sourceAuthors && sourceAuthors.length > 0) {
       plan.sourceEditorIds = (plan.sourceEditorIds || []).filter(function(id) { return validAuthorIds[id]; });
     }
@@ -355,7 +356,7 @@ async function callLLM(messages, options) {
   for (var i = 0; i < providers.length; i++) {
     var provider = providers[i];
     try {
-      console.log('[LLM] 调用 aiChat provider:', provider);
+      VERBOSE && console.log('[LLM] 调用 aiChat provider:', provider);
       var providerMaxTokens = provider === 'deepseek' ? Math.max(maxTokens, 8192) : maxTokens;
       var data = {
         action: 'chat',
@@ -376,7 +377,7 @@ async function callLLM(messages, options) {
       });
       var result = res.result || {};
       if (result.success && result.content) {
-        console.log('[LLM] aiChat 成功 provider:', provider, 'model:', result.model || '');
+        VERBOSE && console.log('[LLM] aiChat 成功 provider:', provider, 'model:', result.model || '');
         return {
           content: result.content,
           usage: result.usage || {},
@@ -764,7 +765,7 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
   // rawPapers = rawPapers.slice(0, 100);
   var sourcePapers = simplifyWorks(rawPapers);
   var totalPapers = (worksRes.data && worksRes.data.meta && worksRes.data.meta.count) || rawPapers.length;
-  console.log('[Phase1] OpenAlex 返回论文:', rawPapers.length, '篇, total:', totalPapers);
+  VERBOSE && console.log('[Phase1] OpenAlex 返回论文:', rawPapers.length, '篇, total:', totalPapers);
   await updateStepStatus(taskId, steps, 'search_papers', 'completed');
   // 保存搜索链接到任务文档
   await db.collection(TASK_COLLECTION).doc(taskId).update({
@@ -776,7 +777,7 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
   await updateStepStatus(taskId, steps, 'trend_analysis', 'running');
 
   var userMsg = buildPhase1UserMessage(keyword, sourcePapers, totalPapers, constraints);
-  console.log('[Phase1] 开始调用 AI LLM, papers:', sourcePapers.length);
+  VERBOSE && console.log('[Phase1] 开始调用 AI LLM, papers:', sourcePapers.length);
   var llm;
   try {
     llm = await callLLM([
@@ -791,7 +792,7 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
     });
     return;
   }
-  console.log('[Phase1] AI LLM 返回, provider:', llm.provider || '', 'model:', llm.model || '', 'usage:', JSON.stringify(llm.usage || {}));
+  VERBOSE && console.log('[Phase1] AI LLM 返回, provider:', llm.provider || '', 'model:', llm.model || '', 'usage:', JSON.stringify(llm.usage || {}));
   await updateStepStatus(taskId, steps, 'trend_analysis', 'completed');
 
   // ===== Step 3: 解析结果 =====
@@ -821,15 +822,15 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
   for (var p = 0; p < plans.length; p++) {
     var plan = plans[p];
     var ids = plan.sourceArticleIds || [];
-    console.log('[Phase1 统计] plan[' + p + '] key=' + plan.key + ' sourceArticleIds (' + ids.length + '个):', JSON.stringify(ids));
-    console.log('[Phase1 统计] plan[' + p + '] paperMap keys 样本(前5):', JSON.stringify(Object.keys(paperMap).slice(0, 5)));
+    VERBOSE && console.log('[Phase1 统计] plan[' + p + '] key=' + plan.key + ' sourceArticleIds (' + ids.length + '个):', JSON.stringify(ids));
+    VERBOSE && console.log('[Phase1 统计] plan[' + p + '] paperMap keys 样本(前5):', JSON.stringify(Object.keys(paperMap).slice(0, 5)));
     var matched = [];
     var citations = [], fwcis = [], hots = [], topCount = 0;
 
     for (var j = 0; j < ids.length; j++) {
       var pap = paperMap[ids[j]];
       if (!pap) {
-        console.log('[Phase1 统计] plan[' + p + '] ID不匹配:', ids[j]);
+        VERBOSE && console.log('[Phase1 统计] plan[' + p + '] ID不匹配:', ids[j]);
         continue;
       }
       matched.push(pap);
@@ -839,9 +840,9 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
       if (pap.citationPercentile && pap.citationPercentile.isTop10) topCount++;
     }
 
-    console.log('[Phase1 统计] plan[' + p + '] 匹配到 ' + matched.length + ' 篇论文');
+    VERBOSE && console.log('[Phase1 统计] plan[' + p + '] 匹配到 ' + matched.length + ' 篇论文');
     if (matched.length > 0) {
-      console.log('[Phase1 统计] plan[' + p + '] citations:', JSON.stringify(citations), 'fwcis:', JSON.stringify(fwcis), 'hots:', JSON.stringify(hots));
+      VERBOSE && console.log('[Phase1 统计] plan[' + p + '] citations:', JSON.stringify(citations), 'fwcis:', JSON.stringify(fwcis), 'hots:', JSON.stringify(hots));
     }
 
     var n = matched.length || 1;
@@ -897,7 +898,7 @@ async function doFullPipeline(keyword, constraints, taskId, openid, isRetry) {
     var idSet = {};
     for (var ai = 0; ai < dirArticleIds.length; ai++) { idSet[dirArticleIds[ai]] = true; }
     var dirPapers = referencedPapers.filter(function(p) { return idSet[p.id]; });
-    console.log('[Phase1 写入] direction[' + dp + '] key=' + dPlan.key, 
+    VERBOSE && console.log('[Phase1 写入] direction[' + dp + '] key=' + dPlan.key, 
       'avgCitations=' + dPlan.avgCitations, 
       'avgFWCI=' + dPlan.avgFWCI, 
       'hotRecentAvg=' + dPlan.hotRecentAvg, 
@@ -972,7 +973,7 @@ async function doPhase2Pipeline(taskId, schemeId, keyword, constraints, selected
     // 随机取 20-35 篇传给 AI（确保每次看到的子集不同）
     var takeN = 20 + Math.floor(Math.random() * Math.min(16, shuffled.length - 20));
     llmPapers = shuffled.slice(0, takeN);
-    console.log('[Phase2 重新生成] 随机打乱论文, 取 ' + takeN + '/' + sourcePapers.length + ' 篇传给 AI');
+    VERBOSE && console.log('[Phase2 重新生成] 随机打乱论文, 取 ' + takeN + '/' + sourcePapers.length + ' 篇传给 AI');
   }
 
   await updateSchemeStepStatus(schemeId, steps, 'search_papers_2', 'completed', taskId);
@@ -1383,7 +1384,7 @@ exports.main = async function(event, context) {
         .limit(1000)
         .get();
       var taskCount = (allTasks.data || []).length;
-      console.log('[count] openid:', openid, 'taskCount:', taskCount);
+      VERBOSE && console.log('[count] openid:', openid, 'taskCount:', taskCount);
       return { success: true, count: taskCount };
     } catch (e) {
       console.error('[count] error:', e.message);
@@ -1561,15 +1562,15 @@ exports.main = async function(event, context) {
       // 2. 检查积分
       var taskOwnerOpenid = taskDoc.data._openid || openid;
       var creditsRes = await cloud.callFunction({ name: 'creditsAPI', data: { action: 'getCreditsInfo', _openid: taskOwnerOpenid } });
-      console.log('[regenerate] creditsAPI 原始返回:', JSON.stringify(creditsRes));
-      console.log('[regenerate] creditsRes.result:', JSON.stringify(creditsRes.result));
+      VERBOSE && console.log('[regenerate] creditsAPI 原始返回:', JSON.stringify(creditsRes));
+      VERBOSE && console.log('[regenerate] creditsRes.result:', JSON.stringify(creditsRes.result));
       var userBalance = creditsRes.result.credits || creditsRes.result.balance || 0;
-      console.log('[regenerate] 解析后 userBalance:', userBalance, '阈值 30, 是否通过:', userBalance >= 30);
+      VERBOSE && console.log('[regenerate] 解析后 userBalance:', userBalance, '阈值 30, 是否通过:', userBalance >= 30);
       if (userBalance < 30) {
-        console.log('[regenerate] 积分不足，返回 balance:', userBalance);
+        VERBOSE && console.log('[regenerate] 积分不足，返回 balance:', userBalance);
         return { success: false, error: '积分不足', balance: userBalance };
       }
-      console.log('[regenerate] 积分检查通过，继续执行');
+      VERBOSE && console.log('[regenerate] 积分检查通过，继续执行');
 
       // 2.5 删除该任务下所有旧方案（已校验 task 归属，仅用 taskId 即可兼容旧数据）
       var oldSchemesForRegen = await db.collection(SCHEME_COLLECTION).where({ taskId: taskId }).get();
@@ -1577,7 +1578,7 @@ exports.main = async function(event, context) {
       for (var osi = 0; osi < (oldSchemesForRegen.data || []).length; osi++) {
         try { await db.collection(SCHEME_COLLECTION).doc(oldSchemesForRegen.data[osi]._id).remove(); deletedSchemeCount++; } catch (e) {}
       }
-      console.log('[regenerate] 已删除旧方案 ' + deletedSchemeCount + '/' + (oldSchemesForRegen.data || []).length + ' 个');
+      VERBOSE && console.log('[regenerate] 已删除旧方案 ' + deletedSchemeCount + '/' + (oldSchemesForRegen.data || []).length + ' 个');
 
       // 2.6 存档并删除所有旧方向（已校验 task 归属，仅用 taskId 即可兼容旧数据）
       var taskForArchive = await db.collection(TASK_COLLECTION).doc(taskId).get();
@@ -1601,7 +1602,7 @@ exports.main = async function(event, context) {
             updatedAt: Date.now()
           }
         });
-        console.log('[regenerate] 已存档并删除旧方向 ' + deletedDirCount + '/' + oldDirs.data.length + ' 个');
+        VERBOSE && console.log('[regenerate] 已存档并删除旧方向 ' + deletedDirCount + '/' + oldDirs.data.length + ' 个');
       }
 
       // 3. 标记任务为重新生成中，同时清除旧的趋势分析结果字段
@@ -1669,7 +1670,7 @@ exports.main = async function(event, context) {
       for (var ods = 0; ods < (oldDirSchemes.data || []).length; ods++) {
         try { await db.collection(SCHEME_COLLECTION).doc(oldDirSchemes.data[ods]._id).remove(); } catch (e) {}
       }
-      console.log('[regenerateScheme] 已删除该方向 ' + (oldDirSchemes.data || []).length + ' 个旧方案');
+      VERBOSE && console.log('[regenerateScheme] 已删除该方向 ' + (oldDirSchemes.data || []).length + ' 个旧方案');
 
       // 3. 从 direction 集合读取方向数据
       var regenDirDoc = await db.collection(DIRECTION_COLLECTION).doc(taskId + '_' + regenDirKey).get();
@@ -1961,15 +1962,15 @@ exports.main = async function(event, context) {
 
   // 服务端检查积分（前端也检查但可能有竞态，双保险）
   var balanceRes = await cloud.callFunction({ name: 'creditsAPI', data: { action: 'getCreditsInfo', _openid: openid } });
-  console.log('[trigger] creditsAPI 原始返回:', JSON.stringify(balanceRes));
-  console.log('[trigger] balanceRes.result:', JSON.stringify(balanceRes.result));
+  VERBOSE && console.log('[trigger] creditsAPI 原始返回:', JSON.stringify(balanceRes));
+  VERBOSE && console.log('[trigger] balanceRes.result:', JSON.stringify(balanceRes.result));
   var balance = balanceRes.result.credits || balanceRes.result.balance || 0;
-  console.log('[trigger] 解析后 balance:', balance, '阈值 30, 是否通过:', balance >= 30);
+  VERBOSE && console.log('[trigger] 解析后 balance:', balance, '阈值 30, 是否通过:', balance >= 30);
   if (balance < 30) {
-    console.log('[trigger] 积分不足，返回 balance:', balance);
+    VERBOSE && console.log('[trigger] 积分不足，返回 balance:', balance);
     return { success: false, error: '积分不足', balance: balance };
   }
-  console.log('[trigger] 积分检查通过，继续执行');
+  VERBOSE && console.log('[trigger] 积分检查通过，继续执行');
 
   var newTaskId = genTaskId();
 

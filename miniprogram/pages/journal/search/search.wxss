@@ -10,17 +10,6 @@
   padding-bottom: 40rpx;
 }
 
-/* 临时：迁移按钮 */
-.migration-banner {
-  padding: 16rpx 24rpx;
-  text-align: center;
-  background: #FFF3E0;
-  border-bottom: 2rpx solid #FF9800;
-}
-.migration-btn {
-  font-size: 24rpx;
-}
-
 /* ---- 搜索头部 ---- */
 .search-header {
   background: #fff;

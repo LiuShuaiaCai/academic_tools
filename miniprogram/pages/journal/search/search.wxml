@@ -1,11 +1,6 @@
 <!--pages/journal/search/search.wxml-->
 <!--期刊搜索页 - 筛选+列表重构版 -->
 <view class="container">
-  
-  <!-- 临时迁移按钮（完成后删除） -->
-  <view class="migration-banner">
-    <button class="migration-btn" bindtap="runMigration" size="mini" type="warn">执行数据库迁移</button>
-  </view>
 
   <!-- 顶部搜索栏 -->
   <view class="search-header">

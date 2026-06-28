@@ -3,6 +3,7 @@
 // 集合名称映射
 var themeUtil = require('../../utils/theme.js');
 var toolCache = require('../../utils/toolCache.js');
+var VERBOSE = false;
 
 var TASK_COLLECTION_MAP = {
   submission: 'submissions',
@@ -51,7 +52,7 @@ Page({
       var userTools = res.result || {};
       // 通过缓存获取所有工具定义（首次查云函数，后续走本地缓存）
       return toolCache.getAllTools().then(function(toolDefs) {
-        console.log('[toolbox] 工具定义:', toolDefs);
+        VERBOSE && console.log('[toolbox] 工具定义:', toolDefs);
         return { userTools: userTools, toolDefs: toolDefs };
       });
     }).then(function(data) {
@@ -81,7 +82,7 @@ Page({
         });
       }
 
-      console.log('[toolbox] 启用的工具:', tools);
+      VERBOSE && console.log('[toolbox] 启用的工具:', tools);
       that.setData({ tools: tools, enabledCount: tools.length });
       that.loadToolCounts();
     }).catch(function(e) {
@@ -117,7 +118,7 @@ Page({
         var colName = TASK_COLLECTION_MAP[tool.id];
         if (tool.id === 'archive') colName = 'archives';
         if (tool.id === 'citation') colName = 'citation_library';
-        console.log('[toolbox] 查询工具:', tool.id, '->', colName, 'isTaskType:', tool.isTaskType);
+        VERBOSE && console.log('[toolbox] 查询工具:', tool.id, '->', colName, 'isTaskType:', tool.isTaskType);
 
         if (colName) {
           // 总数查询：不过滤 completed，显示全量（仅当前用户）
@@ -128,7 +129,7 @@ Page({
               name: 'specialIssueAgent',
               data: { action: 'count' }
             }).then(function(res) {
-              console.log('[toolbox] specialIssue count 云函数返回:', JSON.stringify(res));
+              VERBOSE && console.log('[toolbox] specialIssue count 云函数返回:', JSON.stringify(res));
               return { total: (res.result && res.result.success) ? (res.result.count || 0) : 0 };
             }).catch(function(err) {
               console.error('[toolbox] specialIssue count 调用失败:', err);
@@ -182,7 +183,7 @@ Page({
 
           promises.push(
             Promise.all([countPromise, urgentPromise]).then(function(results) {
-              console.log('[toolbox] 查询结果:', tool.id, 'count:', results[0].total, 'urgent:', results[1].total);
+              VERBOSE && console.log('[toolbox] 查询结果:', tool.id, 'count:', results[0].total, 'urgent:', results[1].total);
               return {
                 id: tool.id, name: tool.name, desc: tool.desc,
                 iconEmoji: tool.iconEmoji, color: tool.color,
@@ -196,7 +197,7 @@ Page({
             })
           );
         } else {
-          console.log('[toolbox] 工具不在映射中:', tool.id);
+          VERBOSE && console.log('[toolbox] 工具不在映射中:', tool.id);
           promises.push(Promise.resolve({
             id: tool.id, name: tool.name, desc: tool.desc,
             iconEmoji: tool.iconEmoji, color: tool.color,
@@ -208,7 +209,7 @@ Page({
     }
 
     Promise.all(promises).then(function(updatedTools) {
-      console.log('[toolbox] 更新后的工具:', updatedTools);
+      VERBOSE && console.log('[toolbox] 更新后的工具:', updatedTools);
 
       var totalCount = 0;
       var totalUrgent = 0;
