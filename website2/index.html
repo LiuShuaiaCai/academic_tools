@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="智研通学术，学者驱动的学术服务生态，让知识的交汇成为科研日常。投稿管理、AI特刊策划、文献引用、学术社区。">
+  <title>智研通学术 | 让知识的交汇成为科研日常</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- 滚动进度条 -->
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <header class="site-header" id="top">
+    <a class="brand" href="#top" aria-label="智研通学术首页">
+      <span class="brand-mark">知</span>
+      <span>智研通学术</span>
+    </a>
+    <button class="menu-button" type="button" aria-label="打开导航" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+    <nav class="site-nav" aria-label="主导航">
+      <a href="#story">品牌故事</a>
+      <a href="#identity">我们是谁</a>
+      <a href="#features">核心功能</a>
+      <a href="#workflow">科研工作流</a>
+      <a href="#values">核心价值</a>
+      <a href="#download">体验</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero" aria-labelledby="hero-title">
+      <img class="hero-image" src="assets/hero-academic-commons.png" alt="研究者在学术空间中交流协作的温暖场景">
+      <div class="hero-overlay"></div>
+      <div class="hero-content reveal">
+        <p class="eyebrow">学者驱动的学术服务生态</p>
+        <h1 id="hero-title">智研通学术</h1>
+        <p class="hero-lead">让知识的交汇，成为科研日常。</p>
+        <p class="hero-copy">连接人、连接数据、连接思想、连接可能性——让每一次学术交流，都成为知识交汇的契机。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#download">开始使用</a>
+          <a class="button secondary" href="#story">阅读故事 →</a>
+        </div>
+      </div>
+      <a class="scroll-cue" href="#story" aria-label="继续浏览">
+        <span></span>
+      </a>
+    </section>
+
+    <!-- 品牌故事 -->
+    <section class="section intro-band" id="story">
+      <div class="container split-layout">
+        <div class="section-kicker reveal">品牌故事</div>
+        <div class="story-text reveal">
+          <h2>科研之路，从来不是一个人的独行。</h2>
+          <p>在浩如烟海的文献中，在深夜实验室的灯光下，在无数次被拒稿的焦虑里——<strong>每一位研究者都渴望被理解、被连接、被启发。</strong></p>
+          <p>智研通学术，正是为此而生。我们相信，真正的学术进步，源于思想的碰撞与智慧的交汇。</p>
+          <p>当一个领域的问题，被另一个领域的视角重新审视；当一位研究者的困惑，被另一位同行的经验点亮——这就是<span class="text-accent">"知识在此交汇"</span>的力量。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 我们是谁 -->
+    <section class="section" id="identity">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">我们是谁</p>
+          <h2>不止于工具，也不止于社区。</h2>
+          <p>智研通学术把研究者放在中心，把服务做成纽带，把生态作为结果。</p>
+        </div>
+        <div class="identity-grid">
+          <article class="identity-item reveal">
+            <span class="identity-label">不是工具</span>
+            <h3>不满足于"能用"</h3>
+            <p>工具解决效率问题，而我们更关心研究者在选题、投稿、评审、交流和成长中的真实处境。</p>
+          </article>
+          <article class="identity-item reveal">
+            <span class="identity-label">不是社区</span>
+            <h3>不止停留在"交流"</h3>
+            <p>交流只是开始。我们希望把浅层互动推进为同行互助、深度对话和可持续协作。</p>
+          </article>
+          <article class="identity-item identity-item-strong reveal">
+            <span class="identity-label">是生态</span>
+            <h3>学者驱动的服务网络</h3>
+            <p>连接人、连接数据、连接思想、连接可能性，让学术服务围绕研究者自然生长。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心功能（详细展示） -->
+    <section class="section feature-section" id="features">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">核心功能</p>
+          <h2>覆盖学术全流程，让每一步都有工具护航。</h2>
+          <p>从投稿管理到AI特刊策划，从文献引用到学术会议，智研通学术让功能真正进入研究场景。</p>
+        </div>
+
+        <!-- 功能 1: 投稿管理 -->
+        <div class="feature-row reveal">
+          <div class="feature-image">
+            <div class="screenshot-placeholder">
+              <div class="screenshot-label">投稿管理界面</div>
+              <div class="screenshot-mock">
+                <div class="mock-status-bar">
+                  <span class="mock-tab active">全部</span>
+                  <span class="mock-tab">审稿中</span>
+                  <span class="mock-tab">已接收</span>
+                  <span class="mock-tab">已发表</span>
+                </div>
+                <div class="mock-card-list">
+                  <div class="mock-submission">
+                    <span class="mock-status pending">审稿中</span>
+                    <strong>基于深度学习的医学图像分割</strong>
+                    <small>Nature Medicine · 2026-05-12</small>
+                  </div>
+                  <div class="mock-submission">
+                    <span class="mock-status accepted">已接收</span>
+                    <strong>大语言模型在临床决策中的应用</strong>
+                    <small>The Lancet Digital Health · 2026-04-28</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <div class="fc-header">
+              <span class="fc-icon fc-icon--teal">📬</span>
+              <h3>投稿管理</h3>
+            </div>
+            <p class="feature-desc">科研投稿全生命周期管理，从提交到发表一目了然。</p>
+            <ul class="feature-list">
+              <li>稿件状态追踪：待审→审稿中→已接收→已发表→已拒绝</li>
+              <li>多维度筛选：状态、期刊、优先级、截止日期</li>
+              <li>智能搜索、分页加载、软删除</li>
+              <li>数据统计面板，投稿分布可视化</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 功能 2: 审稿任务 -->
+        <div class="feature-row feature-row-reverse reveal">
+          <div class="feature-image">
+            <div class="screenshot-placeholder">
+              <div class="screenshot-label">审稿任务界面</div>
+              <div class="screenshot-mock">
+                <div class="mock-review-stats">
+                  <div class="mock-stat-item"><span>12</span>总数</div>
+                  <div class="mock-stat-item"><span>5</span>未完成</div>
+                  <div class="mock-stat-item urgent"><span>2</span>紧急</div>
+                </div>
+                <div class="mock-card-list">
+                  <div class="mock-submission">
+                    <span class="mock-status urgent">⚠ 明日截止</span>
+                    <strong>IEEE TPAMI 审稿邀请</strong>
+                    <small>截止 · 2026-06-29</small>
+                  </div>
+                  <div class="mock-submission">
+                    <span class="mock-status pending">审稿中</span>
+                    <strong>CVPR 2026 审稿任务</strong>
+                    <small>截止 · 2026-07-15</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <div class="fc-header">
+              <span class="fc-icon fc-icon--amber">📋</span>
+              <h3>审稿任务</h3>
+            </div>
+            <p class="feature-desc">Deadline 驱动的审稿管理，不再错过任何审稿邀请。</p>
+            <ul class="feature-list">
+              <li>快速筛选：待审、审中、临近截止、紧急</li>
+              <li>高级筛选：期刊、截止日期范围</li>
+              <li>一键跳转审稿系统链接</li>
+              <li>截止前 3 天 / 1 天消息推送提醒</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 功能 3: AI 特刊策划（高亮） -->
+        <div class="feature-row feature-row-highlight reveal">
+          <div class="feature-image">
+            <div class="screenshot-placeholder highlight">
+              <div class="screenshot-label">AI 特刊策划界面</div>
+              <div class="screenshot-mock ai-feature-mock">
+                <div class="ai-phase">
+                  <span class="phase-step">🔍 Phase 1</span>
+                  <span>学术论文搜索</span>
+                </div>
+                <div class="ai-phase">
+                  <span class="phase-step">🧠 Phase 2</span>
+                  <span>Kimi LLM 趋势分析</span>
+                </div>
+                <div class="ai-phase">
+                  <span class="phase-step">📋 Phase 3</span>
+                  <span>生成 3 个差异化方向</span>
+                </div>
+                <div class="ai-result">
+                  <strong>🎯 推荐方向</strong>
+                  <div class="ai-topic">多模态 AI 在精准医疗中的应用</div>
+                  <div class="ai-meta">热度: ⭐⭐⭐⭐⭐ · 上升趋势</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <div class="fc-header">
+              <span class="fc-icon fc-icon--plum">✨</span>
+              <h3>AI 特刊策划 <span class="ai-tag">AI</span></h3>
+            </div>
+            <p class="feature-desc">输入研究关键词，AI 自动生成差异化特刊策划方案，含趋势分析、客座编委推荐、来源论文列表。</p>
+            <ul class="feature-list">
+              <li>学术文献检索 → Kimi 大模型趋势分析</li>
+              <li>生成 3 个差异化特刊方向（中英双语）</li>
+              <li>自动推荐客座编辑（含 H-index、机构、发文趋势）</li>
+              <li>引用趋势图表、研究方向热度排名</li>
+              <li>支持重新生成，每次消耗 30 积分</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 功能 4: 学术会议 -->
+        <div class="feature-row reveal">
+          <div class="feature-image">
+            <div class="screenshot-placeholder">
+              <div class="screenshot-label">学术会议界面</div>
+              <div class="screenshot-mock">
+                <div class="mock-card-list">
+                  <div class="mock-submission">
+                    <span class="mock-status accepted">已投稿</span>
+                    <strong>ICML 2026</strong>
+                    <small>🇺🇸 夏威夷 · 截稿 2026-01-15</small>
+                  </div>
+                  <div class="mock-submission">
+                    <span class="mock-status pending">即将截稿</span>
+                    <strong>NeurIPS 2026</strong>
+                    <small>🇨🇦 温哥华 · 截稿 2026-05-20</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <div class="fc-header">
+              <span class="fc-icon fc-icon--coral">📅</span>
+              <h3>学术会议</h3>
+            </div>
+            <p class="feature-desc">跟踪学术会议截稿日期与参会状态，不错过任何重要学术活动。</p>
+            <ul class="feature-list">
+              <li>多维筛选：线上/线下、地点、日期、会议等级</li>
+              <li>参会状态：已投稿 / 已录用 / 已报名</li>
+              <li>截稿日期提醒，自动同步到学术日历</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 功能 5: 文献引用 -->
+        <div class="feature-row feature-row-reverse reveal">
+          <div class="feature-image">
+            <div class="screenshot-placeholder">
+              <div class="screenshot-label">文献引用界面</div>
+              <div class="screenshot-mock">
+                <div class="mock-citation">
+                  <p class="cite-text">[1] Vaswani A, Shazeer N, Parmar N, et al. Attention Is All You Need[C]. Advances in Neural Information Processing Systems, 2017: 5998-6008.</p>
+                  <p class="cite-text">[2] Devlin J, Chang M W, Lee K, et al. BERT: Pre-training of Deep Bidirectional Transformers[J]. arXiv preprint, 2018.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <div class="fc-header">
+              <span class="fc-icon fc-icon--teal">📚</span>
+              <h3>文献引用</h3>
+            </div>
+            <p class="feature-desc">自动格式化与管理学术参考文献，支持主流引用标准。</p>
+            <ul class="feature-list">
+              <li>多种文献类型：期刊、图书、会议、学位论文、网页</li>
+              <li>引用格式：GB/T 7714、APA 等</li>
+              <li>数据源：Crossref API</li>
+              <li>引用统计分析：来源分布、年份趋势</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI 能力横幅 -->
+    <section class="ai-banner reveal">
+      <div class="container">
+        <div class="ai-banner-content">
+          <p class="section-kicker" style="color: rgba(255,255,255,.5);">AI 引擎</p>
+          <h2>多模型 AI 智能引擎</h2>
+          <p>集成 DeepSeek-V4、Kimi、OpenAI 等主流大模型，驱动特刊策划、趋势分析、文献推荐等核心学术工作流</p>
+          <div class="ai-models">
+            <span class="model-tag">DeepSeek-V4</span>
+            <span class="model-tag">Kimi</span>
+            <span class="model-tag">GLM-5</span>
+            <span class="model-tag">OpenAI</span>
+          </div>
+          <div class="ai-features-grid">
+            <div class="ai-feature-item">
+              <span class="ai-feature-icon">🎯</span>
+              <h4>特刊策划</h4>
+              <p>输入关键词自动生成差异化特刊方案</p>
+            </div>
+            <div class="ai-feature-item">
+              <span class="ai-feature-icon">📈</span>
+              <h4>趋势分析</h4>
+              <p>基于学术文献大数据的智能洞察</p>
+            </div>
+            <div class="ai-feature-item">
+              <span class="ai-feature-icon">👥</span>
+              <h4>学者推荐</h4>
+              <p>自动匹配客座编委与潜在合作者</p>
+            </div>
+            <div class="ai-feature-item">
+              <span class="ai-feature-icon">🌐</span>
+              <h4>中英双语</h4>
+              <p>AI 输出自动生成中英文对照内容</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 界面展示 -->
+    <section class="section screenshots-section" id="screenshots">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">界面展示</p>
+          <h2>简洁高效的操作体验</h2>
+          <p>让学术管理变得轻松，每个界面都为效率而设计</p>
+        </div>
+        <div class="screenshot-grid">
+          <div class="screenshot-card reveal">
+            <div class="screenshot-card-inner">
+              <div class="mock-tab-bar">
+                <span class="tb-item active">🏠 首页</span>
+                <span class="tb-item">📰 动态</span>
+                <span class="tb-item">📅 日历</span>
+                <span class="tb-item">👤 我的</span>
+              </div>
+              <div class="mini-dashboard">
+                <div class="dash-card">📄 投稿管理 <span class="badge">2</span></div>
+                <div class="dash-card">✅ 审稿任务 <span class="badge urgent">5</span></div>
+                <div class="dash-card">🎤 学术会议 <span class="badge">3</span></div>
+                <div class="dash-card">🗄️ 资料归档 <span class="badge">12</span></div>
+              </div>
+            </div>
+            <div class="screenshot-caption">首页工作台 — 一键直达所有工具</div>
+          </div>
+
+          <div class="screenshot-card reveal">
+            <div class="screenshot-card-inner">
+              <div class="mini-calendar">
+                <div class="cal-header">2026年6月</div>
+                <div class="cal-grid">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                  <span>1</span><span>2</span><span>3</span><span class="has-event">4</span><span>5</span><span>6</span><span class="has-event">7</span>
+                  <span>8</span><span>9</span><span>10</span><span>11</span><span class="has-event">12</span><span>13</span><span>14</span>
+                  <span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span class="has-event today">21</span>
+                </div>
+              </div>
+            </div>
+            <div class="screenshot-caption">学术日历 — 四色区分投稿/审稿/会议/任务</div>
+          </div>
+
+          <div class="screenshot-card reveal">
+            <div class="screenshot-card-inner">
+              <div class="mini-square">
+                <div class="sq-tabs">
+                  <span class="sq-tab active">推荐</span><span class="sq-tab">最新</span><span class="sq-tab">热门</span>
+                </div>
+                <div class="sq-post">
+                  <div class="sq-avatar">👨‍🔬</div>
+                  <div class="sq-body">
+                    <strong>张教授</strong> · 2小时前
+                    <p>分享一篇最新的 Nature 论文，关于 AI 在药物发现中的应用...</p>
+                    <div class="sq-actions">❤️ 56 · 💬 12 · ⭐ 收藏</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="screenshot-caption">学术动态 — 科研同行交流社区</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 科研工作流 -->
+    <section class="section workflow-section" id="workflow">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">科研工作流</p>
+          <h2>从研究到发表，全流程闭环管理</h2>
+        </div>
+        <div class="workflow-steps">
+          <div class="wf-step reveal">
+            <div class="wf-icon">🔍</div>
+            <h4>研究选题</h4>
+            <p>AI 特刊策划<br>文献引用</p>
+          </div>
+          <div class="wf-arrow">→</div>
+          <div class="wf-step reveal">
+            <div class="wf-icon">📝</div>
+            <h4>写作投稿</h4>
+            <p>投稿管理<br>文献引用<br>资料归档</p>
+          </div>
+          <div class="wf-arrow">→</div>
+          <div class="wf-step reveal">
+            <div class="wf-icon">✅</div>
+            <h4>审稿追踪</h4>
+            <p>审稿任务<br>审稿邀请<br>截止提醒</p>
+          </div>
+          <div class="wf-arrow">→</div>
+          <div class="wf-step reveal">
+            <div class="wf-icon">📢</div>
+            <h4>发表交流</h4>
+            <p>学术社区<br>会议跟踪<br>学术日历</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心价值 -->
+    <section class="section values-section" id="values">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">我们做什么</p>
+          <h2>相遇、交流、共同成长。</h2>
+        </div>
+        <div class="value-table reveal" role="table" aria-label="智研通学术核心价值">
+          <div class="table-row table-head" role="row">
+            <div role="columnheader">维度</div>
+            <div role="columnheader">核心价值</div>
+          </div>
+          <div class="table-row" role="row">
+            <div role="cell">相遇</div>
+            <div role="cell">打破学科壁垒，让不同领域的研究者找到彼此。</div>
+          </div>
+          <div class="table-row" role="row">
+            <div role="cell">交流</div>
+            <div role="cell">提供深度学术对话空间，从浅层互动走向实质协作。</div>
+          </div>
+          <div class="table-row" role="row">
+            <div role="cell">共同成长</div>
+            <div role="cell">通过互助积分、同行评审、协作研究，实现共赢。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 品牌调性 -->
+    <section class="section tone-section">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">品牌调性</p>
+          <h2>专业之外，也要让学术服务有温度。</h2>
+        </div>
+        <div class="tone-grid">
+          <article class="tone-item reveal">
+            <h3>温度感</h3>
+            <p>拒绝冰冷的科技感，传递对研究者真实处境的理解与关怀。</p>
+          </article>
+          <article class="tone-item reveal">
+            <h3>连接感</h3>
+            <p>强调交汇、碰撞与融合，让孤立的知识重新流动起来。</p>
+          </article>
+          <article class="tone-item reveal">
+            <h3>专业感</h3>
+            <p>深耕学术场景，围绕研究、投稿、评审和协作提供服务。</p>
+          </article>
+          <article class="tone-item reveal">
+            <h3>开放感</h3>
+            <p>打破学科、地域与资历边界，让更多研究者被看见。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 特色亮点 -->
+    <section class="section highlights-section">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">特色亮点</p>
+          <h2>不止于功能，更在乎体验</h2>
+        </div>
+        <div class="highlights-grid">
+          <div class="highlight-card reveal">
+            <span class="hl-icon">🌐</span>
+            <h4>国际化双语</h4>
+            <p>界面支持中文/英文无缝切换，AI 输出自动中英双语</p>
+          </div>
+          <div class="highlight-card reveal">
+            <span class="hl-icon">☁️</span>
+            <h4>云端同步</h4>
+            <p>基于腾讯云开发 CloudBase，数据云端存储，多设备同步</p>
+          </div>
+          <div class="highlight-card reveal">
+            <span class="hl-icon">🔔</span>
+            <h4>智能提醒</h4>
+            <p>微信订阅消息推送，截止日期前自动提醒，不再遗漏重要事件</p>
+          </div>
+          <div class="highlight-card reveal">
+            <span class="hl-icon">🎯</span>
+            <h4>角色预设</h4>
+            <p>科研人员 / 学术编辑双角色，按需启用工具，千人千面</p>
+          </div>
+          <div class="highlight-card reveal">
+            <span class="hl-icon">⭐</span>
+            <h4>积分系统</h4>
+            <p>新用户赠送 100 积分，每日签到奖励，AI 工具消耗积分</p>
+          </div>
+          <div class="highlight-card reveal">
+            <span class="hl-icon">📊</span>
+            <h4>数据统计</h4>
+            <p>每种工具均配备统计面板，稿件/审稿/会议数据可视化</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 愿景 -->
+    <section class="vision-section">
+      <div class="container reveal">
+        <p class="section-kicker">我们的愿景</p>
+        <h2>让每一次学术交流，都成为知识交汇的契机；<br>让每一位研究者，都不再孤单。</h2>
+      </div>
+    </section>
+
+    <!-- 体验/下载 -->
+    <section class="section download-section" id="download">
+      <div class="container">
+        <div class="download-card reveal">
+          <div class="download-content">
+            <p class="section-kicker">开始体验</p>
+            <h2>加入智研通学术</h2>
+            <p>微信扫码或搜索小程序「智研通学术」，让知识的交汇，成为你的科研日常。</p>
+            <div class="download-steps">
+              <div class="step">
+                <span class="step-num">1</span>
+                <span>打开微信</span>
+              </div>
+              <div class="step-arrow">→</div>
+              <div class="step">
+                <span class="step-num">2</span>
+                <span>搜索「智研通学术」</span>
+              </div>
+              <div class="step-arrow">→</div>
+              <div class="step">
+                <span class="step-num">3</span>
+                <span>选择角色开始探索</span>
+              </div>
+            </div>
+            <p class="download-note">新用户注册即送 100 积分，每日签到持续获取</p>
+          </div>
+          <div class="download-qr">
+            <div class="qr-placeholder">
+              <span>📱</span>
+              <p>微信扫码<br>体验小程序</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark">知</span>
+        <span>智研通学术</span>
+        <p>学者驱动的学术生态<br>知识在此交汇，科研不再孤单。</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>品牌</h4>
+          <a href="#story">品牌故事</a>
+          <a href="#identity">我们是谁</a>
+          <a href="#values">核心价值</a>
+        </div>
+        <div class="footer-col">
+          <h4>功能</h4>
+          <a href="#features">投稿管理</a>
+          <a href="#features">AI 特刊策划</a>
+          <a href="#features">文献引用</a>
+        </div>
+        <div class="footer-col">
+          <h4>更多</h4>
+          <a href="#features">审稿任务</a>
+          <a href="#features">学术会议</a>
+          <a href="#workflow">科研工作流</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 智研通学术 · 微信小程序 · 知识在此交汇</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
