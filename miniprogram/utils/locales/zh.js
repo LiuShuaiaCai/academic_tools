@@ -23,7 +23,7 @@ module.exports = {
     toolbox: '工具箱',
     calendar: '日历',
     profile: '我的',
-    academicTools: '智研通学术',
+    academicTools: '智研学术助手',
     specialIssue: '特刊策划'
   },
 

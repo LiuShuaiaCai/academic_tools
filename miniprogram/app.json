@@ -40,7 +40,7 @@
     "backgroundColor": "#F6F6F6",
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#FFFFFF",
-    "navigationBarTitleText": "智研通学术",
+    "navigationBarTitleText": "智研学术助手",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {
