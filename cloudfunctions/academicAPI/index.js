@@ -1017,6 +1017,14 @@ async function squareCreatePost(event) {
     }
   }
 
+  // 图片安全检测
+  if (images && images.length > 0) {
+    var imgCheckResult = await checkImages(images);
+    if (!imgCheckResult.allSafe) {
+      return { success: false, error: '图片包含违规信息，请更换后重试' };
+    }
+  }
+
   // 频率限制：检查用户最近1分钟内发布数量
   var oneMinuteAgo = new Date(Date.now() - 60 * 1000);
   var recentCount = await db.collection('square_posts')
@@ -1119,6 +1127,26 @@ async function squareUpdatePost(event) {
   if (event.content !== undefined) updateData.content = (event.content || '').trim();
   if (event.images !== undefined) updateData.images = event.images;
   if (event.tags !== undefined) updateData.tags = event.tags;
+
+  // 内容安全检测：编辑后的文本
+  var updatedTitle = updateData.title !== undefined ? updateData.title : (post.data.title || '');
+  var updatedContent = updateData.content !== undefined ? updateData.content : (post.data.content || '');
+  var textToCheck = (updatedTitle + ' ' + updatedContent).trim();
+  if (textToCheck) {
+    var isSafe = await checkContent(textToCheck);
+    if (!isSafe) {
+      return { success: false, error: '内容包含违规信息，请修改后重试' };
+    }
+  }
+
+  // 图片安全检测：只检测新增/变更的图片
+  var newImages = updateData.images !== undefined ? updateData.images : (post.data.images || []);
+  if (newImages.length > 0) {
+    var imgCheckResult = await checkImages(newImages);
+    if (!imgCheckResult.allSafe) {
+      return { success: false, error: '图片包含违规信息，请更换后重试' };
+    }
+  }
 
   await db.collection('square_posts').doc(postId).update({ data: updateData });
   return { success: true };
@@ -1236,7 +1264,15 @@ async function squareCreateComment(event) {
     if (!isSafe) {
       return { success: false, error: '评论包含违规信息，请修改后重试' };
     }
-  };
+  }
+
+  // 评论图片安全检测
+  if (imageUrl) {
+    var imgSafe = await checkImage(imageUrl);
+    if (!imgSafe) {
+      return { success: false, error: '评论图片包含违规信息，请更换后重试' };
+    }
+  }
 
   var now = formatTime();
   var data = {
@@ -1634,6 +1670,31 @@ async function squareHelpRespond(event) {
     return { success: false, error: '请输入应助内容或上传文件' };
   }
 
+  // 内容安全检测：应助文本
+  if (content) {
+    var isSafe = await checkContent(content);
+    if (!isSafe) {
+      return { success: false, error: '应助内容包含违规信息，请修改后重试' };
+    }
+  }
+
+  // 文件安全检测：通过文件名做文本审核 + 图片文件做图片审核
+  if (fileID) {
+    // 文件名文本检测
+    var displayName = fileName || fileID;
+    var nameSafe = await checkContent(displayName);
+    if (!nameSafe) {
+      return { success: false, error: '文件名包含违规信息，请修改后重试' };
+    }
+    // 如果是云存储中的图片文件，进行图片审核
+    if (fileID.startsWith('cloud://') || /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(fileID)) {
+      var fileImgSafe = await checkImage(fileID);
+      if (!fileImgSafe) {
+        return { success: false, error: '上传的图片包含违规信息，请更换后重试' };
+      }
+    }
+  }
+
   // 获取动态详情
   var postRes = await db.collection('square_posts').doc(postId).get();
   var post = postRes.data;
@@ -1874,6 +1935,40 @@ async function checkContent(text) {
     console.error('[checkContent] msgSecCheck 异常', e);
     return true;
   }
+}
+
+// 图片内容安全检测（单张）
+async function checkImage(fileID) {
+  if (!fileID) return true;
+  try {
+    var res = await cloud.downloadFile({ fileID: fileID });
+    var buffer = res.fileContent;
+    await cloud.openapi.security.imgSecCheck({
+      media: {
+        contentType: 'image/png',
+        value: buffer
+      }
+    });
+    return true;
+  } catch (e) {
+    if (e.errCode === 87014) return false;
+    // 图片审核异常时拒绝（图片违规风险高，不放行）
+    console.error('[checkImage] imgSecCheck 异常', e);
+    return false;
+  }
+}
+
+// 批量图片安全检测
+// 返回 { allSafe, firstFailed } 
+async function checkImages(fileIDs) {
+  if (!fileIDs || fileIDs.length === 0) return { allSafe: true };
+  for (var i = 0; i < fileIDs.length; i++) {
+    var safe = await checkImage(fileIDs[i]);
+    if (!safe) {
+      return { allSafe: false, firstFailed: i };
+    }
+  }
+  return { allSafe: true };
 }
 
 // ==================== 工具函数 ====================
